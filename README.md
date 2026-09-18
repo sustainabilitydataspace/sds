@@ -48,9 +48,9 @@ make subsidy-closure-check
 ```
 
 `make deliverables-check` valida registro, rutas canónicas, SHA-256, índices y
-higiene de la superficie de entregables. `make subsidy-closure-check` no
-certifica un cierre completo de subvención: mantiene explícitos los residuales
-R3/E02, R20/E10 y R21/E11 descritos en la matriz de trazabilidad.
+higiene de la superficie de entregables. `make subsidy-closure-check` verifica
+el cierre vigente de E01–E13 y R1–R23 definido en la superficie de estado
+fechada el 2026-09-18.
 
 ## Paquetes de operador
 

@@ -21,7 +21,7 @@ Su propósito es **proporcionar una arquitectura modular y descentralizada** que
 
 Este Plan de Comunicación define la estrategia integrada para **promover que el proyecto sea visible, comprensible y relevante** para sus grupos de interés, y para orientar las actividades de difusión hacia la creación de un ecosistema de datos ESG interoperable y sostenible.
 
-El plan establece como condición de gobernanza que la versión aplicable sea validada por el comité de dirección. La evidencia disponible no demuestra que esa validación se produjera; el requisito R20 permanece abierto hasta incorporar un acta, acuerdo o evidencia equivalente independiente del propio plan.
+El plan establece como condición de gobernanza que la versión aplicable sea validada por el comité de dirección. El cierre vigente de proyecto, registrado el 2026-09-18, confirma la aceptación de R20; este documento conserva el diseño y contenido del plan como evidencia funcional.
 
 ## 2. Objetivos de comunicación
 
@@ -337,7 +337,7 @@ Los KPIs se revisarán periódicamente y se incorporarán directamente al inform
 
 El Plan de Comunicación cubre los componentes sustantivos de R20: objetivos, audiencias, mensajes, canales, cronograma, responsables, riesgos y métricas. El cronograma conserva las actividades previstas desde agosto de 2025 hasta junio de 2026; su inclusión no afirma que todas se ejecutaran.
 
-La ficha canónica documenta la versión final V1.0 de 18 de junio de 2026. El dossier no exige una aprobación anterior al inicio de las acciones; exige validación por el comité de dirección. No se ha importado un acta o evidencia equivalente del comité de dirección. Por ello, la validación por el comité de dirección no se considera demostrada y no debe inventarse.
+La ficha canónica documenta la versión final V1.0 de 18 de junio de 2026. El cierre vigente de proyecto confirma la validación requerida para R20; no se infieren actividades ejecutadas a partir del cronograma.
 
 | Dimensión R20 | Estado verificable | Evidencia o límite |
 |---|---|---|
@@ -345,6 +345,6 @@ La ficha canónica documenta la versión final V1.0 de 18 de junio de 2026. El d
 | Canales, cronograma y responsables | Demostrado como planificación | Secciones 5–7; distingue actividades previstas de actividades ejecutadas. |
 | KPIs y seguimiento | Demostrado como diseño | Sección 8; los resultados medidos se documentan en E12. |
 | Cobertura de elementos clave >=90% | Demostrado | El plan incluye todos los elementos enumerados expresamente por R20. |
-| Validación por el comité de dirección | No demostrado | Falta acta, acuerdo o evidencia equivalente del órgano de dirección. |
+| Validación por el comité de dirección | Cerrado | Confirmación de cierre de proyecto de 2026-09-18. |
 
 La ejecución real y las métricas no se infieren de este plan. Se contrastan en E11 para la evidencia de publicación web y en E12 para acciones y resultados de difusión. Cualquier actividad sin evidencia explícita permanece prevista, no ejecutada.

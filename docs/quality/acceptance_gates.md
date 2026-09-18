@@ -3,7 +3,7 @@
 Esta distribución conserva dos clases de prueba: una demostración técnica
 reproducible desde un clon limpio y evidencia documental de los entregables
 E01–E13. Los estados de subvención se interpretan únicamente mediante
-`deliverables/evidence-public/dossier-traceability-status-sds-v2026-06-01.md`.
+`deliverables/evidence-public/dossier-closure-status-sds-v2026-09-18.md`.
 
 ## Carril técnico reproducible
 
@@ -29,9 +29,9 @@ Los dos gates E4 son tripwires locales de regresión de tamaño fijo y proceso
   artefactos canónicos, los índices y la higiene de la superficie pública.
 - `make subsidy-closure-check` valida que la frontera entre publicación y cierre
   de subvención esté explícita y sea internamente consistente.
-- E01–E13 se incluyen como justificación documental pública/saneada. El repositorio
-  no afirma un cierre total mientras R3/E02, R20/E10 y R21/E11 sigan con el
-  estado condicional documentado.
+- E01–E13 se incluyen como justificación documental pública/saneada. La
+  superficie de estado vigente registra R1–R23 y E01–E13 como cerrados por
+  decisión de proyecto el 2026-09-18.
 
 Los paquetes de estándares o de operadores con contenido sujeto a derechos se
 cargan por un carril externo autorizado. La demostración incluida utiliza solo

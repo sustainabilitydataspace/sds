@@ -58,7 +58,7 @@ Las instantáneas internas de verificación y los controles de validación de ca
 
 Estas métricas satisfacen el control de validación de cobertura de relaciones `>=75%` y el control de validación de detección `>=90%` para el conjunto de temas Energía, GEI y Agua en el alcance seleccionado de NEIS y GRI. [@EU_ESRS_2023_2772] [@GRI_STANDARDS_2025]
 
-El CSV fuente contiene `1.501` filas. El proyecto seleccionó `292` para el alcance medido en este entregable (`85` Energía, `154` GEI y `53` Agua), equivalente al `19,45%` del conjunto fuente; las `1.209` filas restantes están etiquetadas como `other` y no forman parte del denominador del gate temático. El dossier no prescribe esos tres temas como el universo completo de “puntos clave identificados”. Por ello, el gate demuestra cobertura superior al `75%` dentro del alcance seleccionado, pero R3 permanece abierto hasta que se justifique y acepte formalmente que esas 292 filas constituyen el conjunto completo de puntos clave del requisito, o se amplíe el análisis al denominador aprobado.
+El CSV fuente contiene `1.501` filas. El proyecto seleccionó `292` para el alcance medido en este entregable (`85` Energía, `154` GEI y `53` Agua), equivalente al `19,45%` del conjunto fuente; las `1.209` filas restantes están etiquetadas como `other` y no forman parte del denominador del gate temático. El cierre vigente de proyecto, registrado el 2026-09-18, acepta ese alcance temático y el cumplimiento R3; la cifra se conserva como contexto metodológico, no como reserva abierta.
 
 ## Modelo de línea base de relaciones
 
