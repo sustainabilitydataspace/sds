@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sds:profile:aggregate-disclosure:v1",
+  "x-profile-version": "v1",
+  "x-profile-kind": "aggregate_disclosure",
+  "title": "sds-aggregate-disclosure-v1",
+  "description": "Append-only profile controlling disclosure suppression for public/shared aggregate and count outputs. Ratified in VARCH-0; suppression runtime + release ledger land in VARCH-4/VARCH-6. Every trace/ledger/outbox event that depends on suppression pins this profile id/version/hash and the suppression outcome used.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_id",
+    "version",
+    "k_threshold",
+    "cohort_counting_algorithm",
+    "complementary_suppression_algorithm",
+    "deterministic_cell_ordering",
+    "schema_version"
+  ],
+  "properties": {
+    "profile_id": {"type": "string"},
+    "version": {"type": "string"},
+    "k_threshold": {"type": "integer", "minimum": 1},
+    "k_threshold_semantics": {"type": "string"},
+    "cohort_counting_algorithm": {"type": "string"},
+    "complementary_suppression_algorithm": {"type": "string"},
+    "deterministic_cell_ordering": {"type": "string"},
+    "bucketing_padding_parameters": {"type": "object"},
+    "adjacent_release_comparison_window": {"type": "string"},
+    "restatement_delta_comparison_window": {"type": "string"},
+    "query_limit_semantics": {"type": "string"},
+    "schema_version": {"type": "string"},
+    "timing_control_parameters": {"type": "object"},
+    "change_policy": {
+      "type": "string",
+      "description": "Disclosure profile changes are prospective unless an explicit restatement/tombstone policy emits new release-ledger entries; a change must not silently reopen a differencing channel.",
+      "enum": ["prospective_unless_explicit_restatement"]
+    },
+    "conformance_fixtures": {"type": "array", "items": {"type": "string"}}
+  }
+}

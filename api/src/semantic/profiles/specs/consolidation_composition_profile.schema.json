@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sds:profile:consolidation-composition:v1",
+  "x-profile-version": "v1",
+  "x-profile-kind": "consolidation_composition",
+  "title": "sds-consolidation-composition-v1",
+  "description": "Append-only profile defining the deterministic composition function for cross-tenant consolidation. Ratified in VARCH-0; enforced in VARCH-6. Disclosure composition is fail-closed (most-restrictive unless every member explicitly authorizes a looser group profile); license/consent composition is intersection-only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_id",
+    "version",
+    "disclosure_composition_rule",
+    "license_consent_composition_rule",
+    "organizational_boundary_rules"
+  ],
+  "properties": {
+    "profile_id": {"type": "string"},
+    "version": {"type": "string"},
+    "disclosure_composition_rule": {
+      "type": "string",
+      "description": "A group-level disclosure profile may govern only if every member consent/source policy explicitly authorizes it AND it is at least as restrictive as every applicable member profile; otherwise the deterministic most-restrictive composition applies; incomparable/conflicting rules without an approved policy block publication.",
+      "enum": ["fail_closed_most_restrictive_unless_unanimously_authorized"]
+    },
+    "license_consent_composition_rule": {
+      "type": "string",
+      "description": "Allowed recipient/export/redistribution/derivative-use scope is the intersection of every contributing member consent scope and every source license-rights scope; empty intersection blocks output.",
+      "enum": ["intersection_only_empty_blocks"]
+    },
+    "organizational_boundary_rules": {"type": "array", "items": {"type": "string"}},
+    "timing_controls": {"type": "object"},
+    "output_recipient_export_scope": {"type": "string"},
+    "consent_withdrawal_default": {
+      "type": "string",
+      "description": "Default consent withdrawal is non-retroactive for already-issued consolidated outputs; retroactive suppression requires restatement/tombstone events.",
+      "enum": ["non_retroactive_default_restatement_required_for_retroactive"]
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0-public-demo",
+  "last_updated": "2026-09-18T00:00:00Z",
+  "description": "Self-authored minimum unit catalogue for the SDS public demonstration pack.",
+  "sources": ["SDS public demonstration pack"],
+  "categories": {
+    "volume": {
+      "base_unit": "m3",
+      "description": "Synthetic demonstration volume units.",
+      "special_conversions": false,
+      "units": {
+        "m3": {"symbol": "m3", "name": "cubic metre", "conversion_factor": "1", "aliases": ["m³"], "metadata": {"source_system": "SDS sample"}},
+        "L": {"symbol": "L", "name": "litre", "conversion_factor": "0.001", "aliases": ["l"], "metadata": {"source_system": "SDS sample"}}
+      }
+    },
+    "energy": {
+      "base_unit": "MWh",
+      "description": "Synthetic demonstration energy units.",
+      "special_conversions": false,
+      "units": {
+        "MWh": {"symbol": "MWh", "name": "megawatt hour", "conversion_factor": "1", "aliases": [], "metadata": {"source_system": "SDS sample"}},
+        "kWh": {"symbol": "kWh", "name": "kilowatt hour", "conversion_factor": "0.001", "aliases": [], "metadata": {"source_system": "SDS sample"}}
+      }
+    },
+    "emissions": {
+      "base_unit": "tCO2e",
+      "description": "Synthetic demonstration emissions units.",
+      "special_conversions": false,
+      "units": {
+        "tCO2e": {"symbol": "tCO2e", "name": "tonne carbon dioxide equivalent", "conversion_factor": "1", "aliases": ["t CO2e"], "metadata": {"source_system": "SDS sample"}},
+        "kgCO2e": {"symbol": "kgCO2e", "name": "kilogram carbon dioxide equivalent", "conversion_factor": "0.001", "aliases": ["kg CO2e"], "metadata": {"source_system": "SDS sample"}}
+      }
+    }
+  },
+  "custom_conversion_rules": []
+}

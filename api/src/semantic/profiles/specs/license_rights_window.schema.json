@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sds:profile:license-rights-window:v1",
+  "x-profile-version": "v1",
+  "x-profile-kind": "license_rights_window",
+  "title": "sds-license-rights-window-v1",
+  "description": "Append-only bitemporal license-rights contract with an explicit temporal egress policy. Ratified in VARCH-0; rows persisted in VARCH-1 and evaluated in VARCH-6. License-aware egress is mandatory: a derived output is blocked when source license/access scope does not allow the target subscriber/export/publication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_id",
+    "version",
+    "valid_time_window",
+    "decision_time_window",
+    "rights_scope",
+    "access_scope",
+    "temporal_egress_policy"
+  ],
+  "properties": {
+    "profile_id": {"type": "string"},
+    "version": {"type": "string"},
+    "source_authority": {"type": "string"},
+    "dataset_id": {"type": "string"},
+    "dataset_version": {"type": "string"},
+    "license_id": {"type": "string"},
+    "license_version": {"type": "string"},
+    "license_hash": {"type": "string"},
+    "valid_time_window": {"$ref": "#/definitions/window"},
+    "decision_time_window": {"$ref": "#/definitions/window"},
+    "rights_scope": {"type": "string"},
+    "access_scope": {"type": "string"},
+    "redistribution_grant": {"type": "boolean"},
+    "derivative_use_grant": {"type": "boolean"},
+    "expiry": {"type": ["string", "null"]},
+    "revocation": {"type": ["string", "null"]},
+    "supersession": {"type": ["string", "null"]},
+    "steward": {"type": "string"},
+    "approver": {"type": "string"},
+    "evidence_package_hash": {"type": "string"},
+    "temporal_egress_policy": {
+      "type": "string",
+      "description": "trace_decision_time grandfathers already-issued outputs and blocks new ones under later decision time; egress_read_time re-evaluates access at read/export without mutating the historical trace; retroactive_restatement emits restatement/tombstone events through the disclosure-filtered, scope-projected, license-aware outbox.",
+      "enum": ["trace_decision_time", "egress_read_time", "retroactive_restatement"]
+    }
+  },
+  "definitions": {
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start"],
+      "properties": {
+        "start": {"type": "string"},
+        "end": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

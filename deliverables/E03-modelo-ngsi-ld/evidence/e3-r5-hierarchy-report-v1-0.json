@@ -1,0 +1,14 @@
+{
+  "failures": [],
+  "gate": "e3_r5_hierarchy_coverage",
+  "matrix_path": "deliverables/E03-modelo-ngsi-ld/evidence/e3-r5-hierarchy-matrix-v1-0.csv",
+  "passed": true,
+  "summary": {
+    "hierarchy_rate": 1.0,
+    "hierarchy_valid_variables": 1805,
+    "representation_rate": 1.0,
+    "represented_variables": 1805,
+    "total_variables": 1805
+  },
+  "threshold": 0.8
+}

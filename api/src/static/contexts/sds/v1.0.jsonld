@@ -1,0 +1,35 @@
+{
+  "@context": {
+    "@vocab": "https://sustainabilitydataspace.com/ontology#",
+    "sds": "https://sustainabilitydataspace.com/ontology#",
+    "dct": "http://purl.org/dc/terms/",
+    "schema": "http://schema.org/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "esrs": "https://efrag.org/esrs#",
+    "gri": "https://www.globalreporting.org/standards#",
+
+    "Dataset": "sds:Dataset",
+    "Indicator": "sds:Indicator",
+    "Variable": "sds:Variable",
+
+    "hasIndicator": {"@id": "sds:hasIndicator", "@type": "@id"},
+    "dimension": "sds:dimension",
+    "codeESRS": "sds:codeESRS",
+    "codeGRI": "sds:codeGRI",
+    "unitName": "sds:unitName",
+    "unitType": "sds:unitType",
+    "periodicity": "sds:periodicity",
+    "sourceRef": "sds:sourceRef",
+    "evidencePath": "sds:evidencePath",
+    "sourceRow": {"@id": "sds:sourceRow", "@type": "xsd:integer"},
+    "owner": "dct:creator",
+    "accessRights": "dct:accessRights",
+    "validationMethod": "sds:validationMethod",
+
+    "title": "dct:title",
+    "description": "dct:description",
+    "identifier": "dct:identifier",
+    "issued": {"@id": "dct:issued", "@type": "xsd:date"},
+    "modified": {"@id": "dct:modified", "@type": "xsd:date"}
+  }
+}

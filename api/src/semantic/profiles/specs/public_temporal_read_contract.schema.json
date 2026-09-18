@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sds:profile:public-temporal-read:v1",
+  "x-profile-version": "v1",
+  "x-profile-kind": "public_temporal_read",
+  "title": "sds-public-temporal-read-v1",
+  "description": "Append-only contract for public temporal reads on /api/v1/semantic-dimensions and /api/v1/concepts. Ratified in VARCH-0; endpoints implemented in VARCH-8. Default behavior remains latest published state for backward compatibility; selectors expose published, non-private bitemporal state only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_id",
+    "version",
+    "endpoints",
+    "selectors",
+    "response_pins",
+    "cursor_contract",
+    "privacy_invariants"
+  ],
+  "properties": {
+    "profile_id": {"type": "string"},
+    "version": {"type": "string"},
+    "endpoints": {
+      "type": "array",
+      "items": {"type": "string"},
+      "const": ["/api/v1/semantic-dimensions", "/api/v1/concepts"]
+    },
+    "selectors": {
+      "type": "array",
+      "items": {"type": "string"},
+      "const": ["valid_as_of", "decision_as_of", "as_of_commit_id"]
+    },
+    "default_behavior": {
+      "type": "string",
+      "enum": ["latest_published_state_backward_compatible"]
+    },
+    "response_pins": {
+      "type": "array",
+      "description": "Fields each response must include to reproduce the read.",
+      "items": {"type": "string"},
+      "const": [
+        "resolved_decision_commit_id",
+        "valid_time_slice",
+        "effective_version_set_hash",
+        "replay_manifest_id",
+        "replay_manifest_version",
+        "replay_manifest_hash",
+        "catalog_projection_version"
+      ]
+    },
+    "cursor_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["immutable", "binds", "superseded_behavior"],
+      "properties": {
+        "immutable": {"type": "boolean", "const": true},
+        "binds": {
+          "type": "array",
+          "items": {"type": "string"},
+          "const": [
+            "endpoint",
+            "query_filters",
+            "valid_time_selector",
+            "decision_commit_id",
+            "effective_version_set_hash",
+            "replay_manifest_hash",
+            "sort_keys",
+            "page_boundary",
+            "authorization_scope_class",
+            "projection_version"
+          ]
+        },
+        "superseded_behavior": {
+          "type": "string",
+          "enum": ["continue_pinned_or_return_stale_superseded_status"]
+        }
+      }
+    },
+    "privacy_invariants": {
+      "type": "array",
+      "items": {"type": "string"},
+      "const": [
+        "no_tenant_private_existence",
+        "no_unpublished_sygris_variables",
+        "no_unauthorized_membership",
+        "no_private_count_metadata",
+        "no_blocked_or_restated_payload_details",
+        "no_later_scope_transition_exposing_prior_private_data"
+      ]
+    }
+  }
+}

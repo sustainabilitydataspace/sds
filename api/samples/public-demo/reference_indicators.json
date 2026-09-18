@@ -1,0 +1,61 @@
+{
+  "source": "SDS public demonstration pack",
+  "generated_at": "2026-09-18T00:00:00Z",
+  "count": 3,
+  "indicators": [
+    {
+      "id": "urn:sds:sample:water_volume",
+      "identifier": "urn:sds:sample:water_volume",
+      "title": "Sample water volume",
+      "indicator_name": "Sample water volume",
+      "description": "Self-authored demonstration metric for a volume conversion.",
+      "dimension": "E",
+      "unit_name": "cubic metre",
+      "unit_type": "volume",
+      "periodicity": "daily",
+      "period_type": "point",
+      "source_ref": "SDS public demonstration pack",
+      "owner": "SDS",
+      "access_rights": "public",
+      "validation_method": "synthetic-fixture",
+      "value_type": "numeric",
+      "is_active": true
+    },
+    {
+      "id": "urn:sds:sample:energy_use",
+      "identifier": "urn:sds:sample:energy_use",
+      "title": "Sample energy use",
+      "indicator_name": "Sample energy use",
+      "description": "Self-authored demonstration metric for an energy conversion.",
+      "dimension": "E",
+      "unit_name": "megawatt hour",
+      "unit_type": "energy",
+      "periodicity": "daily",
+      "period_type": "point",
+      "source_ref": "SDS public demonstration pack",
+      "owner": "SDS",
+      "access_rights": "public",
+      "validation_method": "synthetic-fixture",
+      "value_type": "numeric",
+      "is_active": true
+    },
+    {
+      "id": "urn:sds:sample:emissions_mass",
+      "identifier": "urn:sds:sample:emissions_mass",
+      "title": "Sample emissions mass",
+      "indicator_name": "Sample emissions mass",
+      "description": "Self-authored demonstration metric for an emissions-mass conversion.",
+      "dimension": "E",
+      "unit_name": "tonne carbon dioxide equivalent",
+      "unit_type": "emissions",
+      "periodicity": "daily",
+      "period_type": "point",
+      "source_ref": "SDS public demonstration pack",
+      "owner": "SDS",
+      "access_rights": "public",
+      "validation_method": "synthetic-fixture",
+      "value_type": "numeric",
+      "is_active": true
+    }
+  ]
+}

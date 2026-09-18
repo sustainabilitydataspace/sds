@@ -1,0 +1,17 @@
+# Local environments and generated Python files
+api/.venv/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Runtime configuration and operator-supplied content
+.env
+.env.*
+!.env.example
+api/.env
+api/.env.*
+!api/.env.example
+operator-packages/
+artifacts/

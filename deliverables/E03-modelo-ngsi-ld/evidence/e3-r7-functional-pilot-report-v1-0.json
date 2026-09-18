@@ -1,0 +1,14 @@
+{
+  "failures": [],
+  "gate": "e3_r7_functional_pilot",
+  "matrix_path": "deliverables/E03-modelo-ngsi-ld/evidence/e3-r7-functional-pilot-matrix-v1-0.csv",
+  "passed": true,
+  "selection": "deterministic round-robin by sourceRef, identifier order",
+  "summary": {
+    "accuracy": 1.0,
+    "error": 0,
+    "pilot_rows": 100,
+    "success": 100
+  },
+  "threshold": 0.9
+}

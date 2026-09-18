@@ -1,0 +1,14 @@
+[
+  {
+    "code": "XDS",
+    "numeric_code": null,
+    "name": "SDS demonstration currency",
+    "minor_units": 2,
+    "valid_from": "2026-01-01",
+    "valid_to": null,
+    "redenomination_of": null,
+    "redenomination_factor": null,
+    "currency_metadata": {"source_system": "SDS public demonstration pack"},
+    "is_active": true
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "batch_size": 250,
+  "counts": {
+    "current_value_pointers": 1000,
+    "esg_values": 1000,
+    "value_contexts": 1000,
+    "value_revision_events": 1000,
+    "value_revisions": 1000
+  },
+  "deleted": {
+    "current_value_pointers": 1000,
+    "esg_values": 1000,
+    "reported_value_pointers": 0,
+    "value_contexts": 1000,
+    "value_revision_events": 1000,
+    "value_revisions": 1000
+  },
+  "elapsed_seconds": 4.675092417000087,
+  "external_key_prefix": "gate-value-import-20260710111529125152",
+  "failures": [],
+  "gate": "value_import_performance",
+  "imported": 1000,
+  "max_seconds": 30.0,
+  "passed": true,
+  "row_count": 1000
+}

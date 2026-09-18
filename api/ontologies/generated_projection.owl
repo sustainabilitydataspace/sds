@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:sds="https://sustainabilitydataspace.com/ontology#">
+  <sds:SampleMetric rdf:about="urn:sds:sample:water_volume">
+    <rdfs:label>Sample water volume</rdfs:label>
+  </sds:SampleMetric>
+  <sds:SampleMetric rdf:about="urn:sds:sample:energy_use">
+    <rdfs:label>Sample energy use</rdfs:label>
+  </sds:SampleMetric>
+  <sds:SampleMetric rdf:about="urn:sds:sample:emissions_mass">
+    <rdfs:label>Sample emissions mass</rdfs:label>
+  </sds:SampleMetric>
+</rdf:RDF>

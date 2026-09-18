@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sds:profile:replay-manifest:v1",
+  "x-profile-version": "v1",
+  "x-profile-kind": "replay_manifest",
+  "title": "sds-replay-manifest-v1",
+  "description": "Append-only manifest binding the ordered profile tuple and dependency graph that a published semantic contract or derived trace must replay under. Ratified in VARCH-0; persisted/enforced in later sub-slices.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_id",
+    "manifest_version",
+    "evaluation_order",
+    "profile_tuple",
+    "transition_policy"
+  ],
+  "properties": {
+    "manifest_id": {"type": "string"},
+    "manifest_version": {"type": "string"},
+    "evaluation_order": {
+      "type": "array",
+      "description": "Fixed order in which bound profiles are evaluated during replay.",
+      "items": {"type": "string"},
+      "const": [
+        "canonical_serialization_profile",
+        "computation_profile",
+        "private_commitment_profile",
+        "aggregate_disclosure_profile",
+        "license_rights_window"
+      ]
+    },
+    "profile_tuple": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_serialization_profile",
+        "computation_profile"
+      ],
+      "properties": {
+        "canonical_serialization_profile": {"$ref": "#/definitions/profileRef"},
+        "computation_profile": {"$ref": "#/definitions/profileRef"},
+        "private_commitment_profile": {"$ref": "#/definitions/profileRef"},
+        "aggregate_disclosure_profile": {"$ref": "#/definitions/profileRef"},
+        "consolidation_composition_profile": {"$ref": "#/definitions/profileRef"},
+        "factor_vintage_selection_policy": {"$ref": "#/definitions/profileRef"},
+        "license_rights_window": {"$ref": "#/definitions/profileRef"},
+        "contract_schema_version": {"type": "string"},
+        "unit_quantity_kind_registry_version": {"type": "string"},
+        "resolver_algorithm_version": {"type": "string"}
+      }
+    },
+    "transition_policy": {
+      "type": "string",
+      "description": "How a profile upgrade is handled. fail_closed: a trace referencing profile versions not matching a valid manifest, or an order mismatch, or an upgrade lacking an explicit transition, MUST fail replay/restore.",
+      "enum": ["fail_closed_require_explicit_transition"],
+      "default": "fail_closed_require_explicit_transition"
+    },
+    "fixture_corpus_hash": {"type": "string"},
+    "replay_compatibility_status": {
+      "type": "string",
+      "enum": ["compatible", "superseded", "deprecated"]
+    }
+  },
+  "definitions": {
+    "profileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "version", "hash"],
+      "properties": {
+        "profile_id": {"type": "string"},
+        "version": {"type": "string"},
+        "hash": {"type": "string"}
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sds:profile:private-commitment:v1",
+  "x-profile-version": "v1",
+  "x-profile-kind": "private_commitment",
+  "title": "sds-private-commitment-v1",
+  "description": "Append-only profile for tenant-private commitments (HMAC/commitment construction over canonicalized private inputs). Ratified in VARCH-0; key material and runtime construction/verification land in VARCH-4/VARCH-6. Shared/public traces never expose private HMACs, key ids, payload ids, exact private timing, or low-entropy commitments.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_id",
+    "version",
+    "algorithm",
+    "canonicalization_binding",
+    "private_input_exclusion_rules",
+    "key_lineage_requirements",
+    "verification_after_key_shred"
+  ],
+  "properties": {
+    "profile_id": {"type": "string"},
+    "version": {"type": "string"},
+    "algorithm": {"type": "string", "enum": ["HMAC-SHA-256", "HMAC-SHA-512"]},
+    "parameters": {"type": "object"},
+    "canonicalization_binding": {
+      "type": "string",
+      "description": "Canonical serialization profile id/version the commitment input is hashed under.",
+      "const": "sds-canonical-json-v1"
+    },
+    "private_input_exclusion_rules": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "commitment_construction": {"type": "string"},
+    "key_lineage_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["independent_from_dek", "key_id_pinned", "key_generation_pinned"],
+      "properties": {
+        "independent_from_dek": {"type": "boolean", "const": true},
+        "key_id_pinned": {"type": "boolean", "const": true},
+        "key_generation_pinned": {"type": "boolean", "const": true}
+      }
+    },
+    "deprecation_status": {"type": "string", "enum": ["active", "deprecated"]},
+    "verification_after_key_shred": {
+      "type": "string",
+      "description": "Behavior once the key is crypto-shredded; verification must be unrecoverable.",
+      "enum": ["unverifiable_fail_closed"]
+    }
+  }
+}

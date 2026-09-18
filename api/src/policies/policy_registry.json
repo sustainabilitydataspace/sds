@@ -1,0 +1,177 @@
+{
+  "_comment": "API-local RBAC policy registry. This is NOT the canonical E6 governance policy registry. It maps API resources (indicators, mappings, crosswalks) to required permissions for HTTP endpoint access. The canonical E6 registry lives at docs/policies/policy_registry.json and governance/policies/policy_registry.json and defines dataset-level ODRL policies, purpose/region vocabularies, and deny-by-default behavior.",
+  "@context": {
+    "odrl": "http://www.w3.org/ns/odrl/2/",
+    "sds": "urn:sds:policy:",
+    "esrs": "urn:esrs:",
+    "gri": "urn:gri:"
+  },
+  "policies": [
+    {
+      "@id": "sds:policy:indicators-read",
+      "@type": "odrl:Set",
+      "odrl:profile": "http://www.w3.org/ns/odrl/2/core",
+      "odrl:permission": [
+        {
+          "odrl:action": "odrl:read",
+          "odrl:target": "sds:resource:indicators",
+          "odrl:assignee": {
+            "@type": "odrl:PartyCollection",
+            "odrl:source": "sds:role:viewer,sds:role:analyst,sds:role:data_manager,sds:role:admin"
+          },
+          "sds:requiredPermission": "read_indicators"
+        }
+      ],
+      "sds:description": "Allow reading E1 indicators for authenticated users with read_indicators permission"
+    },
+    {
+      "@id": "sds:policy:indicators-manage",
+      "@type": "odrl:Set",
+      "odrl:profile": "http://www.w3.org/ns/odrl/2/core",
+      "odrl:permission": [
+        {
+          "odrl:action": ["odrl:modify", "odrl:delete"],
+          "odrl:target": "sds:resource:indicators",
+          "odrl:assignee": {
+            "@type": "odrl:PartyCollection",
+            "odrl:source": "sds:role:data_manager,sds:role:admin"
+          },
+          "sds:requiredPermission": "manage_indicators"
+        }
+      ],
+      "sds:description": "Allow managing E1 indicators for data managers and admins"
+    },
+    {
+      "@id": "sds:policy:crosswalks-read",
+      "@type": "odrl:Set",
+      "odrl:profile": "http://www.w3.org/ns/odrl/2/core",
+      "odrl:permission": [
+        {
+          "odrl:action": "odrl:read",
+          "odrl:target": "sds:resource:crosswalks",
+          "odrl:assignee": {
+            "@type": "odrl:PartyCollection",
+            "odrl:source": "sds:role:viewer,sds:role:analyst,sds:role:data_manager,sds:role:admin"
+          },
+          "sds:requiredPermission": "read_crosswalks"
+        }
+      ],
+      "sds:description": "Allow reading E2 crosswalks for authenticated users with read_crosswalks permission"
+    },
+    {
+      "@id": "sds:policy:crosswalks-manage",
+      "@type": "odrl:Set",
+      "odrl:profile": "http://www.w3.org/ns/odrl/2/core",
+      "odrl:permission": [
+        {
+          "odrl:action": ["odrl:modify", "odrl:delete"],
+          "odrl:target": "sds:resource:crosswalks",
+          "odrl:assignee": {
+            "@type": "odrl:PartyCollection",
+            "odrl:source": "sds:role:data_manager,sds:role:admin"
+          },
+          "sds:requiredPermission": "manage_crosswalks"
+        }
+      ],
+      "sds:description": "Allow managing E2 crosswalks for data managers and admins"
+    },
+    {
+      "@id": "sds:policy:mappings-read",
+      "@type": "odrl:Set",
+      "odrl:profile": "http://www.w3.org/ns/odrl/2/core",
+      "odrl:permission": [
+        {
+          "odrl:action": "odrl:read",
+          "odrl:target": "sds:resource:mappings",
+          "odrl:assignee": {
+            "@type": "odrl:PartyCollection",
+            "odrl:source": "sds:role:viewer,sds:role:analyst,sds:role:data_manager,sds:role:admin"
+          },
+          "sds:requiredPermission": "read_mappings"
+        }
+      ],
+      "sds:description": "Allow reading standard mappings for authenticated users with read_mappings permission"
+    },
+    {
+      "@id": "sds:policy:mappings-manage",
+      "@type": "odrl:Set",
+      "odrl:profile": "http://www.w3.org/ns/odrl/2/core",
+      "odrl:permission": [
+        {
+          "odrl:action": ["odrl:modify", "odrl:delete"],
+          "odrl:target": "sds:resource:mappings",
+          "odrl:assignee": {
+            "@type": "odrl:PartyCollection",
+            "odrl:source": "sds:role:data_manager,sds:role:admin"
+          },
+          "sds:requiredPermission": "manage_mappings"
+        }
+      ],
+      "sds:description": "Allow managing standard mappings for data managers and admins"
+    },
+    {
+      "@id": "sds:policy:esrs-data-access",
+      "@type": "odrl:Set",
+      "odrl:profile": "http://www.w3.org/ns/odrl/2/core",
+      "odrl:permission": [
+        {
+          "odrl:action": "odrl:read",
+          "odrl:target": "esrs:*",
+          "odrl:constraint": {
+            "odrl:leftOperand": "sds:hasPermission",
+            "odrl:operator": "odrl:isA",
+            "odrl:rightOperand": "read_indicators"
+          }
+        }
+      ],
+      "odrl:prohibition": [
+        {
+          "odrl:action": "odrl:transfer",
+          "odrl:target": "esrs:*",
+          "sds:reason": "ESRS data may not be transferred without explicit consent"
+        }
+      ],
+      "sds:description": "ESRS data access policy with transfer prohibition"
+    },
+    {
+      "@id": "sds:policy:gri-data-access",
+      "@type": "odrl:Set",
+      "odrl:profile": "http://www.w3.org/ns/odrl/2/core",
+      "odrl:permission": [
+        {
+          "odrl:action": "odrl:read",
+          "odrl:target": "gri:*",
+          "odrl:constraint": {
+            "odrl:leftOperand": "sds:hasPermission",
+            "odrl:operator": "odrl:isA",
+            "odrl:rightOperand": "read_mappings"
+          }
+        }
+      ],
+      "sds:description": "GRI data access policy"
+    }
+  ],
+  "resourceMappings": {
+    "indicators": {
+      "readAction": "odrl:read",
+      "writeAction": "odrl:modify",
+      "deleteAction": "odrl:delete",
+      "requiredReadPermission": "read_indicators",
+      "requiredWritePermission": "manage_indicators"
+    },
+    "crosswalks": {
+      "readAction": "odrl:read",
+      "writeAction": "odrl:modify",
+      "deleteAction": "odrl:delete",
+      "requiredReadPermission": "read_crosswalks",
+      "requiredWritePermission": "manage_crosswalks"
+    },
+    "mappings": {
+      "readAction": "odrl:read",
+      "writeAction": "odrl:modify",
+      "deleteAction": "odrl:delete",
+      "requiredReadPermission": "read_mappings",
+      "requiredWritePermission": "manage_mappings"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sds:profile:factor-vintage-selection:v1",
+  "x-profile-version": "v1",
+  "x-profile-kind": "factor_vintage_selection",
+  "title": "sds-factor-vintage-selection-v1",
+  "description": "Append-only policy for explicit factor-vintage selection. Factor sets/values are first-class bitemporal inputs. Ratified in VARCH-0; selection enforced in the VARCH-6 resolver. Factor-set schema must pin source authority, dataset id/version, evidence/package hash, license id/version, redistribution/usage rights, access scope, steward, author, approver.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_id", "version", "selection_strategy"],
+  "properties": {
+    "profile_id": {"type": "string"},
+    "version": {"type": "string"},
+    "selection_strategy": {
+      "type": "string",
+      "description": "How a factor vintage is chosen for a given valid/decision slice. Must be explicit and deterministic.",
+      "enum": [
+        "valid_time_as_of",
+        "decision_time_as_of",
+        "explicit_pinned_factor_set",
+        "policy_table_lookup"
+      ]
+    },
+    "required_factor_set_provenance_fields": {
+      "type": "array",
+      "items": {"type": "string"},
+      "const": [
+        "source_authority",
+        "source_dataset_id",
+        "source_dataset_version",
+        "evidence_package_hash",
+        "license_id",
+        "license_version",
+        "redistribution_rights",
+        "usage_rights",
+        "access_scope",
+        "steward",
+        "author",
+        "approver"
+      ]
+    },
+    "tie_break_rule": {"type": "string"}
+  }
+}
