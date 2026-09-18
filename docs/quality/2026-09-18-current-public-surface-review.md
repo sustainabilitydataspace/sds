@@ -7,7 +7,8 @@ superficie pública actual. No reutiliza matrices ni observaciones históricas.
 
 - URL: `https://github.com/sustainabilitydataspace/sds`
 - Rama publicada: `main`
-- Commit comprobado: `8bdf4a78b452c6adc09206d0afd68f26da3ac3c3`
+- Rama `main` comprobada contra su remoto en la revisión; la identidad exacta
+  de cada publicación queda en el historial Git verificable del repositorio.
 - API/gates locales del commit: `24 passed`; perfil DB-first arrancado desde
   volumen vacío; R8 procesó 1.000/1.000 transformaciones en 2,122 s; R10
   importó 1.000 filas en 1,414 s con persistencia y purga verificadas.
