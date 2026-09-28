@@ -21,9 +21,6 @@ PROD_SCRIPT = API_ROOT / "scripts" / "setup_production_server.ps1"
 DEV_SCRIPT = API_ROOT / "scripts" / "dev.ps1"
 NATIVE_RELEASE_SCRIPT = API_ROOT / "scripts" / "deploy_native_release.sh"
 API_GITATTRIBUTES = API_ROOT / ".gitattributes"
-HOSTED_PROD_GATE = (
-    REPO_ROOT / "docs" / "quality" / "2026-06-04-hosted-production-readiness-gate.md"
-)
 
 
 def test_prod_compose_has_no_removed_guided_config_and_portal_is_off():
@@ -176,62 +173,25 @@ def test_native_shell_helpers_are_pinned_to_lf():
 
 def test_deployment_docs_require_native_release_helper_for_hosted_api():
     deployment_text = (API_ROOT / "docs" / "deployment.md").read_text(encoding="utf-8")
-    normalized_text = " ".join(deployment_text.split())
 
     assert "deploy_native_release.sh" in deployment_text
     assert "service ExecStart" in deployment_text
     assert "never call plain `python3 -m venv`" in deployment_text
-    assert (
-        "sudo -n env HEALTH_PORT=18090 bash /tmp/deploy_native_release.sh"
-        in deployment_text
-    )
     assert "sudo -n bash /tmp/deploy_native_release.sh" in deployment_text
-    assert "For this hosted target, use this command" in normalized_text
-    assert "For a separate self-hosted/reference systemd service" in deployment_text
-    assert deployment_text.index(
-        "sudo -n env HEALTH_PORT=18090 bash /tmp/deploy_native_release.sh"
-    ) < deployment_text.index("For a separate self-hosted/reference")
+    assert "For a self-hosted/reference systemd service" in deployment_text
     assert (
         "Get-Content api\\scripts\\deploy_native_release.sh | ssh"
         not in deployment_text
     )
 
 
-def test_hosted_production_gate_records_native_public_api_boundary():
-    assert (
-        HOSTED_PROD_GATE.exists()
-    ), f"Missing hosted production gate: {HOSTED_PROD_GATE}"
-
-    text = HOSTED_PROD_GATE.read_text(encoding="utf-8")
-    normalized = " ".join(text.lower().split())
-
-    assert "Status: `PASS`" in text
-    assert "https://sds.ueporreres.com/" in text
-    assert "sds-api.service" in text
-    assert "127.0.0.1:18090" in text
-    assert "Basic Auth" in text
-    assert "retired guided-sample cleanup revision" in text
-    assert "sustainabilitydataspace.com" in text
-    assert "not the E11 website" in text
-    assert "subsidy" in normalized
-
-
-def test_public_docs_point_to_hosted_production_gate_without_secrets():
+def test_public_docs_point_to_production_api_without_secrets():
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     deployment = (API_ROOT / "docs" / "deployment.md").read_text(encoding="utf-8")
     acceptance = (REPO_ROOT / "docs" / "quality" / "acceptance_gates.md").read_text(
         encoding="utf-8"
     )
-    hosted_gate = HOSTED_PROD_GATE.read_text(encoding="utf-8")
     combined = "\n".join([readme, deployment, acceptance])
 
-    assert "2026-06-04-hosted-production-readiness-gate.md" in combined
     assert "https://api.sustainabilitydataspace.com/" in combined
-    assert "development/test" in combined
-    assert (
-        "The current hosted SDS API surface is `https://sds.ueporreres.com/`"
-        not in combined
-    )
-    assert "sds.ueporreres.com" in combined
-    assert "SDS_HOSTED_BASIC_PASSWORD" not in hosted_gate
-    assert "BOOTSTRAP_ADMIN_PASSWORD=" not in hosted_gate
+    assert "SDS_HOSTED_BASIC_PASSWORD" not in deployment

@@ -73,11 +73,8 @@ This document fixes acceptance thresholds and evaluation checklists for each del
 - Current public production API: `https://api.sustainabilitydataspace.com/`.
   Its public documentation, OpenAPI, health and readiness routes must be
   rechecked after each deployment; application business routes require an
-  authenticated API session. The historical development/test-host readiness
-  baseline at `docs/quality/2026-06-04-hosted-production-readiness-gate.md`
-  applies to `https://sds.ueporreres.com/`, not to the current public production
-  URL. Neither API surface proves E11 website availability or full
-  subsidy/dossier closure.
+  authenticated API session. Production API availability does not prove E11
+  website availability or full subsidy/dossier closure.
 - Operator proof: the README "Tarjeta de aceptacion operativa" is the
   public 30-minute reviewer path linking the DB-backed quickstart,
   health/readiness, manual Swagger checks with Nordhaven values, package

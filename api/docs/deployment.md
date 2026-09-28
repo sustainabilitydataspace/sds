@@ -356,12 +356,6 @@ E11 communications website at `https://sustainabilitydataspace.com/`: API
 availability does not close website content/impact acceptance or
 subsidy/dossier residuals.
 
-The development/test surface `https://sds.ueporreres.com/` and its historical
-readiness record at
-`../../docs/quality/2026-06-04-hosted-production-readiness-gate.md` are not the
-current public production endpoint. Treat that dated record only as historical
-evidence for the release and host it describes.
-
 Minimum public no-secret production probes:
 
 ```powershell
@@ -451,26 +445,16 @@ scp -i $HOME\.ssh\<key-name> -P 2227 <operator-work-dir>\deploy\sds-api-<commit>
 scp -i $HOME\.ssh\<key-name> -P 2227 api\scripts\deploy_native_release.sh <user>@<host>:/tmp/deploy_native_release.sh
 ```
 
-The development/test `sds.ueporreres.com` service binds the API on loopback
-port `18090`, so its helper smoke must use the host-specific health port. For
-this hosted target, use this command; do not use a generic `8090` invocation.
-Do not reuse these host-specific values for
-`https://api.sustainabilitydataspace.com` production:
-
-```powershell
-ssh -i $HOME\.ssh\<key-name> -p 2227 <user>@<host> "sudo -n env HEALTH_PORT=18090 bash /tmp/deploy_native_release.sh --tarball /tmp/sds-api-<commit>.tar --tarball-sha256 $digest --release /opt/sds-api/releases/<release-name> --commit <commit>"
-```
-
-For a separate self-hosted/reference systemd service that really binds the API
-on the default `8090` port, the helper can use its generic fallback:
+For a self-hosted/reference systemd service that binds the API on the default
+`8090` port, the helper can use its generic fallback:
 
 ```powershell
 ssh -i $HOME\.ssh\<key-name> -p 2227 <user>@<host> "sudo -n bash /tmp/deploy_native_release.sh --tarball /tmp/sds-api-<commit>.tar --tarball-sha256 $digest --release /opt/sds-api/releases/<release-name> --commit <commit>"
 ```
 
-For this hosted target, never call plain `python3 -m venv` in a deployment
-fragment. The service currently runs from a Python 3.12 interpreter while the
-host default `python3` may be older than the API dependency floor.
+For a managed production target, never call plain `python3 -m venv` in a
+deployment fragment. Use the release helper so its interpreter-floor and
+lockfile checks remain in force.
 
 ---
 
