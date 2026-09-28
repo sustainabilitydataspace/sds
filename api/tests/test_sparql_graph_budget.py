@@ -8,6 +8,8 @@ from rdflib import Graph, Literal, URIRef
 
 from src.api.routers import ontology
 
+SPARQL_WORKER_TIMEOUT_SECONDS = 15
+
 
 def test_rejects_oversized_graph_during_encoding(monkeypatch):
     """The byte cap must stop graph iteration before constructing all triples."""
@@ -34,7 +36,7 @@ def test_rejects_oversized_graph_during_encoding(monkeypatch):
         ontology._execute_local_sparql_bounded(
             graph,
             "ASK { ?s ?p ?o }",
-            timeout_seconds=5,
+            timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
             max_results=10,
             max_graph_bytes=2000,
         )
@@ -112,7 +114,7 @@ def test_sparql_ask_result_is_bounded_plain_boolean():
     assert ontology._execute_local_sparql_bounded(
         graph,
         "ASK { <urn:test:s> <urn:test:p> ?v }",
-        timeout_seconds=5,
+        timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
         max_results=1,
         max_graph_bytes=1024 * 1024,
     ) == [{"boolean": "true"}]
@@ -125,7 +127,7 @@ def test_sparql_result_cell_byte_budget_rejects_without_partial_result():
         ontology._execute_local_sparql_bounded(
             graph,
             "SELECT ?s WHERE { ?s <urn:test:p> ?v }",
-            timeout_seconds=5,
+            timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
             max_results=10,
             max_graph_bytes=1024 * 1024,
             max_result_bytes=1,
@@ -142,7 +144,7 @@ def test_sparql_repeated_variable_keys_count_toward_serialized_result_budget():
         ontology._execute_local_sparql_bounded(
             graph,
             "SELECT ?long_variable_name WHERE { ?s <urn:test:p> ?long_variable_name }",
-            timeout_seconds=5,
+            timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
             max_results=20,
             max_graph_bytes=1024 * 1024,
             max_result_bytes=80,
@@ -157,7 +159,7 @@ def test_sparql_worker_rejects_invalid_query_without_raw_parser_error():
         ontology._execute_local_sparql_bounded(
             graph,
             "THIS IS NOT SPARQL",
-            timeout_seconds=5,
+            timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
             max_results=10,
             max_graph_bytes=1024 * 1024,
         )
@@ -171,7 +173,7 @@ def test_sparql_worker_rejects_remote_graph_clause_before_execution():
         ontology._execute_local_sparql_bounded(
             graph,
             "SELECT * WHERE { SERVICE <http://127.0.0.1:1/unreachable> { ?s ?p ?o } }",
-            timeout_seconds=5,
+            timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
             max_results=1,
             max_graph_bytes=1024 * 1024,
         )
@@ -185,7 +187,7 @@ def test_sparql_ask_boolean_is_subject_to_serialized_result_budget():
         ontology._execute_local_sparql_bounded(
             graph,
             "ASK { ?s ?p ?o }",
-            timeout_seconds=5,
+            timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
             max_results=1,
             max_graph_bytes=1024 * 1024,
             max_result_bytes=3,

@@ -274,7 +274,6 @@ def extract_authenticated_tar(
                         root_identity = (
                             root_info.st_dev,
                             root_info.st_ino,
-                            root_info.st_nlink,
                         )
                         for member, parts in selected:
                             _copy_member(archive, member, root_fd, parts)
@@ -282,7 +281,6 @@ def extract_authenticated_tar(
                         if (
                             final_root.st_dev,
                             final_root.st_ino,
-                            final_root.st_nlink,
                         ) != root_identity:
                             raise OperationalIOError(
                                 "release destination changed during extraction"

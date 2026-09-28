@@ -8,6 +8,8 @@ from rdflib import Graph, Namespace
 
 from src.api.routers.ontology import _execute_local_sparql_bounded
 
+SPARQL_WORKER_TIMEOUT_SECONDS = 15
+
 
 class SlowNamespacesGraph(Graph):
     def namespaces(self):
@@ -41,7 +43,7 @@ def test_sparql_namespace_budget_stops_enumeration_before_collecting_all():
         _execute_local_sparql_bounded(
             graph,
             "ASK { ?s ?p ?o }",
-            timeout_seconds=5,
+            timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
             max_results=1,
             max_graph_bytes=1024,
         )

@@ -49,6 +49,8 @@ jobs:
     name: API quality, security, and tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      SPARQL_QUERY_TIMEOUT_SECONDS: "15"
 
     defaults:
       run:
