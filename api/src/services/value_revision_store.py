@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
+import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import func, or_, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import or_, text
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.database.models import (
@@ -44,6 +48,13 @@ CURRENT_POINTER_STATES = frozenset(
         "system_recalc",
     }
 )
+
+
+def _require_dated_current_context(
+    period_start: date | None, period_end: date | None
+) -> None:
+    if period_start is None and period_end is None:
+        raise ValueVersioningError("current value requires a period date")
 
 
 @dataclass(frozen=True)
@@ -101,12 +112,21 @@ class ValueRevisionStore:
 
         state = _normalized_state(revision_input.state)
         identity = revision_input.context_identity
+        if state in CURRENT_POINTER_STATES:
+            _require_dated_current_context(identity.period_start, identity.period_end)
+        self._acquire_bulk_append_locks({identity.tenant_id})
         context_hash = build_context_hash(identity)
         context = self._get_or_create_context(
             identity=identity,
             context_hash=context_hash,
             created_by=revision_input.created_by,
         )
+        self._validate_revision_references(
+            identity=identity,
+            context=context,
+            revision_input=revision_input,
+        )
+        event_id = str(uuid4())
         value_columns = _value_columns(revision_input.value, revision_input.value_kind)
         revision = self._insert_revision_with_retry(
             identity=identity,
@@ -114,18 +134,19 @@ class ValueRevisionStore:
             revision_input=revision_input,
             state=state,
             value_columns=value_columns,
+            creation_event_id=event_id,
         )
         revision_number = revision.revision_number
 
         pointer = None
         pointer_moved = False
         if state in CURRENT_POINTER_STATES:
-            pointer = self._move_current_pointer(
+            pointer, pointer_moved = self._move_current_pointer(
                 context=context,
                 revision=revision,
                 updated_by=revision_input.created_by,
+                event_id=event_id,
             )
-            pointer_moved = True
 
         event = self._append_event(
             context=context,
@@ -142,6 +163,7 @@ class ValueRevisionStore:
             },
             occurred_by=revision_input.created_by,
             idempotency_key=revision_input.idempotency_key,
+            event_id=event_id,
         )
         if commit:
             self.db.commit()
@@ -171,23 +193,37 @@ class ValueRevisionStore:
     ) -> ValueRevisionEvent:
         """Transition a revision state and emit an audit event."""
 
-        revision = self._require_revision(revision_id)
+        tenant_id = self._revision_tenant_id(revision_id)
+        self._acquire_bulk_append_locks({tenant_id})
+        revision = self._require_revision(revision_id, lock=True)
+        if revision.tenant_id != tenant_id:
+            raise ValueVersioningError("revision tenant changed while acquiring lock")
         target_state = _normalized_state(to_state)
         assert_state_transition_allowed(revision.state, target_state)
+        context = self._require_context(revision.context_id, lock=True)
+        if target_state in CURRENT_POINTER_STATES:
+            _require_dated_current_context(context.period_start, context.period_end)
         previous_state = revision.state
+        event_id = str(uuid4())
         revision.state = target_state
-        context = self._require_context(
-            revision.context_id, lock=target_state in CURRENT_POINTER_STATES
-        )
+        revision.last_state_event_id = event_id
+        self.db.flush([revision])
 
         pointer_moved = False
         if target_state in CURRENT_POINTER_STATES:
-            self._move_current_pointer(
+            _, pointer_moved = self._move_current_pointer(
                 context=context,
                 revision=revision,
                 updated_by=occurred_by,
+                event_id=event_id,
             )
-            pointer_moved = True
+        else:
+            pointer_moved = self._remove_or_fallback_current_pointer(
+                context=context,
+                revision=revision,
+                updated_by=occurred_by,
+                event_id=event_id,
+            )
 
         event = self._append_event(
             context=context,
@@ -198,6 +234,7 @@ class ValueRevisionStore:
             pointer_moved=pointer_moved,
             event_payload=event_payload,
             occurred_by=occurred_by,
+            event_id=event_id,
         )
         self.db.commit()
         self.db.refresh(revision)
@@ -214,13 +251,20 @@ class ValueRevisionStore:
     ) -> ReportedValuePointer:
         """Record the revision used by a specific report snapshot."""
 
-        context = self._require_context(context_id)
-        revision = self._require_revision(revision_id)
-        if revision.context_id != context.id:
+        initial_context = self._require_context(context_id)
+        self._acquire_bulk_append_locks({initial_context.tenant_id})
+        context = self._require_context(context_id, lock=True)
+        revision = self._require_revision(revision_id, lock=True)
+        if (
+            context.tenant_id != initial_context.tenant_id
+            or revision.context_id != context.id
+            or revision.tenant_id != context.tenant_id
+        ):
             raise ValueVersioningError(
                 f"revision {revision_id} does not belong to context {context_id}"
             )
         snapshot_id = _required_text(report_snapshot_id, "report_snapshot_id")
+        event_id = str(uuid4())
         pointer = (
             self.db.query(ReportedValuePointer)
             .filter(
@@ -242,12 +286,17 @@ class ValueRevisionStore:
                 report_snapshot_id=snapshot_id,
                 context_id=context.id,
                 revision_id=revision.id,
+                creation_event_id=event_id,
                 reported_by=reported_by,
             )
             self.db.add(pointer)
         else:
-            pointer.revision_id = revision.id
-            pointer.reported_by = reported_by
+            if pointer.revision_id == revision.id:
+                self.db.commit()
+                return pointer
+            raise ValueVersioningError(
+                "reported value pointers are immutable once a snapshot is recorded"
+            )
 
         self._append_event(
             context=context,
@@ -258,16 +307,34 @@ class ValueRevisionStore:
             pointer_moved=True,
             event_payload={"report_snapshot_id": snapshot_id},
             occurred_by=reported_by,
+            event_id=event_id,
         )
         self.db.commit()
         self.db.refresh(pointer)
         return pointer
 
-    def get_revision_lineage(self, revision_id: str) -> dict[str, Any]:
+    def get_revision_lineage(
+        self, revision_id: str, *, tenant_id: str | None = None
+    ) -> dict[str, Any]:
         """Return a serializable lineage payload for one revision."""
 
-        revision = self._require_revision(revision_id)
-        context = self._require_context(revision.context_id)
+        if tenant_id is None:
+            revision = self._require_revision(revision_id)
+            context = self._require_context(revision.context_id)
+        else:
+            row = (
+                self.db.query(ValueRevision, ValueContext)
+                .join(ValueContext, ValueRevision.context_id == ValueContext.id)
+                .filter(
+                    ValueRevision.id == _required_text(revision_id, "revision_id"),
+                    ValueRevision.tenant_id == tenant_id,
+                    ValueContext.tenant_id == tenant_id,
+                )
+                .first()
+            )
+            if row is None:
+                raise ValueVersioningError("value revision not found")
+            revision, context = row
         return {
             "context": _context_payload(context),
             "revision": _revision_payload(revision),
@@ -329,23 +396,45 @@ class ValueRevisionStore:
             query = query.filter(ValueRevisionEvent.event_seq > after_event_seq)
         return query.limit(max(min(limit, 1000), 1)).all()
 
-    def get_context_lineage(self, context_id: int) -> dict[str, Any]:
-        context = self._require_context(context_id)
+    def get_context_lineage(
+        self, context_id: int, *, tenant_id: str | None = None
+    ) -> dict[str, Any]:
+        if tenant_id is None:
+            context = self._require_context(context_id)
+        else:
+            context = (
+                self.db.query(ValueContext)
+                .filter(
+                    ValueContext.id == context_id, ValueContext.tenant_id == tenant_id
+                )
+                .first()
+            )
+            if context is None:
+                raise ValueVersioningError("value context not found")
         revisions = (
             self.db.query(ValueRevision)
-            .filter(ValueRevision.context_id == context.id)
+            .filter(
+                ValueRevision.context_id == context.id,
+                ValueRevision.tenant_id == context.tenant_id,
+            )
             .order_by(ValueRevision.revision_number.asc())
             .all()
         )
         events = (
             self.db.query(ValueRevisionEvent)
-            .filter(ValueRevisionEvent.context_id == context.id)
+            .filter(
+                ValueRevisionEvent.context_id == context.id,
+                ValueRevisionEvent.tenant_id == context.tenant_id,
+            )
             .order_by(ValueRevisionEvent.context_event_seq.asc())
             .all()
         )
         current_pointer = (
             self.db.query(CurrentValuePointer)
-            .filter(CurrentValuePointer.context_id == context.id)
+            .filter(
+                CurrentValuePointer.context_id == context.id,
+                CurrentValuePointer.tenant_id == context.tenant_id,
+            )
             .first()
         )
         return {
@@ -480,6 +569,7 @@ class ValueRevisionStore:
         revision_input: ValueRevisionInput,
         state: str,
         value_columns: dict[str, Any],
+        creation_event_id: str,
     ) -> ValueRevision:
         last_error: IntegrityError | None = None
         for _attempt in range(3):
@@ -512,6 +602,7 @@ class ValueRevisionStore:
                 parent_revision_id=revision_input.parent_revision_id,
                 revision_provenance=revision_input.revision_provenance,
                 source_payload_hash=revision_input.source_payload_hash,
+                creation_event_id=creation_event_id,
                 created_by=revision_input.created_by,
             )
             if not self._supports_savepoint_retry():
@@ -529,13 +620,60 @@ class ValueRevisionStore:
             raise last_error
         raise ValueVersioningError("failed to append value revision")
 
+    def _validate_revision_references(
+        self,
+        *,
+        identity: ValueContextIdentity,
+        context: ValueContext,
+        revision_input: ValueRevisionInput,
+    ) -> None:
+        parent_id = revision_input.parent_revision_id
+        input_ids = list(revision_input.input_revision_ids or [])
+        if any(not isinstance(item, str) or not item.strip() for item in input_ids):
+            raise ValueVersioningError("revision references must be non-blank strings")
+        if len(input_ids) != len(set(input_ids)):
+            raise ValueVersioningError(
+                "duplicate input revision references are not allowed"
+            )
+        reference_ids = set(input_ids)
+        if parent_id is not None:
+            reference_ids.add(_required_text(parent_id, "parent_revision_id"))
+        if not reference_ids:
+            return
+
+        references = (
+            self.db.query(ValueRevision)
+            .filter(ValueRevision.id.in_(reference_ids))
+            .all()
+        )
+        references_by_id = {item.id: item for item in references}
+        missing = reference_ids.difference(references_by_id)
+        if missing:
+            raise ValueVersioningError("referenced value revision was not found")
+        if any(item.tenant_id != identity.tenant_id for item in references):
+            raise ValueVersioningError(
+                "all revision references must belong to the same tenant"
+            )
+        if (
+            parent_id is not None
+            and references_by_id[parent_id].context_id != context.id
+        ):
+            raise ValueVersioningError(
+                "parent revision must belong to the same value context"
+            )
+        if any(references_by_id[item].context_id != context.id for item in input_ids):
+            raise ValueVersioningError(
+                "input revisions must belong to the same value context"
+            )
+
     def _move_current_pointer(
         self,
         *,
         context: ValueContext,
         revision: ValueRevision,
         updated_by: str | None,
-    ) -> CurrentValuePointer:
+        event_id: str,
+    ) -> tuple[CurrentValuePointer, bool]:
         pointer = (
             self.db.query(CurrentValuePointer)
             .filter(CurrentValuePointer.context_id == context.id)
@@ -547,13 +685,64 @@ class ValueRevisionStore:
                 context_id=context.id,
                 tenant_id=context.tenant_id,
                 revision_id=revision.id,
+                last_event_id=event_id,
                 updated_by=updated_by,
             )
             self.db.add(pointer)
+            return pointer, True
         else:
+            current = self.db.get(ValueRevision, pointer.revision_id)
+            if current is not None and current.id == revision.id:
+                return pointer, False
+            if (
+                current is not None
+                and current.state in CURRENT_POINTER_STATES
+                and current.revision_number > revision.revision_number
+            ):
+                return pointer, False
             pointer.revision_id = revision.id
+            pointer.last_event_id = event_id
             pointer.updated_by = updated_by
-        return pointer
+            return pointer, True
+
+    def _remove_or_fallback_current_pointer(
+        self,
+        *,
+        context: ValueContext,
+        revision: ValueRevision,
+        updated_by: str | None,
+        event_id: str,
+    ) -> bool:
+        pointer = (
+            self.db.query(CurrentValuePointer)
+            .filter(CurrentValuePointer.context_id == context.id)
+            .with_for_update()
+            .first()
+        )
+        if pointer is None or pointer.revision_id != revision.id:
+            return False
+        fallback = (
+            self.db.query(ValueRevision)
+            .filter(
+                ValueRevision.context_id == context.id,
+                ValueRevision.id != revision.id,
+                ValueRevision.state.in_(CURRENT_POINTER_STATES),
+            )
+            .order_by(ValueRevision.revision_number.desc())
+            .first()
+        )
+        if fallback is None:
+            if self.db.get_bind().dialect.name == "postgresql":
+                self.db.execute(
+                    text("SELECT set_config('sds.value_revision_event_id', :id, true)"),
+                    {"id": event_id},
+                )
+            self.db.delete(pointer)
+        else:
+            pointer.revision_id = fallback.id
+            pointer.last_event_id = event_id
+            pointer.updated_by = updated_by
+        return True
 
     def _append_event(
         self,
@@ -567,22 +756,55 @@ class ValueRevisionStore:
         event_payload: dict[str, Any] | None,
         occurred_by: str | None,
         idempotency_key: str | None = None,
+        event_id: str | None = None,
     ) -> ValueRevisionEvent:
         last_error: IntegrityError | None = None
         for _attempt in range(3):
-            event = ValueRevisionEvent(
-                id=str(uuid4()),
+            latest_event_seq, previous_event_hash = self._latest_tenant_event_position(
+                context.tenant_id
+            )
+            resolved_event_id = event_id or str(uuid4())
+            event_seq = latest_event_seq + 1
+            context_event_seq = self._next_context_event_seq(context.id)
+            normalized_event_type = _required_text(event_type, "event_type")
+            normalized_event_payload = _normalize_event_payload(event_payload)
+            event_payload_canonical = _canonical_json_value(normalized_event_payload)
+            occurred_at = datetime.utcnow()
+            event_hash = _build_event_hash(
+                event_id=resolved_event_id,
                 tenant_id=context.tenant_id,
-                event_seq=self._next_tenant_event_seq(context.tenant_id),
-                context_event_seq=self._next_context_event_seq(context.id),
+                event_seq=event_seq,
+                context_event_seq=context_event_seq,
                 context_id=context.id,
                 revision_id=revision.id,
-                event_type=_required_text(event_type, "event_type"),
+                event_type=normalized_event_type,
                 from_state=from_state,
                 to_state=to_state,
                 pointer_moved=pointer_moved,
-                event_payload=event_payload,
+                event_payload=normalized_event_payload,
+                event_payload_canonical=event_payload_canonical,
                 idempotency_key=idempotency_key,
+                occurred_at=occurred_at,
+                occurred_by=occurred_by,
+                previous_event_hash=previous_event_hash,
+            )
+            event = ValueRevisionEvent(
+                id=resolved_event_id,
+                tenant_id=context.tenant_id,
+                event_seq=event_seq,
+                context_event_seq=context_event_seq,
+                context_id=context.id,
+                revision_id=revision.id,
+                event_type=normalized_event_type,
+                from_state=from_state,
+                to_state=to_state,
+                pointer_moved=pointer_moved,
+                event_payload=normalized_event_payload,
+                event_payload_canonical=event_payload_canonical,
+                idempotency_key=idempotency_key,
+                previous_event_hash=previous_event_hash,
+                event_hash=event_hash,
+                occurred_at=occurred_at,
                 occurred_by=occurred_by,
             )
             if not self._supports_savepoint_retry():
@@ -600,15 +822,24 @@ class ValueRevisionStore:
             raise last_error
         raise ValueVersioningError("failed to append value revision event")
 
-    def _next_tenant_event_seq(self, tenant_id: str) -> int:
+    def _latest_tenant_event_position(self, tenant_id: str) -> tuple[int, str | None]:
         latest = (
-            self.db.query(ValueRevisionEvent.event_seq)
+            self.db.query(
+                ValueRevisionEvent.event_seq,
+                ValueRevisionEvent.event_hash,
+            )
             .filter(ValueRevisionEvent.tenant_id == tenant_id)
             .order_by(ValueRevisionEvent.event_seq.desc(), ValueRevisionEvent.id.desc())
             .with_for_update()
             .first()
         )
-        return int(latest[0] if latest is not None else 0) + 1
+        if latest is None:
+            return 0, None
+        return int(latest[0]), str(latest[1])
+
+    def _next_tenant_event_seq(self, tenant_id: str) -> int:
+        latest_event_seq, _ = self._latest_tenant_event_position(tenant_id)
+        return latest_event_seq + 1
 
     def _next_context_event_seq(self, context_id: int) -> int:
         latest = (
@@ -669,9 +900,18 @@ class ValueRevisionStore:
         if not revision_inputs:
             return []
 
-        state = _normalized_state(revision_inputs[0].state)
-        # All inputs in a batch are expected to share the same state
-        # (caller guarantees this via prepare path)
+        states = {_normalized_state(item.state) for item in revision_inputs}
+        if len(states) != 1:
+            raise ValueVersioningError(
+                "all revisions in a bulk append must use the same state"
+            )
+        state = states.pop()
+        if state in CURRENT_POINTER_STATES:
+            for revision_input in revision_inputs:
+                identity = revision_input.context_identity
+                _require_dated_current_context(
+                    identity.period_start, identity.period_end
+                )
 
         # --- Step 1: Build context hashes and identity mappings ---
         input_meta: list[tuple[ValueRevisionInput, str, ValueContextIdentity]] = []
@@ -725,20 +965,20 @@ class ValueRevisionStore:
             for ctx in rows:
                 existing_contexts[(ctx.tenant_id, ctx.context_hash)] = ctx
 
-        # --- Step 4: Pre-allocate sequence numbers ---
-        tenant_seq_base: dict[str, int] = {tenant_id: 0 for tenant_id in tenant_ids}
-        if tenant_ids:
-            tenant_rows = (
-                self.db.query(
-                    ValueRevisionEvent.tenant_id,
-                    func.max(ValueRevisionEvent.event_seq),
-                )
-                .filter(ValueRevisionEvent.tenant_id.in_(tenant_ids))
-                .group_by(ValueRevisionEvent.tenant_id)
-                .all()
+        for revision_input, context_hash, identity in input_meta:
+            self._validate_revision_references(
+                identity=identity,
+                context=existing_contexts[(identity.tenant_id, context_hash)],
+                revision_input=revision_input,
             )
-            for tenant_id, latest in tenant_rows:
-                tenant_seq_base[str(tenant_id)] = int(latest or 0)
+
+        # --- Step 4: Pre-allocate sequence numbers ---
+        tenant_seq_base: dict[str, int] = {}
+        tenant_previous_hash: dict[str, str | None] = {}
+        for tenant_id in sorted(tenant_ids):
+            latest_seq, latest_hash = self._latest_tenant_event_position(tenant_id)
+            tenant_seq_base[tenant_id] = latest_seq
+            tenant_previous_hash[tenant_id] = latest_hash
 
         context_ids = {
             existing_contexts[(im[2].tenant_id, im[1])].id for im in input_meta
@@ -775,10 +1015,16 @@ class ValueRevisionStore:
         events: list[ValueRevisionEvent] = []
         pointers: list[CurrentValuePointer] = []
         results: list[AppendRevisionResult] = []
+        last_pointer_input_by_context: dict[int, int] = {}
+        if state in CURRENT_POINTER_STATES:
+            for input_index, (_ri, context_hash, identity) in enumerate(input_meta):
+                context = existing_contexts[(identity.tenant_id, context_hash)]
+                last_pointer_input_by_context[context.id] = input_index
 
-        for ri, context_hash, identity in input_meta:
+        for input_index, (ri, context_hash, identity) in enumerate(input_meta):
             ctx = existing_contexts[(identity.tenant_id, context_hash)]
             value_columns = _value_columns(ri.value, ri.value_kind)
+            event_id = str(uuid4())
 
             context_rev_base[ctx.id] += 1
             rev_num = context_rev_base[ctx.id]
@@ -812,17 +1058,19 @@ class ValueRevisionStore:
                 parent_revision_id=ri.parent_revision_id,
                 revision_provenance=ri.revision_provenance,
                 source_payload_hash=ri.source_payload_hash,
+                creation_event_id=event_id,
                 created_by=ri.created_by,
             )
             revisions.append(revision)
 
             pointer = None
             pointer_moved = False
-            if state in CURRENT_POINTER_STATES:
+            if last_pointer_input_by_context.get(ctx.id) == input_index:
                 pointer = CurrentValuePointer(
                     context_id=ctx.id,
                     tenant_id=ctx.tenant_id,
                     revision_id=revision.id,
+                    last_event_id=event_id,
                     updated_by=ri.created_by,
                 )
                 pointers.append(pointer)
@@ -830,9 +1078,18 @@ class ValueRevisionStore:
 
             tenant_seq_base[ctx.tenant_id] += 1
             context_seq_base[ctx.id] += 1
-
-            event = ValueRevisionEvent(
-                id=str(uuid4()),
+            event_payload = {
+                "revision_number": rev_num,
+                "revision_provenance": ri.revision_provenance,
+                "source_system": ri.source_system,
+                "external_key": ri.external_key,
+            }
+            event_payload = _normalize_event_payload(event_payload)
+            previous_event_hash = tenant_previous_hash[ctx.tenant_id]
+            event_payload_canonical = _canonical_json_value(event_payload)
+            occurred_at = datetime.utcnow()
+            event_hash = _build_event_hash(
+                event_id=event_id,
                 tenant_id=ctx.tenant_id,
                 event_seq=tenant_seq_base[ctx.tenant_id],
                 context_event_seq=context_seq_base[ctx.id],
@@ -842,16 +1099,35 @@ class ValueRevisionStore:
                 from_state=None,
                 to_state=state,
                 pointer_moved=pointer_moved,
-                event_payload={
-                    "revision_number": rev_num,
-                    "revision_provenance": ri.revision_provenance,
-                    "source_system": ri.source_system,
-                    "external_key": ri.external_key,
-                },
+                event_payload=event_payload,
+                event_payload_canonical=event_payload_canonical,
                 idempotency_key=ri.idempotency_key,
+                occurred_at=occurred_at,
+                occurred_by=ri.created_by,
+                previous_event_hash=previous_event_hash,
+            )
+
+            event = ValueRevisionEvent(
+                id=event_id,
+                tenant_id=ctx.tenant_id,
+                event_seq=tenant_seq_base[ctx.tenant_id],
+                context_event_seq=context_seq_base[ctx.id],
+                context_id=ctx.id,
+                revision_id=revision.id,
+                event_type="revision_created",
+                from_state=None,
+                to_state=state,
+                pointer_moved=pointer_moved,
+                event_payload=event_payload,
+                event_payload_canonical=event_payload_canonical,
+                idempotency_key=ri.idempotency_key,
+                previous_event_hash=previous_event_hash,
+                event_hash=event_hash,
+                occurred_at=occurred_at,
                 occurred_by=ri.created_by,
             )
             events.append(event)
+            tenant_previous_hash[ctx.tenant_id] = event_hash
 
             results.append(
                 AppendRevisionResult(
@@ -916,6 +1192,7 @@ class ValueRevisionStore:
                 "context_id": p.context_id,
                 "tenant_id": p.tenant_id,
                 "revision_id": p.revision_id,
+                "last_event_id": p.last_event_id,
                 "updated_by": p.updated_by,
             }
             for p in pointers
@@ -926,6 +1203,7 @@ class ValueRevisionStore:
             index_elements=["context_id"],
             set_={
                 "revision_id": stmt.excluded.revision_id,
+                "last_event_id": stmt.excluded.last_event_id,
                 "updated_by": stmt.excluded.updated_by,
                 "updated_at": func.now(),
             },
@@ -947,21 +1225,269 @@ class ValueRevisionStore:
     def _require_context(self, context_id: int, *, lock: bool = False) -> ValueContext:
         query = self.db.query(ValueContext).filter(ValueContext.id == context_id)
         if lock:
-            query = query.with_for_update()
+            query = query.populate_existing().with_for_update()
         context = query.first()
         if context is None:
             raise ValueVersioningError(f"value context not found: {context_id}")
         return context
 
-    def _require_revision(self, revision_id: str) -> ValueRevision:
-        revision = (
-            self.db.query(ValueRevision)
-            .filter(ValueRevision.id == _required_text(revision_id, "revision_id"))
-            .first()
+    def _require_revision(
+        self, revision_id: str, *, lock: bool = False
+    ) -> ValueRevision:
+        query = self.db.query(ValueRevision).filter(
+            ValueRevision.id == _required_text(revision_id, "revision_id")
         )
+        if lock:
+            query = query.populate_existing().with_for_update()
+        revision = query.first()
         if revision is None:
             raise ValueVersioningError(f"value revision not found: {revision_id}")
         return revision
+
+    def _revision_tenant_id(self, revision_id: str) -> str:
+        normalized_id = _required_text(revision_id, "revision_id")
+        tenant_id = (
+            self.db.query(ValueRevision.tenant_id)
+            .filter(ValueRevision.id == normalized_id)
+            .scalar()
+        )
+        if tenant_id is None:
+            raise ValueVersioningError(f"value revision not found: {revision_id}")
+        return _required_text(tenant_id, "tenant_id")
+
+
+def _build_event_hash(
+    *,
+    event_id: str,
+    tenant_id: str,
+    event_seq: int,
+    context_event_seq: int,
+    context_id: int,
+    revision_id: str,
+    event_type: str,
+    from_state: str | None,
+    to_state: str | None,
+    pointer_moved: bool,
+    event_payload: dict[str, Any] | None,
+    event_payload_canonical: str,
+    idempotency_key: str | None,
+    occurred_at: datetime,
+    occurred_by: str | None,
+    previous_event_hash: str | None,
+) -> str:
+    canonical_payload = event_payload_canonical
+    parsed_payload = json.loads(
+        canonical_payload,
+        parse_float=Decimal,
+        parse_int=int,
+    )
+    if _canonical_json_value(parsed_payload) != canonical_payload:
+        raise ValueError("event payload canonical form is invalid")
+    material = {
+        "schema": "sds-value-revision-event-chain-v1",
+        "event_id": event_id,
+        "tenant_id": tenant_id,
+        "event_seq": event_seq,
+        "context_event_seq": context_event_seq,
+        "context_id": context_id,
+        "revision_id": revision_id,
+        "event_type": event_type,
+        "from_state": from_state,
+        "to_state": to_state,
+        "pointer_moved": pointer_moved,
+        "event_payload": parsed_payload,
+        "idempotency_key": idempotency_key,
+        "occurred_at": _canonical_event_timestamp(occurred_at),
+        "occurred_by": occurred_by,
+        "previous_event_hash": previous_event_hash,
+    }
+    encoded = _canonical_json_value(material).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _canonical_event_timestamp(value: datetime) -> str:
+    if value.tzinfo is not None:
+        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+    return (
+        f"{value.year:04d}-{value.month:02d}-{value.day:02d}T"
+        f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}."
+        f"{value.microsecond:06d}"
+    )
+
+
+def _canonical_json_value(value: Any) -> str:
+    """Render JSON with stable plain-decimal numbers across Python/PostgreSQL."""
+
+    if value is None:
+        return "null"
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, (Decimal, float)):
+        decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
+        return _canonical_decimal_text(decimal_value)
+    if isinstance(value, (date, datetime)):
+        value = value.isoformat()
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, (list, tuple)):
+        return "[" + ",".join(_canonical_json_value(item) for item in value) + "]"
+    if isinstance(value, dict):
+        if any(not isinstance(key, str) for key in value):
+            raise TypeError("event payload object keys must be strings")
+        return (
+            "{"
+            + ",".join(
+                json.dumps(key, ensure_ascii=False)
+                + ":"
+                + _canonical_json_value(value[key])
+                for key in sorted(value)
+            )
+            + "}"
+        )
+    raise TypeError(f"unsupported event payload type: {type(value).__name__}")
+
+
+def _normalize_event_payload(
+    event_payload: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if event_payload is None:
+        return None
+    return json.loads(
+        json.dumps(
+            event_payload,
+            default=_event_json_default,
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+    )
+
+
+def _canonical_decimal_text(value: Decimal) -> str:
+    if not value.is_finite():
+        raise ValueError("event payload numbers must be finite")
+    if value == 0:
+        return "0"
+    sign, digits_tuple, exponent = value.as_tuple()
+    assert isinstance(exponent, int)
+    digits = "".join(str(digit) for digit in digits_tuple)
+    if exponent >= 0:
+        integer = digits + ("0" * exponent)
+        fraction = ""
+    else:
+        decimal_position = len(digits) + exponent
+        if decimal_position <= 0:
+            integer = "0"
+            fraction = ("0" * (-decimal_position)) + digits
+        else:
+            integer = digits[:decimal_position]
+            fraction = digits[decimal_position:]
+    integer = integer.lstrip("0") or "0"
+    fraction = fraction.rstrip("0")
+    text = integer if not fraction else f"{integer}.{fraction}"
+    return f"-{text}" if sign else text
+
+
+def verify_value_revision_event_chain(
+    events: list[ValueRevisionEvent],
+    *,
+    tenant_id: str,
+) -> bool:
+    """Verify one tenant's complete event chain in sequence order."""
+
+    expected_tenant = _required_text(tenant_id, "tenant_id")
+    previous_event_hash: str | None = None
+    expected_event_seq = 1
+    for event in events:
+        event_state = sa_inspect(event, raiseerr=False)
+        if (
+            event_state is not None
+            and event_state.attrs.event_payload.history.has_changes()
+        ):
+            return False
+        try:
+            if (
+                _canonical_json_value(event.event_payload)
+                != event.event_payload_canonical
+            ):
+                # SQLAlchemy's default JSONB loader rounds non-integral JSON
+                # numbers to float. Only for that mismatch, compare the live
+                # object with the freshly decoded DB value and verify the
+                # canonical form using Decimal, without trusting rounded data.
+                if event_state is None or not event_state.persistent:
+                    return False
+                session = event_state.session
+                if session is None or session.get_bind().dialect.name != "postgresql":
+                    return False
+                with session.no_autoflush:
+                    row = session.execute(
+                        text("""
+                            SELECT event_payload::text
+                            FROM public.value_revision_events
+                            WHERE id = :event_id AND tenant_id = :tenant_id
+                        """),
+                        {"event_id": event.id, "tenant_id": event.tenant_id},
+                    ).first()
+                if row is None:
+                    return False
+                stored_text = row[0]
+                exact_payload = (
+                    json.loads(stored_text, parse_float=Decimal)
+                    if stored_text is not None
+                    else None
+                )
+                rounded_payload = (
+                    json.loads(stored_text) if stored_text is not None else None
+                )
+                if (
+                    event.event_payload != rounded_payload
+                    or _canonical_json_value(exact_payload)
+                    != event.event_payload_canonical
+                ):
+                    return False
+        except (TypeError, ValueError, OverflowError, SQLAlchemyError):
+            return False
+        if event.tenant_id != expected_tenant or event.event_seq != expected_event_seq:
+            return False
+        if event.previous_event_hash != previous_event_hash:
+            return False
+        expected_hash = _build_event_hash(
+            event_id=event.id,
+            tenant_id=event.tenant_id,
+            event_seq=event.event_seq,
+            context_event_seq=event.context_event_seq,
+            context_id=event.context_id,
+            revision_id=event.revision_id,
+            event_type=event.event_type,
+            from_state=event.from_state,
+            to_state=event.to_state,
+            pointer_moved=event.pointer_moved,
+            event_payload=event.event_payload,
+            event_payload_canonical=event.event_payload_canonical,
+            idempotency_key=event.idempotency_key,
+            occurred_at=event.occurred_at,
+            occurred_by=event.occurred_by,
+            previous_event_hash=event.previous_event_hash,
+        )
+        if not isinstance(event.event_hash, str) or not hmac.compare_digest(
+            event.event_hash,
+            expected_hash,
+        ):
+            return False
+        previous_event_hash = event.event_hash
+        expected_event_seq += 1
+    return True
+
+
+def _event_json_default(value: Any) -> str:
+    if isinstance(value, Decimal):
+        return _canonical_decimal_text(value)
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    raise TypeError(f"unsupported event payload type: {type(value).__name__}")
 
 
 def _value_columns(value: Any, value_kind: str) -> dict[str, Any]:
@@ -1085,6 +1611,8 @@ def _event_payload(event: ValueRevisionEvent) -> dict[str, Any]:
         "pointer_moved": event.pointer_moved,
         "event_payload": event.event_payload,
         "idempotency_key": event.idempotency_key,
+        "previous_event_hash": event.previous_event_hash,
+        "event_hash": event.event_hash,
         "occurred_at": _datetime_or_none(event.occurred_at),
         "occurred_by": event.occurred_by,
     }

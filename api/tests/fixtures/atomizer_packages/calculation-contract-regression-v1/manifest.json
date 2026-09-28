@@ -1,0 +1,38 @@
+{
+  "contract_version": "2026-05-19-test-fixture",
+  "manifest_generated_at": "2026-05-19T00:00:00Z",
+  "source_project": "atomizer",
+  "contract_mode": "register_with_calculation_contract",
+  "policy": {
+    "canonical_inputs": [
+      "sds_dataset_register.csv",
+      "sds_calculation_contract.json",
+      "sds_values.csv"
+    ],
+    "preferred_boundary": "sds_dataset_register.csv",
+    "calculation_contract": "sds_calculation_contract.json"
+  },
+  "files": [
+    {
+      "filename": "sds_dataset_register.csv",
+      "path": "sds_dataset_register.csv",
+      "description": "Minimal public SDS register for calculation contract regression tests.",
+      "sha256": "ba585a8565099456570dd68e9e34de14f828f074c12d39c2a80cdb4a34f7650b",
+      "row_count": 5
+    },
+    {
+      "filename": "sds_calculation_contract.json",
+      "path": "sds_calculation_contract.json",
+      "description": "Executable calculation contract with public and runtime-support nodes.",
+      "sha256": "638402469ee380c157ad230b45cefce5798260a20a8baa6b5afdec27a3910d3a",
+      "row_count": 0
+    },
+    {
+      "filename": "sds_values.csv",
+      "path": "sds_values.csv",
+      "description": "Operational values for additive, ratio, average, last, zero, missing, and mixed-unit regressions.",
+      "sha256": "31b3dfd016fdb4e7a208f4b7e66d7858de0867927578e2638302f7a35e949bba",
+      "row_count": 12
+    }
+  ]
+}

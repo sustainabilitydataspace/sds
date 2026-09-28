@@ -31,27 +31,36 @@ class IdempotencyClaim:
     record_id: int
 
 
+def _require_authority(*, tenant_id: str, user_id: str) -> None:
+    if not isinstance(tenant_id, str) or not tenant_id.strip():
+        raise ValueError("tenant_id must be a non-blank string")
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise ValueError("user_id must be a non-blank string")
+
+
 class InMemoryValueIdempotencyStore:
     """In-memory request idempotency cache for isolated tests."""
 
     def __init__(self):
-        self._records: Dict[Tuple[str, str, str], dict[str, Any]] = {}
+        self._records: Dict[Tuple[str, str, str, str], dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._next_record_id = 1
 
     def claim(
         self,
         *,
+        tenant_id: str,
         user_id: str,
         scope: str,
         idempotency_key: Optional[str],
         request_hash: str,
         ttl_seconds: int = 86400,
     ) -> Optional[IdempotencyReplay | IdempotencyClaim]:
+        _require_authority(tenant_id=tenant_id, user_id=user_id)
         if not idempotency_key:
             return None
 
-        key = (user_id, scope, idempotency_key)
+        key = (tenant_id, user_id, scope, idempotency_key)
         now = datetime.now(timezone.utc)
         with self._lock:
             existing = self._records.get(key)
@@ -89,6 +98,7 @@ class InMemoryValueIdempotencyStore:
     def complete(
         self,
         *,
+        tenant_id: str,
         user_id: str,
         scope: str,
         idempotency_key: str,
@@ -96,10 +106,15 @@ class InMemoryValueIdempotencyStore:
         response_status: int,
         response_body: dict[str, Any],
     ) -> None:
-        key = (user_id, scope, idempotency_key)
+        _require_authority(tenant_id=tenant_id, user_id=user_id)
+        key = (tenant_id, user_id, scope, idempotency_key)
         with self._lock:
             record = self._records.get(key)
-            if record is None or record["id"] != record_id:
+            if (
+                record is None
+                or record["id"] != record_id
+                or record["state"] != "in_progress"
+            ):
                 return
             record["state"] = "completed"
             record["response_status"] = response_status
@@ -108,15 +123,21 @@ class InMemoryValueIdempotencyStore:
     def abandon(
         self,
         *,
+        tenant_id: str,
         user_id: str,
         scope: str,
         idempotency_key: str,
         record_id: int,
     ) -> None:
-        key = (user_id, scope, idempotency_key)
+        _require_authority(tenant_id=tenant_id, user_id=user_id)
+        key = (tenant_id, user_id, scope, idempotency_key)
         with self._lock:
             record = self._records.get(key)
-            if record is None or record["id"] != record_id:
+            if (
+                record is None
+                or record["id"] != record_id
+                or record["state"] != "in_progress"
+            ):
                 return
             self._records.pop(key, None)
 
@@ -159,14 +180,24 @@ class DatabaseValueIdempotencyStore:
             raise HTTPException(
                 status_code=409, detail="Idempotency key is already in progress"
             )
+        if (
+            existing.state != "completed"
+            or not isinstance(existing.response_status, int)
+            or not isinstance(existing.response_body, dict)
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Stored idempotency replay is invalid",
+            )
         return IdempotencyReplay(
-            status_code=existing.response_status or 200,
-            body=existing.response_body or {},
+            status_code=existing.response_status,
+            body=existing.response_body,
         )
 
     def claim(
         self,
         *,
+        tenant_id: str,
         user_id: str,
         scope: str,
         idempotency_key: Optional[str],
@@ -174,11 +205,15 @@ class DatabaseValueIdempotencyStore:
         ttl_seconds: int = 86400,
         commit: bool = True,
     ) -> Optional[IdempotencyReplay | IdempotencyClaim]:
+        _require_authority(tenant_id=tenant_id, user_id=user_id)
         if not idempotency_key:
             return None
 
         existing = self._repo.get(
-            user_id=user_id, scope=scope, idempotency_key=idempotency_key
+            tenant_id=tenant_id,
+            user_id=user_id,
+            scope=scope,
+            idempotency_key=idempotency_key,
         )
         now = datetime.now(timezone.utc)
         existing = self._active_existing_record(existing, now, commit=commit)
@@ -186,8 +221,23 @@ class DatabaseValueIdempotencyStore:
         if existing:
             return self._resolve_existing(existing, request_hash)
 
+        quarantined = self._repo.get_quarantined(
+            user_id=user_id,
+            scope=scope,
+            idempotency_key=idempotency_key,
+        )
+        if quarantined and self._as_aware_utc(quarantined.expires_at) > now:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "A legacy idempotency claim with indeterminate tenant ownership "
+                    "cannot be replayed safely"
+                ),
+            )
+
         try:
             record = self._create_claim(
+                tenant_id=tenant_id,
                 user_id=user_id,
                 scope=scope,
                 idempotency_key=idempotency_key,
@@ -199,7 +249,10 @@ class DatabaseValueIdempotencyStore:
             if commit:
                 self._repo.rollback()
             existing = self._repo.get(
-                user_id=user_id, scope=scope, idempotency_key=idempotency_key
+                tenant_id=tenant_id,
+                user_id=user_id,
+                scope=scope,
+                idempotency_key=idempotency_key,
             )
             existing = self._active_existing_record(
                 existing, datetime.now(timezone.utc), commit=commit
@@ -207,6 +260,7 @@ class DatabaseValueIdempotencyStore:
             if existing:
                 return self._resolve_existing(existing, request_hash)
             record = self._create_claim(
+                tenant_id=tenant_id,
                 user_id=user_id,
                 scope=scope,
                 idempotency_key=idempotency_key,
@@ -219,6 +273,7 @@ class DatabaseValueIdempotencyStore:
     def complete(
         self,
         *,
+        tenant_id: str,
         user_id: str,
         scope: str,
         idempotency_key: str,
@@ -227,7 +282,12 @@ class DatabaseValueIdempotencyStore:
         response_body: dict[str, Any],
         commit: bool = True,
     ) -> None:
+        _require_authority(tenant_id=tenant_id, user_id=user_id)
         self._repo.complete(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            scope=scope,
+            idempotency_key=idempotency_key,
             record_id=record_id,
             response_status=response_status,
             response_body=response_body,
@@ -237,13 +297,22 @@ class DatabaseValueIdempotencyStore:
     def abandon(
         self,
         *,
+        tenant_id: str,
         user_id: str,
         scope: str,
         idempotency_key: str,
         record_id: int,
         commit: bool = True,
     ) -> None:
-        self._repo.delete(record_id=record_id, commit=commit)
+        _require_authority(tenant_id=tenant_id, user_id=user_id)
+        self._repo.abandon(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            scope=scope,
+            idempotency_key=idempotency_key,
+            record_id=record_id,
+            commit=commit,
+        )
 
 
 def build_request_hash(payload: Any) -> str:

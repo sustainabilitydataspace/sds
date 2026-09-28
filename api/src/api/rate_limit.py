@@ -14,6 +14,11 @@ def _configured_trusted_proxies() -> list[str]:
     return [str(item).strip() for item in configured if str(item).strip()]
 
 
+def _canonical_ip(host: str):
+    address = ip_address(host)
+    return getattr(address, "ipv4_mapped", None) or address
+
+
 def _is_trusted_proxy(host: str) -> bool:
     if not host or host == "unknown":
         return False
@@ -23,7 +28,7 @@ def _is_trusted_proxy(host: str) -> bool:
         return False
 
     try:
-        host_ip = ip_address(host)
+        host_ip = _canonical_ip(host)
     except ValueError:
         host_ip = None
 
@@ -37,7 +42,7 @@ def _is_trusted_proxy(host: str) -> bool:
             if "/" in proxy:
                 if host_ip in ip_network(proxy, strict=False):
                     return True
-            elif host_ip == ip_address(proxy):
+            elif host_ip == _canonical_ip(proxy):
                 return True
         except ValueError:
             continue
@@ -55,14 +60,26 @@ def _get_real_ip(request):
     which ignores any attacker-prepended leftmost values.
     """
     client_host = request.client.host if request.client else "unknown"
-    forwarded = request.headers.get("X-Forwarded-For")
-    if not forwarded or not _is_trusted_proxy(client_host):
+    if not _is_trusted_proxy(client_host):
         return client_host
 
-    hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
-    for hop in reversed(hops):
-        if not _is_trusted_proxy(hop):
-            return hop
+    if hasattr(request.headers, "getlist"):
+        forwarded_values = request.headers.getlist("X-Forwarded-For")
+    else:
+        forwarded_values = [request.headers.get("X-Forwarded-For")]
+    if not forwarded_values or any(value is None for value in forwarded_values):
+        return client_host
+
+    hops = [hop.strip() for value in forwarded_values for hop in value.split(",")]
+    if any(not hop for hop in hops):
+        return client_host
+    try:
+        canonical_hops = [str(_canonical_ip(hop)) for hop in hops]
+    except ValueError:
+        return client_host
+    for canonical_ip in reversed(canonical_hops):
+        if not _is_trusted_proxy(canonical_ip):
+            return canonical_ip
     return client_host
 
 

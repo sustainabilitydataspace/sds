@@ -1,0 +1,82 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix sds: <https://sustainabilitydataspace.com/ontology#> .
+
+sds:IndicatorShape a sh:NodeShape ;
+  sh:targetClass sds:Indicator ;
+  sh:property [
+    sh:path dct:identifier ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "identifier" ;
+  ] ;
+  sh:property [
+    sh:path dct:title ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "title" ;
+  ] ;
+  sh:property [
+    sh:path sds:codeESRS ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "ESRS code" ;
+  ] ;
+  sh:property [
+    sh:path sds:codeGRI ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "GRI code" ;
+  ] ;
+  sh:property [
+    sh:path sds:codeGHG ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "GHG Protocol code" ;
+  ] ;
+  sh:property [
+    sh:path sds:unitName ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "unit name" ;
+  ] ;
+  sh:property [
+    sh:path sds:unitType ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "unit type" ;
+  ] ;
+  sh:property [
+    sh:path sds:calculationStatus ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "calculation status" ;
+  ] ;
+  sh:property [
+    sh:path sds:relationshipStatus ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "relationship status" ;
+  ] ;
+  sh:property [
+    sh:path odrl:hasPolicy ;
+    sh:minCount 0 ;
+    sh:nodeKind sh:IRI ;
+    sh:name "policy relationship" ;
+  ] ;
+  sh:property [
+    sh:path sds:evidencePath ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "evidencePath" ;
+  ] ;
+  sh:property [
+    sh:path sds:sourceRow ;
+    sh:minCount 0 ;
+    sh:datatype xsd:integer ;
+    sh:name "sourceRow" ;
+  ] .

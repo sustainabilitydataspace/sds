@@ -6,7 +6,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -34,6 +34,7 @@ class ValueRepository:
         period: date,
         value: ValueScalar,
         unit: str,
+        tenant_id: str,
         value_type: Optional[str] = None,
         original_value: Optional[ValueScalar] = None,
         original_unit: Optional[str] = None,
@@ -50,8 +51,11 @@ class ValueRepository:
         external_key: Optional[str] = None,
         commit: bool = True,
     ) -> ESGValue:
+        _require_tenant_id(tenant_id)
         record = ESGValue(
             id=value_id,
+            tenant_id=tenant_id,
+            ownership_state="resolved",
             concept=concept,
             entity=entity,
             period=period,
@@ -88,14 +92,18 @@ class ValueRepository:
         self,
         *,
         records: List[PreparedValueRecord],
+        tenant_id: str,
         created_by: Optional[str] = None,
         commit: bool = True,
     ) -> List[ESGValue]:
+        _require_tenant_id(tenant_id)
         persisted: List[ESGValue] = []
         try:
             for item in records:
                 record = ESGValue(
                     id=item.value_id,
+                    tenant_id=tenant_id,
+                    ownership_state="resolved",
                     concept=item.concept,
                     entity=item.entity,
                     period=item.period,
@@ -134,10 +142,12 @@ class ValueRepository:
         self,
         *,
         records: List[PreparedValueRecord],
+        tenant_id: str,
         created_by: Optional[str] = None,
         commit: bool = True,
         refresh: bool = True,
     ) -> List[ESGValue]:
+        _require_tenant_id(tenant_id)
         if not records:
             return []
 
@@ -150,6 +160,8 @@ class ValueRepository:
             for item in insert_only:
                 record = ESGValue(
                     id=item.value_id,
+                    tenant_id=tenant_id,
+                    ownership_state="resolved",
                     concept=item.concept,
                     entity=item.entity,
                     period=item.period,
@@ -177,6 +189,7 @@ class ValueRepository:
                 upserted = self._save_values_bulk_upsert(
                     upsert_records,
                     created_by=created_by,
+                    tenant_id=tenant_id,
                 )
                 persisted.extend(upserted)
                 for record in upserted:
@@ -201,6 +214,7 @@ class ValueRepository:
     def _save_values_bulk_upsert(
         self,
         records: List[PreparedValueRecord],
+        tenant_id: str,
         created_by: Optional[str] = None,
     ) -> List[ESGValue]:
         """Bulk insert ESG values with external_key using a single SQL statement.
@@ -216,6 +230,8 @@ class ValueRepository:
             value_rows.append(
                 {
                     "id": item.value_id,
+                    "tenant_id": tenant_id,
+                    "ownership_state": "resolved",
                     "concept": item.concept,
                     "entity": item.entity,
                     "period": item.period,
@@ -239,8 +255,11 @@ class ValueRepository:
 
         insert_stmt = pg_insert(ESGValue).values(value_rows)
         stmt = insert_stmt.on_conflict_do_nothing(
-            index_elements=["external_key"],
-            index_where=ESGValue.external_key.isnot(None),
+            index_elements=["tenant_id", "external_key"],
+            # Must imply the exact 046 partial unique index predicate on PostgreSQL.
+            index_where=text(
+                "external_key IS NOT NULL AND ownership_state = 'resolved'"
+            ),
         ).returning(ESGValue)
         result = self.db.execute(stmt)
         returned = list(result.scalars().all())
@@ -258,15 +277,25 @@ class ValueRepository:
         return ordered
 
     def get_value_by_id(
-        self, value_id: str, *, allowed_entities: Optional[set[str]] = None
+        self,
+        value_id: str,
+        *,
+        tenant_id: str,
+        allowed_entities: Optional[set[str]] = None,
     ) -> Optional[ESGValue]:
-        query = self.db.query(ESGValue).filter(ESGValue.id == value_id)
+        _require_tenant_id(tenant_id)
+        query = self.db.query(ESGValue).filter(
+            ESGValue.id == value_id,
+            ESGValue.tenant_id == tenant_id,
+            ESGValue.ownership_state == "resolved",
+        )
         query = self._apply_allowed_entities(query, allowed_entities)
         return query.first()
 
     def list_values(
         self,
         *,
+        tenant_id: str,
         concept: Optional[str] = None,
         entity: Optional[str] = None,
         period_start: Optional[date] = None,
@@ -278,6 +307,7 @@ class ValueRepository:
         allowed_entities: Optional[set[str]] = None,
     ) -> Tuple[List[ESGValue], int]:
         query = self._build_filtered_query(
+            tenant_id=tenant_id,
             concept=concept,
             entity=entity,
             period_start=period_start,
@@ -301,6 +331,7 @@ class ValueRepository:
     def list_values_cursor(
         self,
         *,
+        tenant_id: str,
         concept: Optional[str] = None,
         entity: Optional[str] = None,
         period_start: Optional[date] = None,
@@ -312,6 +343,7 @@ class ValueRepository:
         allowed_entities: Optional[set[str]] = None,
     ) -> Tuple[List[ESGValue], int, Optional[str], bool]:
         base_query = self._build_filtered_query(
+            tenant_id=tenant_id,
             concept=concept,
             entity=entity,
             period_start=period_start,
@@ -360,6 +392,7 @@ class ValueRepository:
     def get_latest_value(
         self,
         *,
+        tenant_id: str,
         concept: str,
         entity: str,
         period_start: date,
@@ -368,6 +401,7 @@ class ValueRepository:
     ) -> Optional[ESGValue]:
         return (
             self._build_filtered_query(
+                tenant_id=tenant_id,
                 concept=concept,
                 entity=entity,
                 period_start=period_start,
@@ -389,6 +423,7 @@ class ValueRepository:
     def iter_values(
         self,
         *,
+        tenant_id: str,
         concept: Optional[str] = None,
         entity: Optional[str] = None,
         period_start: Optional[date] = None,
@@ -400,6 +435,7 @@ class ValueRepository:
     ) -> Iterable[ESGValue]:
         query = (
             self._build_filtered_query(
+                tenant_id=tenant_id,
                 concept=concept,
                 entity=entity,
                 period_start=period_start,
@@ -418,6 +454,7 @@ class ValueRepository:
     def list_value_changes(
         self,
         *,
+        tenant_id: str,
         concept: Optional[str] = None,
         entity: Optional[str] = None,
         period_start: Optional[date] = None,
@@ -430,6 +467,7 @@ class ValueRepository:
         allowed_entities: Optional[set[str]] = None,
     ) -> Tuple[List[ESGValue], Optional[tuple[str, str]], bool]:
         query = self._build_filtered_query(
+            tenant_id=tenant_id,
             concept=concept,
             entity=entity,
             period_start=period_start,
@@ -464,9 +502,17 @@ class ValueRepository:
         return selected, next_cursor, has_more
 
     def delete_value(
-        self, value_id: str, *, allowed_entities: Optional[set[str]] = None
+        self,
+        value_id: str,
+        *,
+        tenant_id: str,
+        allowed_entities: Optional[set[str]] = None,
     ) -> bool:
-        record = self.get_value_by_id(value_id, allowed_entities=allowed_entities)
+        record = self.get_value_by_id(
+            value_id,
+            tenant_id=tenant_id,
+            allowed_entities=allowed_entities,
+        )
         if not record:
             return False
         try:
@@ -481,6 +527,7 @@ class ValueRepository:
     def _build_filtered_query(
         self,
         *,
+        tenant_id: str,
         concept: Optional[str] = None,
         entity: Optional[str] = None,
         period_start: Optional[date] = None,
@@ -489,7 +536,11 @@ class ValueRepository:
         changed_since: Optional[datetime] = None,
         allowed_entities: Optional[set[str]] = None,
     ):
-        query = self.db.query(ESGValue)
+        _require_tenant_id(tenant_id)
+        query = self.db.query(ESGValue).filter(
+            ESGValue.tenant_id == tenant_id,
+            ESGValue.ownership_state == "resolved",
+        )
         query = self._apply_allowed_entities(query, allowed_entities)
 
         if concept:
@@ -517,6 +568,11 @@ class ValueRepository:
         if allowed_entities is None:
             return query
         return query.filter(ESGValue.entity.in_(sorted(allowed_entities)))
+
+
+def _require_tenant_id(tenant_id: str) -> None:
+    if not isinstance(tenant_id, str) or not tenant_id.strip():
+        raise ValueError("tenant_id must be a non-blank string")
 
 
 def _value_columns(

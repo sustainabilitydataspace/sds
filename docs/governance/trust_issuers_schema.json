@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainabilitydataspace.com/schema/sds/trust-enforcement-status-v2.json",
+  "title": "SDS Trust Enforcement Status",
+  "type": "object",
+  "required": [
+    "$schema",
+    "version",
+    "effectiveDate",
+    "statusListStandard",
+    "runtimeEnforcement",
+    "issuers",
+    "rotationPolicy",
+    "verificationRequirements"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "effectiveDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "description": { "type": "string", "minLength": 1 },
+    "statusListStandard": { "const": "BitstringStatusList2025" },
+    "runtimeEnforcement": {
+      "type": "object",
+      "required": ["status", "reason", "activationPrerequisite"],
+      "properties": {
+        "status": { "enum": ["not_activated", "activated"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "activationPrerequisite": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "revocationCheckPolicy": {
+      "type": "object",
+      "required": ["cacheMaxAge", "offlineFallback", "staleThreshold"],
+      "properties": {
+        "cacheMaxAge": { "type": "integer", "minimum": 0 },
+        "offlineFallback": { "type": "string" },
+        "staleThreshold": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "issuers": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [
+          "did",
+          "name",
+          "status",
+          "validFrom",
+          "validUntil",
+          "statusListCredential",
+          "statusListType",
+          "publicKeyJwk"
+        ],
+        "properties": {
+          "did": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "scopes": { "type": "array", "items": { "type": "string" } },
+          "status": { "enum": ["active", "revoked", "pilot", "planned", "expired"] },
+          "validFrom": { "type": "string", "format": "date-time" },
+          "validUntil": { "type": "string", "format": "date-time" },
+          "statusListCredential": { "type": "string", "format": "uri" },
+          "statusListType": { "const": "BitstringStatusListCredential" },
+          "publicKeyJwk": {
+            "type": "object",
+            "required": ["kty", "crv", "x", "y"],
+            "properties": {
+              "kty": { "const": "EC" },
+              "crv": { "const": "P-256" },
+              "x": { "type": "string", "minLength": 8 },
+              "y": { "type": "string", "minLength": 8 }
+            },
+            "additionalProperties": false
+          },
+          "assuranceLevel": { "type": "string" },
+          "conformance": { "type": "array", "items": { "type": "string" } },
+          "contactEmail": { "type": "string" },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "rotationPolicy": {
+      "type": "object",
+      "required": [
+        "activationGate",
+        "futureReviewFrequency",
+        "futureCompromiseResponse"
+      ],
+      "properties": {
+        "activationGate": { "type": "string", "minLength": 1 },
+        "futureReviewFrequency": { "type": "string", "minLength": 1 },
+        "futureCompromiseResponse": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "verificationRequirements": {
+      "type": "object",
+      "required": [
+        "signatureValid",
+        "issuerInRegistry",
+        "statusCredentialValid",
+        "subjectDIDBinding",
+        "scopeAlignment",
+        "temporalValidity",
+        "status"
+      ],
+      "properties": {
+        "signatureValid": { "const": true },
+        "issuerInRegistry": { "const": true },
+        "statusCredentialValid": { "const": true },
+        "subjectDIDBinding": { "const": true },
+        "scopeAlignment": { "const": true },
+        "temporalValidity": { "const": true },
+        "status": { "const": "target_requirements_not_runtime_enforced" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "runtimeEnforcement": {
+            "properties": { "status": { "const": "not_activated" } },
+            "required": ["status"]
+          }
+        }
+      },
+      "then": { "properties": { "issuers": { "maxItems": 0 } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "runtimeEnforcement": {
+            "properties": { "status": { "const": "activated" } },
+            "required": ["status"]
+          }
+        }
+      },
+      "then": { "properties": { "issuers": { "minItems": 1 } } }
+    }
+  ],
+  "additionalProperties": false
+}

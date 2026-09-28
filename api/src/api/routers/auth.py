@@ -3,13 +3,14 @@ Authentication endpoints for login, token management, and user operations.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Callable, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 import structlog
 from src.api.rate_limit import limiter
+from src.auth.authorization import require_bearer_authentication
 from src.auth.dependencies import (
     get_current_active_user,
     require_permission,
@@ -56,12 +57,15 @@ async def login(
         Body(
             openapi_examples={
                 "credentials": {
-                    "summary": "Local admin username and password",
+                    "summary": "Environment-specific account credentials",
                     "description": (
-                        "Runnable local DB credentials. In deployed environments, "
-                        "use the account created for that environment."
+                        "Replace both placeholders with an account provisioned for "
+                        "the target environment. No runnable password is published."
                     ),
-                    "value": {"username": "admin", "password": "admin123"},
+                    "value": {
+                        "username": "your-account",
+                        "password": "[REDACTED]",
+                    },
                 }
             }
         ),
@@ -75,7 +79,7 @@ async def login(
     - **password**: User's password
     """
     try:
-        logger.info("Login attempt", username=user_credentials.username)
+        logger.info("Login attempt")
 
         user = store.authenticate(
             username=user_credentials.username,
@@ -83,7 +87,7 @@ async def login(
         )
 
         if user is None:
-            logger.warning("Authentication failed", username=user_credentials.username)
+            logger.warning("Authentication failed")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid username or password",
@@ -96,6 +100,7 @@ async def login(
             username=user.username,
             role=user.role,
             company_id=user.company_id,
+            auth_version=user.auth_version,
         )
 
         refresh_token = jwt_handler.create_refresh_token(
@@ -103,14 +108,10 @@ async def login(
             username=user.username,
             role=user.role,
             company_id=user.company_id,
+            auth_version=user.auth_version,
         )
 
-        logger.info(
-            "Login successful",
-            username=user_credentials.username,
-            user_id=user.id,
-            role=user.role.value,
-        )
+        logger.info("Login successful")
 
         return Token(
             access_token=access_token,
@@ -122,7 +123,7 @@ async def login(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Login failed", error=str(e), username=user_credentials.username)
+        logger.error("Login failed", error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed due to internal error",
@@ -152,30 +153,37 @@ async def refresh_token(
     try:
         logger.info("Token refresh attempt")
 
-        # Reject refresh tokens revoked on logout (persistent check survives
-        # process restarts, unlike the in-memory revocation set).
+        def _lookup(user_id: str):
+            return store.get_user_by_id(user_id=user_id)
+
+        def _invalidate_replayed_session(user_id: str) -> None:
+            user = store.get_user_by_id(user_id=user_id)
+            if user is not None:
+                store.invalidate_sessions(username=user.username)
+
+        db = None
+        consume_token: Optional[Callable[[str, datetime], bool]] = None
         if getattr(settings, "require_database", False):
             from src.database.session import SessionLocal
 
             db = SessionLocal()
-            try:
-                if jwt_handler.is_revoked_persistent(refresh_request.refresh_token, db):
-                    logger.warning("Revoked refresh token presented")
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid refresh token",
-                        headers={"WWW-Authenticate": "Bearer"},
-                    )
-            finally:
+
+            def _consume_token(token: str, expires_at: datetime) -> bool:
+                return jwt_handler.consume_token_persistent(token, expires_at, db)
+
+            consume_token = _consume_token
+
+        try:
+            result = jwt_handler.refresh_access_token(
+                refresh_request.refresh_token,
+                user_lookup=_lookup,
+                consume_token=consume_token,
+                on_replay=_invalidate_replayed_session,
+                require_user=settings.require_database,
+            )
+        finally:
+            if db is not None:
                 db.close()
-
-        def _lookup(user_id: str):
-            return store.get_user_by_id(user_id=user_id)
-
-        result = jwt_handler.refresh_access_token(
-            refresh_request.refresh_token,
-            user_lookup=_lookup,
-        )
 
         if not result:
             logger.warning("Invalid refresh token provided")
@@ -205,6 +213,7 @@ async def logout(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     current_user: User = Depends(get_current_active_user),
     logout_request: Optional[RefreshTokenRequest] = Body(default=None),
+    store=Depends(get_user_store),
 ) -> Dict[str, str]:
     """
     Logout user and invalidate token.
@@ -252,6 +261,11 @@ async def logout(
                     jwt_handler.revoke_token_persistent(refresh, rt_expires, db)
             finally:
                 db.close()
+
+        if hasattr(store, "invalidate_sessions") and not store.invalidate_sessions(
+            username=current_user.username
+        ):
+            raise RuntimeError("Unable to invalidate user sessions")
 
         logger.info("Logout successful", user_id=current_user.id)
 
@@ -309,6 +323,7 @@ async def update_current_user(
     Update current user information.
     """
     try:
+        require_bearer_authentication(current_user)
         logger.info("User update attempt", user_id=current_user.id)
 
         admin_update_fields = {"company_id", "role", "is_active"}
@@ -374,6 +389,7 @@ async def change_password(
     Change current user password.
     """
     try:
+        require_bearer_authentication(current_user)
         logger.info("Password change attempt", user_id=current_user.id)
 
         ok = store.change_password(
@@ -450,6 +466,7 @@ async def create_user(
     Create a new user (Admin only).
     """
     try:
+        require_bearer_authentication(current_user)
         logger.info(
             "User creation attempt",
             username=user_create.username,
@@ -506,6 +523,7 @@ async def create_api_key(
     Create a new API key for the current user.
     """
     try:
+        require_bearer_authentication(current_user)
         requested_permissions = set(api_key_create.permissions)
         allowed_permissions = set(current_user.permissions)
         disallowed_permissions = sorted(
@@ -569,6 +587,7 @@ async def revoke_api_key(
     current_user: User = Depends(get_current_active_user),
     store=Depends(get_api_key_store),
 ) -> Dict[str, str]:
+    require_bearer_authentication(current_user)
     ok = store.revoke_api_key(user_id=current_user.id, key_id=api_key_id)
     if not ok:
         raise HTTPException(status_code=404, detail="API key not found")

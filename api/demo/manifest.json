@@ -1,0 +1,9 @@
+{
+  "format": "sds-public-demo-v1",
+  "synthetic_public_data": true,
+  "files": {
+    "NOTICE.md": "1bd00fd83df5bc7ba21df19f0d954a6316adaa77dcf6ccc1471aac3a04bd10a9",
+    "use_cases.json": "b1a2b0dadf78ec8585c472cb40a3a47126172f4e8f4e3f9a5883de29368f733e",
+    "values.csv": "52f1c756a6b2c9889a0b306e471ed595e38bd9ae107348db93f7bc5152315b29"
+  }
+}

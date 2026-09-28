@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -10,8 +11,11 @@ from sqlalchemy.orm import Session
 
 from src.database.models import StandardDatapoint, StandardRelease
 from src.services.canonical_mapping_import import (
+    CanonicalMappingImportIssue,
     CanonicalMappingImportReport,
     CanonicalMappingPackageRows,
+    CanonicalMappingPackageSecurityError,
+    canonical_mapping_package_snapshot,
     load_canonical_mapping_package_rows,
     validate_canonical_mapping_package,
 )
@@ -179,23 +183,46 @@ def validate_canonical_mapping_installed_standard_compatibility(
     standards installed in this SDS instance?".
     """
 
-    package_dir = package_dir.resolve()
+    reported_package_dir = str(Path(os.path.abspath(package_dir)))
     mode = _normalize_mode(compatibility_mode)
-    validation = validate_canonical_mapping_package(package_dir)
     installed_releases = _normalize_standard_release_keys(
         installed_standard_releases
         if installed_standard_releases is not None
         else active_standard_release_keys_from_db(db) if db is not None else ()
     )
+    try:
+        with canonical_mapping_package_snapshot(package_dir) as snapshot:
+            validation = validate_canonical_mapping_package(snapshot)
+            rows = (
+                load_canonical_mapping_package_rows(snapshot)
+                if validation.valid
+                else None
+            )
+    except CanonicalMappingPackageSecurityError as exc:
+        validation = CanonicalMappingImportReport(
+            package_dir=reported_package_dir,
+            package_schema_version=None,
+            mode="shadow_report_only",
+            valid=False,
+            file_counts={},
+            manifest_hash=None,
+            checksum_count=0,
+            errors=[
+                CanonicalMappingImportIssue(
+                    file="manifest.json", code=exc.code, message=str(exc)
+                )
+            ],
+        )
+        rows = None
     if not validation.valid:
         return CanonicalMappingInstalledStandardReport(
-            package_dir=str(package_dir),
+            package_dir=reported_package_dir,
             compatibility_mode=mode,
             validation=validation,
             installed_standard_releases=tuple(sorted(installed_releases)),
         )
 
-    rows = load_canonical_mapping_package_rows(package_dir)
+    assert rows is not None
     active_datapoints = (
         active_standard_datapoint_keys_from_db(db)
         if db is not None and require_installed_datapoints
@@ -269,7 +296,7 @@ def validate_canonical_mapping_installed_standard_compatibility(
         importable.append(key)
 
     return CanonicalMappingInstalledStandardReport(
-        package_dir=str(package_dir),
+        package_dir=reported_package_dir,
         compatibility_mode=mode,
         validation=validation,
         installed_standard_releases=tuple(sorted(installed_releases)),

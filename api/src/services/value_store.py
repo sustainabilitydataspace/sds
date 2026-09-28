@@ -284,6 +284,9 @@ class InMemoryValueStore:
             ]
 
         total = len(items)
+        items.sort(
+            key=lambda item: (item.period, item.created_at, item.id), reverse=True
+        )
         paginated = items[offset : offset + limit]
         return [self._to_response(v) for v in paginated], total
 
@@ -488,7 +491,11 @@ class InMemoryValueStore:
 
 
 class DatabaseValueStore:
-    """PostgreSQL-backed value store."""
+    """PostgreSQL-backed value store with explicitly tenant-bound operations.
+
+    Unbound construction supports preparation-only callers. Revision reads and
+    writes require a nonblank tenant; configuration never supplies ownership.
+    """
 
     def __init__(self, db: Session, *, tenant_id: Optional[str] = None):
         self._db = db
@@ -524,11 +531,14 @@ class DatabaseValueStore:
     ) -> ValueResponse:
         if not self._revision_write_enabled():
             _raise_value_service_unavailable()
+        tenant_id = self._tenant_id()
 
         try:
+            self._revision_store._acquire_bulk_append_locks({tenant_id})
             with self._deferred_repository_rollback_guard(enabled=not commit):
                 record = self._repo.create_value(
                     value_id=value_id,
+                    tenant_id=tenant_id,
                     concept=concept,
                     entity=entity,
                     period=period,
@@ -584,12 +594,15 @@ class DatabaseValueStore:
     ) -> List[ValueResponse]:
         if not self._revision_write_enabled():
             _raise_value_service_unavailable()
+        tenant_id = self._tenant_id()
 
         try:
+            self._revision_store._acquire_bulk_append_locks({tenant_id})
             with self._deferred_repository_rollback_guard(enabled=not commit):
                 persisted = self._repo.create_values(
                     records=records,
                     created_by=created_by,
+                    tenant_id=tenant_id,
                     commit=False,
                 )
             revisions = self._append_revisions_for_records(
@@ -630,12 +643,15 @@ class DatabaseValueStore:
     ) -> List[ValueResponse]:
         if not self._revision_write_enabled():
             _raise_value_service_unavailable()
+        tenant_id = self._tenant_id()
 
         try:
+            self._revision_store._acquire_bulk_append_locks({tenant_id})
             with self._deferred_repository_rollback_guard(enabled=not commit):
                 persisted = self._repo.save_values(
                     records=records,
                     created_by=created_by,
+                    tenant_id=tenant_id,
                     commit=False,
                 )
             revisions = self._append_revisions_for_records(
@@ -707,12 +723,13 @@ class DatabaseValueStore:
         cursor: Optional[str],
     ) -> Tuple[List[ValueResponse], int, Optional[str], bool]:
         if self._revision_read_enabled():
-            # Revision-backed pagination keeps the existing offset/cursor API
-            # stable by decoding the legacy value cursor and applying it to the
-            # projected current revision ordering.
+            # The opaque position uses the unique revision ID; the public
+            # response still exposes its projected source value ID.
             offset = 0
             if cursor:
                 decoded = decode_value_cursor(cursor)
+                if not decoded.value_id.startswith("revision:"):
+                    raise ValueError("Invalid values cursor")
                 revisions, total = self._list_current_revisions_after_cursor(
                     concept=concept,
                     entity=entity,
@@ -723,7 +740,7 @@ class DatabaseValueStore:
                     limit=limit,
                     cursor_period=decoded.period,
                     cursor_created_at=decoded.created_at,
-                    cursor_value_id=decoded.value_id,
+                    cursor_value_id=decoded.value_id[len("revision:") :],
                 )
             else:
                 revisions, total = self._list_current_revisions(
@@ -744,7 +761,7 @@ class DatabaseValueStore:
                 next_cursor = encode_value_cursor(
                     period=last_response.period,
                     created_at=last_response.created_at,
-                    value_id=last_response.id,
+                    value_id=f"revision:{selected[-1].id}",
                 )
             return (
                 [self._to_revision_response(revision) for revision in selected],
@@ -806,6 +823,81 @@ class DatabaseValueStore:
 
         _raise_value_service_unavailable()
 
+    def iterate_export_snapshot(
+        self,
+        *,
+        concept: Optional[str],
+        entity: Optional[str],
+        period_start: Optional[date],
+        period_end: Optional[date],
+        unit: Optional[str],
+        changed_since: Optional[datetime],
+        limit: int,
+    ) -> List[ValueResponse]:
+        """Materialize a tenant-filtered export in one bounded SQL snapshot."""
+        if not self._revision_read_enabled():
+            _raise_value_service_unavailable()
+        if not 1 <= limit <= 50000:
+            raise ValueError("export snapshot limit out of bounds")
+        revisions = self._list_current_revision_page(
+            concept=concept,
+            entity=entity,
+            period_start=period_start,
+            period_end=period_end,
+            unit=unit,
+            changed_since=changed_since,
+            limit=limit,
+            offset=0,
+        )
+        return [self._to_revision_response(revision) for revision in revisions]
+
+    def iterate_snapshot(
+        self,
+        *,
+        concept: Optional[str],
+        entities: list[str],
+        period_start: Optional[date],
+        period_end: Optional[date],
+        unit: Optional[str],
+        changed_since: Optional[datetime] = None,
+        limit: int,
+    ) -> Iterable[ValueResponse]:
+        """Read a bounded current-value slice in one database statement.
+
+        PostgreSQL READ COMMITTED gives each statement a consistent snapshot.
+        Keeping the whole calculation input in one bounded query therefore
+        avoids duplicate/omitted rows caused by offset paging over mutable
+        current pointers.
+        """
+        if not self._revision_read_enabled():
+            _raise_value_service_unavailable()
+        if limit < 1:
+            raise ValueError("snapshot limit must be positive")
+        if not entities:
+            return []
+
+        query = self._apply_revision_filters(
+            self._current_revision_query(),
+            concept=concept,
+            entity=None,
+            period_start=period_start,
+            period_end=period_end,
+            unit=unit,
+            changed_since=changed_since,
+        ).filter(ValueContext.entity_id.in_(entities))
+        cursor_value = _revision_cursor_value_expr()
+        revisions = (
+            self._with_context_eager_loading(query)
+            .order_by(
+                _revision_period_expr().desc(),
+                ValueRevision.created_at.desc(),
+                cursor_value.desc(),
+            )
+            .limit(limit)
+            .all()
+        )
+        return [self._to_revision_response(revision) for revision in revisions]
+
     def list_changes(
         self,
         *,
@@ -835,7 +927,7 @@ class DatabaseValueStore:
             next_cursor = None
             if has_more and selected:
                 last_response = self._to_revision_response(selected[-1])
-                next_cursor = last_response.updated_at.isoformat(), last_response.id
+                next_cursor = last_response.updated_at.isoformat(), selected[-1].id
             return (
                 [self._to_revision_response(revision) for revision in selected],
                 next_cursor,
@@ -946,7 +1038,10 @@ class DatabaseValueStore:
         ]
 
     def _tenant_id(self) -> str:
-        return self._tenant_id_value or settings.value_revision_default_tenant_id
+        tenant_id = self._tenant_id_value
+        if not isinstance(tenant_id, str) or not tenant_id.strip():
+            _raise_value_service_unavailable()
+        return tenant_id
 
     def _append_revision_for_record(self, record, *, created_by: Optional[str]):
         revision_input = self._revision_input_for_record(record, created_by=created_by)
@@ -1081,6 +1176,22 @@ class DatabaseValueStore:
 
     def _current_revision_query(self):
         tenant_id = self._tenant_id()
+        undated = (
+            self._db.query(ValueContext.id)
+            .join(
+                CurrentValuePointer, CurrentValuePointer.context_id == ValueContext.id
+            )
+            .filter(
+                CurrentValuePointer.tenant_id == tenant_id,
+                ValueContext.tenant_id == tenant_id,
+                ValueContext.period_start.is_(None),
+                ValueContext.period_end.is_(None),
+            )
+            .limit(1)
+            .first()
+        )
+        if undated:
+            raise RuntimeError("undated current value context requires operator repair")
         return (
             self._db.query(ValueRevision)
             .join(
@@ -1118,9 +1229,9 @@ class DatabaseValueStore:
         if entity:
             query = query.filter(ValueContext.entity_id == entity)
         if period_start:
-            query = query.filter(ValueContext.period_end >= period_start)
+            query = query.filter(_revision_period_expr() >= period_start)
         if period_end:
-            query = query.filter(ValueContext.period_end <= period_end)
+            query = query.filter(_revision_period_expr() <= period_end)
         if unit:
             query = query.filter(ValueRevision.unit == unit)
         if changed_since:
@@ -1153,7 +1264,7 @@ class DatabaseValueStore:
         return (
             self._with_context_eager_loading(query)
             .order_by(
-                ValueContext.period_end.desc(),
+                _revision_period_expr().desc(),
                 ValueRevision.created_at.desc(),
                 cursor_value.desc(),
             )
@@ -1188,7 +1299,7 @@ class DatabaseValueStore:
         return (
             self._with_context_eager_loading(query)
             .order_by(
-                ValueContext.period_end.desc(),
+                _revision_period_expr().desc(),
                 ValueRevision.created_at.desc(),
                 cursor_value.desc(),
             )
@@ -1218,7 +1329,7 @@ class DatabaseValueStore:
         return (
             self._with_context_eager_loading(query)
             .order_by(
-                ValueContext.period_end.desc(),
+                _revision_period_expr().desc(),
                 ValueRevision.created_at.desc(),
                 cursor_value.desc(),
             )
@@ -1251,15 +1362,16 @@ class DatabaseValueStore:
         )
         total = query.count()
         cursor_value = _revision_cursor_value_expr()
+        cursor_period_expr = _revision_period_expr()
         query = query.filter(
             or_(
-                ValueContext.period_end < cursor_period,
+                cursor_period_expr < cursor_period,
                 and_(
-                    ValueContext.period_end == cursor_period,
+                    cursor_period_expr == cursor_period,
                     ValueRevision.created_at < cursor_created_at,
                 ),
                 and_(
-                    ValueContext.period_end == cursor_period,
+                    cursor_period_expr == cursor_period,
                     ValueRevision.created_at == cursor_created_at,
                     cursor_value < cursor_value_id,
                 ),
@@ -1268,7 +1380,7 @@ class DatabaseValueStore:
         return (
             self._with_context_eager_loading(query)
             .order_by(
-                ValueContext.period_end.desc(),
+                cursor_period_expr.desc(),
                 ValueRevision.created_at.desc(),
                 cursor_value.desc(),
             )
@@ -1343,7 +1455,7 @@ class DatabaseValueStore:
         context = revision.context
         period = context.period_end or context.period_start
         if period is None:
-            period = date.fromisoformat(context.reporting_period_id)
+            raise RuntimeError("undated current value context requires operator repair")
         metadata = dict(revision.materiality_metadata or {})
         value_response_metadata = metadata.get(VALUE_RESPONSE_METADATA_KEY)
         if not isinstance(value_response_metadata, Mapping):
@@ -1517,7 +1629,11 @@ def _revision_value(revision: ValueRevision) -> ValueScalar:
 
 
 def _revision_cursor_value_expr():
-    return func.coalesce(ValueRevision.source_record_id, ValueRevision.id)
+    return ValueRevision.id
+
+
+def _revision_period_expr():
+    return func.coalesce(ValueContext.period_end, ValueContext.period_start)
 
 
 def _metadata_bool(

@@ -6,7 +6,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from email.utils import format_datetime, parsedate_to_datetime
+from email.utils import format_datetime
 from typing import Any, Iterable, Optional
 
 from src.services.export_signing import ExportSignature, sign_export_payload
@@ -38,9 +38,13 @@ class DatasetManifest:
         return format_datetime(value, usegmt=True)
 
     def is_not_modified(
-        self, *, if_none_match: Optional[str], if_modified_since: Optional[str]
+        self,
+        *,
+        if_none_match: Optional[str],
+        if_modified_since: Optional[str],
+        etag: Optional[str] = None,
     ) -> bool:
-        if if_none_match:
+        if if_none_match is not None:
             candidates = [
                 candidate.strip()
                 for candidate in if_none_match.split(",")
@@ -48,27 +52,35 @@ class DatasetManifest:
             ]
             if "*" in candidates:
                 return True
-            normalized_etag = self.etag
-            weak_etag = f"W/{self.etag}"
+            # GET validators use weak comparison even when either tag is weak.
+            normalized_etag = (etag or self.etag).removeprefix("W/")
             if any(
-                candidate in {normalized_etag, weak_etag} for candidate in candidates
+                candidate.removeprefix("W/") == normalized_etag
+                for candidate in candidates
             ):
                 return True
-        if if_modified_since and self.last_modified is not None:
-            try:
-                candidate = parsedate_to_datetime(if_modified_since)
-            except (TypeError, ValueError, IndexError):
-                return False
-            last_modified = self.last_modified
-            if last_modified.tzinfo is None:
-                last_modified = last_modified.replace(tzinfo=timezone.utc)
-            if candidate.tzinfo is None:
-                candidate = candidate.replace(tzinfo=timezone.utc)
-            last_modified = last_modified.replace(microsecond=0)
-            candidate = candidate.replace(microsecond=0)
-            if last_modified <= candidate:
-                return True
+            # If-None-Match takes precedence over If-Modified-Since, including
+            # when no tag matches the current representation.
+            return False
+        # Selected-row timestamps are not a monotonic dataset watermark: a
+        # removal can make Last-Modified go backwards while the hash changes.
+        # Never return 304 from a date alone for these mutable export slices.
         return False
+
+    def export_etag(self, representation: str) -> str:
+        """Weak validator for a format-specific view of these signed rows."""
+
+        identity = json.dumps(
+            {
+                "dataset": self.dataset,
+                "version": self.contract_version,
+                "representation": representation,
+                "manifest_hash": self.manifest_hash,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return f'W/"{hashlib.sha256(identity.encode("utf-8")).hexdigest()}"'
 
     def as_signed_payload(self) -> dict[str, Any]:
         last_modified = self.last_modified
@@ -86,10 +98,14 @@ class DatasetManifest:
         }
 
     def response_headers(
-        self, *, filename: Optional[str] = None, include_filename: bool = True
+        self,
+        *,
+        filename: Optional[str] = None,
+        include_filename: bool = True,
+        etag: Optional[str] = None,
     ) -> dict[str, str]:
         headers = {
-            "ETag": self.etag,
+            "ETag": etag or self.etag,
             "X-SDS-Manifest-Hash": self.manifest_hash,
             "X-SDS-Contract-Version": self.contract_version,
             "X-SDS-Signature-Alg": self.signature_algorithm,

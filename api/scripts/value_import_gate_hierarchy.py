@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from src.api.models import HierarchyConfiguration, HierarchyLevel
-from src.services.hierarchy_store import DatabaseHierarchyStore
 
-VALUE_IMPORT_GATE_COMPANY_ID = "sds_public_demo"
-VALUE_IMPORT_GATE_HIERARCHY_ID = "sds-public-demo-org"
-VALUE_IMPORT_GATE_ENTITY = "sds_public_demo_facility"
+VALUE_IMPORT_GATE_COMPANY_ID = "value_import_gate"
+VALUE_IMPORT_GATE_HIERARCHY_ID = "value-import-gate-org"
+VALUE_IMPORT_GATE_ENTITY = "gate_facility"
+VALUE_IMPORT_GATE_CONCEPTS = (
+    "urn:sds:reg:esrs:e3_4_01",
+    "urn:sds:reg:esrs:e3_4_02",
+)
 
 
 def build_value_import_gate_hierarchy() -> HierarchyConfiguration:
@@ -15,29 +18,31 @@ def build_value_import_gate_hierarchy() -> HierarchyConfiguration:
         id=VALUE_IMPORT_GATE_HIERARCHY_ID,
         company_id=VALUE_IMPORT_GATE_COMPANY_ID,
         hierarchy_type="organizational",
-        name="SDS public-demo hierarchy",
-        description="Disposable hierarchy used by the public synthetic value-import gates.",
+        name="Value import gate hierarchy",
+        description="Disposable hierarchy used by operational value-import gates.",
         active=True,
         levels=[
-            HierarchyLevel(id="demo_group", name="SDS Demo Group", level=0),
+            HierarchyLevel(id="gate_group", name="Gate Group", level=0),
             HierarchyLevel(
-                id="demo_region",
-                name="SDS Demo Region",
-                parent="demo_group",
+                id="gate_spain",
+                name="Gate Spain",
+                parent="gate_group",
                 level=1,
             ),
             HierarchyLevel(
                 id=VALUE_IMPORT_GATE_ENTITY,
                 name="Gate Facility",
-                parent="demo_region",
+                parent="gate_spain",
                 level=2,
-                metadata={"entity_type": "synthetic_demo_facility"},
+                metadata={"country": "ES", "entity_type": "facility"},
             ),
         ],
     )
 
 
 def ensure_value_import_gate_hierarchy(db, *, created_by: str) -> dict[str, str]:
+    from src.services.hierarchy_store import DatabaseHierarchyStore
+
     store = DatabaseHierarchyStore(db)
     config = build_value_import_gate_hierarchy()
     existing = store.get(VALUE_IMPORT_GATE_HIERARCHY_ID)

@@ -1,8 +1,20 @@
 """Services package for business logic."""
 
-from .concept_service import ConceptService
-from .hierarchy_service import HierarchyService
-from .ontology_service import OntologyService
-from .unit_service import UnitService
+from importlib import import_module
+
+_SERVICE_MODULES = {
+    "ConceptService": "concept_service",
+    "HierarchyService": "hierarchy_service",
+    "OntologyService": "ontology_service",
+    "UnitService": "unit_service",
+}
+
+
+def __getattr__(name):
+    module_name = _SERVICE_MODULES.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return getattr(import_module(f".{module_name}", __name__), name)
+
 
 __all__ = ["UnitService", "HierarchyService", "ConceptService", "OntologyService"]

@@ -1,12 +1,15 @@
 # Traceability Matrix — SDS Repo
 
-**Updated (UTC):** 2026-06-23T00:00:00Z
+**Historical baseline (UTC):** 2026-06-23T00:00:00Z
+**Current register status:** 2026-09-18 (see final table below)
 **Scope:** this repository only
 **Purpose:** provide a public traceability layer for the deliverables published in this repository
 
 ## Important note
 
-This traceability matrix reflects the current public repository state. It does not claim that all historical deliverables have already been republished here.
+The summary below preserves a dated June 2026 baseline. It is not the current
+publication verdict. The owner-accepted 2026-09-18 closure and current register
+supersede its old Green/Amber/external labels; see the final table below.
 
 Where supporting material exists outside this workspace, it is labeled as **external evidence** until imported.
 
@@ -37,8 +40,33 @@ Where supporting material exists outside this workspace, it is labeled as **exte
 - `scripts/repo_closure_check.py` — closure-layer validation
 - `Makefile` and `scripts/gates.ps1` — root helper entrypoints
 
-## Immediate follow-up
+## Historical follow-up from June 2026 (superseded)
 
 1. Keep `E7` explicitly marked as external evidence until imported.
 2. Review and promote E12 plus the E13 version 1.0 package only after placeholders and external-evidence decisions are resolved.
 3. Keep the external source-granulation boundary explicit and avoid reintroducing any retired intermediary repository into the active architecture.
+
+## Current register status — owner-accepted 2026-09-18
+
+The dated historical table above is kept for provenance. The current formal
+project status is in
+`deliverables/evidence-public/dossier-closure-status-sds-v2026-09-18.md`;
+every E01–E13 row below follows `deliverables/deliverables-register.csv`.
+This project decision does not imply that older technical observations were
+wrong when recorded or that a later website maintenance issue was corrected.
+
+| Deliverable | Register status | Current public evidence | External evidence |
+|---|---|---|---|
+| `E01` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |
+| `E02` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |
+| `E03` | `published-local` | `deliverables/E03-modelo-ngsi-ld/final/e03-modelo-comun-ngsi-ld-paquete-semantico-v2026-06-09.md`, `deliverables/deliverables-register.csv` | Historical model-source evidence held externally |
+| `E04` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |
+| `E05` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |
+| `E06` | `published-local` | `deliverables/E06-governance/final/e06-gobernanza-politica-datos-v2026-06-09.md`, `deliverables/deliverables-register.csv` | governance-source evidence held externally |
+| `E07` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |
+| `E08` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |
+| `E09` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |
+| `E10` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |
+| `E11` | `published-local` | `deliverables/deliverables-register.csv` | Subsequent website observations are separate maintenance evidence |
+| `E12` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |
+| `E13` | `published-local` | `deliverables/deliverables-register.csv` | Historical inputs as separately recorded |

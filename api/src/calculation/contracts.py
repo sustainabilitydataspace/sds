@@ -17,6 +17,14 @@ class ContractResolutionError(Exception):
     """Raised when a runtime calculation contract cannot be resolved safely."""
 
 
+class CalculationContractNotFoundError(ContractResolutionError):
+    """No contract row exists for the exact requested concept (not execution failure)."""
+
+    def __init__(self, concept: str):
+        self.concept = concept
+        super().__init__(f"No calculation contract for concept: {concept}")
+
+
 class ContractExecutionError(Exception):
     """Raised when an imported contract cannot be executed safely."""
 
@@ -203,9 +211,7 @@ class RuntimeCalculationContractResolver:
     def resolve(self, concept: str) -> CalculationContract:
         row = self.repository.get_contract_for_concept(concept)
         if row is None:
-            raise ContractResolutionError(
-                f"No calculation contract for concept: {concept}"
-            )
+            raise CalculationContractNotFoundError(concept)
         try:
             contract = contract_from_row(row, requested_concept=concept)
         except ContractResolutionError:
@@ -337,14 +343,8 @@ def _contract_from_canonical_row(
     if isinstance(hierarchy, str):
         hierarchy = _json_loads(hierarchy, default={})
 
-    node_aggregation_policy = _field(row, "aggregation_policy", default={}) or {}
-    if isinstance(node_aggregation_policy, str):
-        node_aggregation_policy = _json_loads(node_aggregation_policy, default={})
-    contract_missing_data = (
-        node_aggregation_policy.get("missing_data")
-        if isinstance(node_aggregation_policy, Mapping)
-        else None
-    )
+    node_aggregation_policy = _canonical_aggregation_policy(row)
+    contract_missing_data = node_aggregation_policy.get("missing_data")
 
     return CalculationContract(
         contract_id=str(_field(row, "node_id", "canonical_datapoint_id", "id")),
@@ -496,14 +496,26 @@ def _input_from_canonical_component(
     )
 
 
+def _canonical_aggregation_policy(row: Any) -> Mapping[str, Any]:
+    raw = _field(row, "aggregation_policy", default=None)
+    if raw is None:
+        return {}
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (ValueError, TypeError) as exc:
+            raise ContractResolutionError(
+                "Invalid canonical aggregation_policy JSON"
+            ) from exc
+    if not isinstance(raw, Mapping):
+        raise ContractResolutionError("Invalid canonical aggregation_policy shape")
+    return raw
+
+
 def _self_input_from_canonical_row(
     row: Any, *, formula: str
 ) -> CalculationContractInput:
-    aggregation_policy = _field(row, "aggregation_policy", default={}) or {}
-    if isinstance(aggregation_policy, str):
-        aggregation_policy = _json_loads(aggregation_policy, default={})
-    if not isinstance(aggregation_policy, Mapping):
-        aggregation_policy = {}
+    aggregation_policy = _canonical_aggregation_policy(row)
 
     source_payload = _field(row, "source_payload", default={}) or {}
     if not isinstance(source_payload, Mapping):

@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from fastapi import Depends, HTTPException, status
 
 import structlog
+from src.auth.authorization import has_cross_tenant_admin_access
 from src.auth.dependencies import get_current_active_user
 from src.auth.models import ROLE_PERMISSIONS, Permission, User, UserRole
 
@@ -57,6 +58,8 @@ class RoleBasedAccessControl:
 
     def has_role(self, user: User, required_role: UserRole) -> bool:
         """Check if user has required role or higher."""
+        if getattr(user, "auth_method", None) != "bearer":
+            return False
         user_level = self.role_hierarchy.get(user.role, 0)
         required_level = self.role_hierarchy.get(required_role, 0)
         return user_level >= required_level
@@ -82,7 +85,7 @@ class RoleBasedAccessControl:
     ) -> bool:
         """Check if user can access data for specific company."""
         # Admin can access all companies (if override allowed)
-        if allow_admin_override and user.role == UserRole.ADMIN:
+        if allow_admin_override and has_cross_tenant_admin_access(user):
             return True
 
         # User must belong to the same company
@@ -90,7 +93,7 @@ class RoleBasedAccessControl:
 
     def get_accessible_companies(self, user: User) -> List[str]:
         """Get list of companies user can access."""
-        if user.role == UserRole.ADMIN:
+        if has_cross_tenant_admin_access(user):
             # Admin can access all companies
             return ["*"]  # Wildcard for all companies
         else:
@@ -161,7 +164,7 @@ class RoleBasedAccessControl:
         self, user: User, items: List[Dict[str, Any]], company_field: str = "company_id"
     ) -> List[Dict[str, Any]]:
         """Filter items based on user's company access."""
-        if user.role == UserRole.ADMIN:
+        if has_cross_tenant_admin_access(user):
             # Admin can see all items
             return items
 

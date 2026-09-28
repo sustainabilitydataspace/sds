@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from threading import RLock
 from typing import Dict, Optional
 
 from fastapi import Depends, HTTPException, Request
@@ -24,6 +25,8 @@ from src.database.session import get_db_optional
 @dataclass(frozen=True)
 class _StoredIndicatorImportJob:
     id: str
+    tenant_id: str
+    owner_user_id: str
     job_type: IndicatorImportJobType
     source_format: str
     status: IndicatorImportJobStatus
@@ -51,6 +54,7 @@ class InMemoryIndicatorImportJobStore:
 
     def __init__(self):
         self._jobs: Dict[str, _StoredIndicatorImportJob] = {}
+        self._lock = RLock()
 
     def create(
         self,
@@ -59,6 +63,8 @@ class InMemoryIndicatorImportJobStore:
         job_type: str,
         source_format: str,
         submitted_by: str,
+        tenant_id: str,
+        owner_user_id: str,
         source_filename: Optional[str] = None,
         source_sha256: Optional[str] = None,
         source_size_bytes: Optional[int] = None,
@@ -76,6 +82,8 @@ class InMemoryIndicatorImportJobStore:
         now = datetime.now(timezone.utc)
         stored = _StoredIndicatorImportJob(
             id=job_id,
+            tenant_id=tenant_id,
+            owner_user_id=owner_user_id,
             job_type=IndicatorImportJobType(job_type),
             source_format=source_format,
             status=IndicatorImportJobStatus(status),
@@ -100,12 +108,18 @@ class InMemoryIndicatorImportJobStore:
         self._jobs[job_id] = stored
         return self._to_response(stored)
 
-    def get(self, job_id: str) -> Optional[IndicatorImportJobResponse]:
+    def get(
+        self, job_id: str, *, tenant_id: str
+    ) -> Optional[IndicatorImportJobResponse]:
         stored = self._jobs.get(job_id)
+        if stored is not None and stored.tenant_id != tenant_id:
+            return None
         return self._to_response(stored) if stored else None
 
-    def get_source_payload(self, job_id: str) -> Optional[str]:
+    def get_source_payload(self, job_id: str, *, tenant_id: str) -> Optional[str]:
         stored = self._jobs.get(job_id)
+        if stored is not None and stored.tenant_id != tenant_id:
+            return None
         return stored.source_payload if stored else None
 
     def acquire_import_submission_lock(self) -> None:
@@ -125,20 +139,21 @@ class InMemoryIndicatorImportJobStore:
         )
 
     def mark_running(self, job_id: str) -> Optional[IndicatorImportJobResponse]:
-        stored = self._jobs.get(job_id)
-        if stored is None:
-            return None
-        now = datetime.now(timezone.utc)
-        updated = _StoredIndicatorImportJob(
-            **{
-                **stored.__dict__,
-                "status": IndicatorImportJobStatus.RUNNING,
-                "started_at": now,
-                "updated_at": now,
-            }
-        )
-        self._jobs[job_id] = updated
-        return self._to_response(updated)
+        with self._lock:
+            stored = self._jobs.get(job_id)
+            if stored is None or stored.status != IndicatorImportJobStatus.PENDING:
+                return None
+            now = datetime.now(timezone.utc)
+            updated = _StoredIndicatorImportJob(
+                **{
+                    **stored.__dict__,
+                    "status": IndicatorImportJobStatus.RUNNING,
+                    "started_at": now,
+                    "updated_at": now,
+                }
+            )
+            self._jobs[job_id] = updated
+            return self._to_response(updated)
 
     def complete(
         self,
@@ -150,31 +165,27 @@ class InMemoryIndicatorImportJobStore:
         rejected_rows: int,
         committed: bool,
     ) -> Optional[IndicatorImportJobResponse]:
-        stored = self._jobs.get(job_id)
-        if stored is None:
-            return None
-        now = datetime.now(timezone.utc)
-        updated = _StoredIndicatorImportJob(
-            **{
-                **stored.__dict__,
-                "status": IndicatorImportJobStatus.COMPLETED,
-                "result_body": result_body,
-                "total_rows": total_rows,
-                "accepted_rows": accepted_rows,
-                "rejected_rows": rejected_rows,
-                "committed": committed,
-                "error_message": None,
-                "source_payload": (
-                    None
-                    if stored.job_type == IndicatorImportJobType.IMPORT
-                    else stored.source_payload
-                ),
-                "completed_at": now,
-                "updated_at": now,
-            }
-        )
-        self._jobs[job_id] = updated
-        return self._to_response(updated)
+        with self._lock:
+            stored = self._jobs.get(job_id)
+            if stored is None or stored.status != IndicatorImportJobStatus.RUNNING:
+                return None
+            now = datetime.now(timezone.utc)
+            updated = _StoredIndicatorImportJob(
+                **{
+                    **stored.__dict__,
+                    "status": IndicatorImportJobStatus.COMPLETED,
+                    "result_body": result_body,
+                    "total_rows": total_rows,
+                    "accepted_rows": accepted_rows,
+                    "rejected_rows": rejected_rows,
+                    "committed": committed,
+                    "error_message": None,
+                    "completed_at": now,
+                    "updated_at": now,
+                }
+            )
+            self._jobs[job_id] = updated
+            return self._to_response(updated)
 
     def fail(
         self,
@@ -187,36 +198,37 @@ class InMemoryIndicatorImportJobStore:
         rejected_rows: Optional[int] = None,
         committed: Optional[bool] = None,
     ) -> Optional[IndicatorImportJobResponse]:
-        stored = self._jobs.get(job_id)
-        if stored is None:
-            return None
-        now = datetime.now(timezone.utc)
-        updated = _StoredIndicatorImportJob(
-            **{
-                **stored.__dict__,
-                "status": IndicatorImportJobStatus.FAILED,
-                "result_body": result_body,
-                "total_rows": total_rows,
-                "accepted_rows": accepted_rows,
-                "rejected_rows": rejected_rows,
-                "committed": committed,
-                "error_message": error_message,
-                "source_payload": (
-                    None
-                    if stored.job_type == IndicatorImportJobType.IMPORT
-                    else stored.source_payload
-                ),
-                "completed_at": now,
-                "updated_at": now,
-            }
-        )
-        self._jobs[job_id] = updated
-        return self._to_response(updated)
+        with self._lock:
+            stored = self._jobs.get(job_id)
+            if stored is None or stored.status not in {
+                IndicatorImportJobStatus.PENDING,
+                IndicatorImportJobStatus.RUNNING,
+            }:
+                return None
+            now = datetime.now(timezone.utc)
+            updated = _StoredIndicatorImportJob(
+                **{
+                    **stored.__dict__,
+                    "status": IndicatorImportJobStatus.FAILED,
+                    "result_body": result_body,
+                    "total_rows": total_rows,
+                    "accepted_rows": accepted_rows,
+                    "rejected_rows": rejected_rows,
+                    "committed": committed,
+                    "error_message": error_message,
+                    "completed_at": now,
+                    "updated_at": now,
+                }
+            )
+            self._jobs[job_id] = updated
+            return self._to_response(updated)
 
     @staticmethod
     def _to_response(stored: _StoredIndicatorImportJob) -> IndicatorImportJobResponse:
         payload = stored.__dict__.copy()
         payload.pop("source_payload", None)
+        payload.pop("tenant_id", None)
+        payload.pop("owner_user_id", None)
         return IndicatorImportJobResponse(**payload)
 
 
@@ -227,15 +239,20 @@ class DatabaseIndicatorImportJobStore:
         self._repo = IndicatorImportJobRepository(db)
 
     def create(self, **kwargs) -> IndicatorImportJobResponse:
+        if kwargs.get("job_type") == "validation":
+            kwargs["source_payload"] = None
         return self._to_response(self._repo.create(**kwargs))
 
-    def get(self, job_id: str) -> Optional[IndicatorImportJobResponse]:
-        job = self._repo.get(job_id)
+    def get(
+        self, job_id: str, *, tenant_id: str
+    ) -> Optional[IndicatorImportJobResponse]:
+        job = self._repo.get(job_id, tenant_id=tenant_id)
         return self._to_response(job) if job else None
 
-    def get_source_payload(self, job_id: str) -> Optional[str]:
+    def get_source_payload(self, job_id: str, *, tenant_id: str) -> Optional[str]:
         return self._repo.get_source_payload(
             job_id,
+            tenant_id=tenant_id,
             validation_payload_retention_hours=(
                 settings.indicator_import_validation_payload_retention_hours
             ),

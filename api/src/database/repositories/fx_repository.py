@@ -138,6 +138,10 @@ class FXRepository:
         )
         if row is None:
             return None
+        raw_policy_metadata = getattr(row, "policy_metadata", None)
+        policy_metadata = (
+            raw_policy_metadata if isinstance(raw_policy_metadata, Mapping) else {}
+        )
         return FXPolicy(
             id=row.id,
             provider=row.provider,
@@ -148,6 +152,9 @@ class FXRepository:
             fallback_behavior=row.fallback_behavior,
             rounding_scale=int(row.rounding_scale),
             rounding_mode=row.rounding_mode,
+            max_previous_rate_age_days=int(
+                policy_metadata.get("max_previous_rate_age_days", 7)
+            ),
         )
 
     def save_rate_batch(

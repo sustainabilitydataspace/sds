@@ -1,0 +1,59 @@
+# Optional self-host reference stack.
+# Kept under the historical compose.production.yml name for compatibility.
+# This is not the required SDS API dependency-install or deployment model.
+name: sds-api-prod
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      REQUIRE_DATABASE: "true"
+      DATABASE_URL: "postgresql://sds:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/sds"
+
+      # Production bootstrap creates only the initial admin user.
+      SEED_DEFAULT_USERS: "true"
+      BOOTSTRAP_ADMIN_USERNAME: "${BOOTSTRAP_ADMIN_USERNAME:-admin}"
+      BOOTSTRAP_ADMIN_PASSWORD: "${BOOTSTRAP_ADMIN_PASSWORD:?BOOTSTRAP_ADMIN_PASSWORD is required}"
+
+      PORTAL_MOUNT_ENABLED: "false"
+      VALUE_REVISION_API_ENABLED: "${VALUE_REVISION_API_ENABLED:-true}"
+      VALUE_REVISION_PRIMARY_READ_PATH: "${VALUE_REVISION_PRIMARY_READ_PATH:-revision}"
+      VALUE_REVISION_DUAL_WRITE_ENABLED: "${VALUE_REVISION_DUAL_WRITE_ENABLED:-true}"
+
+      # Reference/catalog bootstrap.
+      SEED_REFERENCE_DATA_ON_STARTUP: "${SEED_REFERENCE_DATA_ON_STARTUP:-true}"
+      USE_POSTGRES_UNITS: "${USE_POSTGRES_UNITS:-true}"
+
+      # Security.
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}"
+      EXPORT_SIGNING_SECRET: "${EXPORT_SIGNING_SECRET:?EXPORT_SIGNING_SECRET is required}"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required}"
+      CORS_ALLOW_CREDENTIALS: "${CORS_ALLOW_CREDENTIALS:-false}"
+    ports:
+      - "${API_HOST_BIND:-0.0.0.0}:${API_PORT:-8090}:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: docker.io/library/postgres:15-alpine
+    environment:
+      POSTGRES_DB: sds
+      POSTGRES_USER: sds
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

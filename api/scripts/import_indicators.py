@@ -81,18 +81,12 @@ def safe_print(*args, sep=" ", end="\n", flush=False):
             stream.flush()
 
 
-def get_default_database_url() -> str:
-    """Build a sensible DB URL when DATABASE_URL is not explicitly set."""
-    env_database_url = os.getenv("DATABASE_URL")
-    if env_database_url:
-        return env_database_url
+def get_default_database_url(cli_url: str | None = None) -> str:
+    from scripts.operational_db_settings import (
+        resolve_operational_database_url_with_settings,
+    )
 
-    postgres_user = os.getenv("POSTGRES_USER", "sds")
-    postgres_password = os.getenv("POSTGRES_PASSWORD", "password")
-    postgres_host = os.getenv("POSTGRES_HOST", "localhost")
-    postgres_port = os.getenv("POSTGRES_PORT", "5432")
-    postgres_db = os.getenv("POSTGRES_DB", "sds")
-    return f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+    return resolve_operational_database_url_with_settings(cli_url)
 
 
 def signal_handler(sig, frame):
@@ -612,9 +606,7 @@ Resume file location: {RESUME_FILE}
         default=DEFAULT_CSV_PATH,
         help=f"CSV file (default: {DEFAULT_CSV_PATH})",
     )
-    parser.add_argument(
-        "--db-url", type=str, default=get_default_database_url(), help="PostgreSQL URL"
-    )
+    parser.add_argument("--db-url", type=str, default=None, help="PostgreSQL URL")
     parser.add_argument(
         "--dry-run", action="store_true", help="Validate without writing"
     )
@@ -648,6 +640,7 @@ Resume file location: {RESUME_FILE}
     )
 
     args = parser.parse_args()
+    args.db_url = get_default_database_url(args.db_url)
     args.csv = resolve_csv_input_path(args.csv)
     try:
         retirement_impact_approvals = parse_retirement_impact_approvals(

@@ -38,6 +38,7 @@ class FXPolicy:
     fallback_behavior: str = "fail_closed"
     rounding_scale: int = 6
     rounding_mode: str = "ROUND_HALF_UP"
+    max_previous_rate_age_days: int = 7
 
 
 @dataclass(frozen=True)
@@ -199,6 +200,15 @@ class FXConverter:
             raise FXMissingRateError("FX rate missing rate_date")
         if selected_date > rate_date:
             raise FXMissingRateError("FX previous-available rate is after request date")
+        max_age_days = policy.max_previous_rate_age_days
+        if isinstance(max_age_days, bool) or max_age_days < 1:
+            raise FXMissingRateError(
+                "FX previous-available policy requires a positive age ceiling"
+            )
+        if (rate_date - selected_date).days > max_age_days:
+            raise FXMissingRateError(
+                "FX previous-available rate is older than the policy ceiling"
+            )
         return rate
 
     def _lookup_period_rate(
@@ -268,6 +278,7 @@ class FXConverter:
         }
         if selected_date != requested_rate_date:
             metadata["requested_rate_date"] = requested_rate_date.isoformat()
+            metadata["rate_age_days"] = (requested_rate_date - selected_date).days
         return metadata
 
     def _required_decimal(self, rate: Any, field_name: str) -> Decimal:

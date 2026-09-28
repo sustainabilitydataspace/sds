@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from src.services.canonical_mapping_import import (
+    CanonicalMappingImportIssue,
     CanonicalMappingImportReport,
+    CanonicalMappingPackageSecurityError,
+    canonical_mapping_package_snapshot,
     load_canonical_mapping_package_rows,
     validate_canonical_mapping_package,
 )
@@ -16,6 +20,9 @@ from src.services.canonical_mapping_relationship_policy import (
     is_operational_relationship_type,
     normalize_relationship_type,
 )
+
+DEFAULT_INSPECTION_LIMIT = 1000
+MAX_INSPECTION_LIMIT = 1000
 
 
 @dataclass(frozen=True)
@@ -118,6 +125,7 @@ class CanonicalMappingInspectionReport:
     non_operational_candidate_count: int
     relationship_type_counts: dict[str, int]
     target_identity_status_counts: dict[str, int]
+    truncated: bool = False
     candidates: tuple[CanonicalMappingInspectionCandidate, ...] = field(
         default_factory=tuple
     )
@@ -133,6 +141,7 @@ class CanonicalMappingInspectionReport:
             "non_operational_candidate_count": self.non_operational_candidate_count,
             "relationship_type_counts": self.relationship_type_counts,
             "target_identity_status_counts": self.target_identity_status_counts,
+            "truncated": self.truncated,
             "candidates": [candidate.as_dict() for candidate in self.candidates],
         }
 
@@ -145,11 +154,37 @@ def inspect_canonical_mapping_package(
 ) -> CanonicalMappingInspectionReport:
     """Inspect package assertion groups without performing database writes."""
 
-    package_dir = package_dir.resolve()
-    validation = validate_canonical_mapping_package(package_dir)
+    if limit is not None and limit <= 0:
+        raise ValueError("inspection limit must be positive")
+    effective_limit = min(limit or DEFAULT_INSPECTION_LIMIT, MAX_INSPECTION_LIMIT)
+    reported_package_dir = str(Path(os.path.abspath(package_dir)))
+    try:
+        with canonical_mapping_package_snapshot(package_dir) as snapshot:
+            validation = validate_canonical_mapping_package(snapshot)
+            rows = (
+                load_canonical_mapping_package_rows(snapshot)
+                if validation.valid
+                else None
+            )
+    except CanonicalMappingPackageSecurityError as exc:
+        validation = CanonicalMappingImportReport(
+            package_dir=reported_package_dir,
+            package_schema_version=None,
+            mode="shadow_report_only",
+            valid=False,
+            file_counts={},
+            manifest_hash=None,
+            checksum_count=0,
+            errors=[
+                CanonicalMappingImportIssue(
+                    file="manifest.json", code=exc.code, message=str(exc)
+                )
+            ],
+        )
+        rows = None
     if not validation.valid:
         return CanonicalMappingInspectionReport(
-            package_dir=str(package_dir),
+            package_dir=reported_package_dir,
             valid=False,
             operational_eligible=False,
             validation=validation,
@@ -159,12 +194,13 @@ def inspect_canonical_mapping_package(
             target_identity_status_counts={},
         )
 
-    rows = load_canonical_mapping_package_rows(package_dir)
+    assert rows is not None
     components_by_group = _components_by_group(rows.assertion_components)
     declared_datapoints = _declared_datapoint_keys(rows.datapoints)
     candidates: list[CanonicalMappingInspectionCandidate] = []
     target_status_counts: dict[str, int] = {}
     non_operational_count = 0
+    truncated = False
     for group in rows.assertion_groups:
         relationship_type = normalize_relationship_type(group.get("relationship_type"))
         group_operational = is_operational_relationship_type(relationship_type)
@@ -172,6 +208,10 @@ def inspect_canonical_mapping_package(
             non_operational_count += 1
         if group_operational and not include_operational:
             continue
+
+        if len(candidates) >= effective_limit:
+            truncated = True
+            break
 
         candidate = _candidate_from_group(
             group,
@@ -184,11 +224,9 @@ def inspect_canonical_mapping_package(
         target_status_counts[candidate.target_identity_status] = (
             target_status_counts.get(candidate.target_identity_status, 0) + 1
         )
-        if limit is not None and len(candidates) >= limit:
-            break
 
     return CanonicalMappingInspectionReport(
-        package_dir=str(package_dir),
+        package_dir=reported_package_dir,
         valid=True,
         operational_eligible=validation.operational_eligible,
         validation=validation,
@@ -196,6 +234,7 @@ def inspect_canonical_mapping_package(
         non_operational_candidate_count=non_operational_count,
         relationship_type_counts=validation.relationship_type_counts,
         target_identity_status_counts=dict(sorted(target_status_counts.items())),
+        truncated=truncated,
         candidates=tuple(candidates),
     )
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import a register-first Atomizer package into SDS through the canonical indicator importer."""
+"""Compatibility wrapper for the hardened complete Atomizer package importer."""
 
 from __future__ import annotations
 
@@ -11,9 +11,10 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-IMPORT_SCRIPT = REPO_ROOT / "api" / "scripts" / "import_indicators.py"
+FULL_PACKAGE_IMPORT_SCRIPT = REPO_ROOT / "scripts" / "import_atomizer_sds_package.py"
 PACKAGE_DIR_ENV = "ATOMIZER_SDS_PACKAGE_DIR"
 REGISTER_FILENAME = "sds_dataset_register.csv"
+IMPORT_SUBPROCESS_TIMEOUT_SECONDS = 30 * 60
 SERVICE_VENV_PYTHONS = (
     REPO_ROOT / "api" / ".venv" / "Scripts" / "python.exe",
     REPO_ROOT / "api" / ".venv" / "bin" / "python",
@@ -22,13 +23,8 @@ SERVICE_VENV_PYTHONS = (
 
 def resolve_register_csv(package_dir: Path, explicit_csv: Path | None) -> Path:
     if explicit_csv is not None:
-        if explicit_csv.exists():
-            return explicit_csv.resolve()
-        candidate = (REPO_ROOT / explicit_csv).resolve()
-        if candidate.exists():
-            return candidate
-        return explicit_csv
-    return (package_dir / REGISTER_FILENAME).resolve()
+        return explicit_csv if explicit_csv.is_absolute() else REPO_ROOT / explicit_csv
+    return package_dir / REGISTER_FILENAME
 
 
 def resolve_python_executable() -> str:
@@ -40,7 +36,10 @@ def resolve_python_executable() -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Import indicators directly from an Atomizer register-first package."
+        description=(
+            "Import indicators from a complete Atomizer package through the "
+            "hardened package intake."
+        )
     )
     parser.add_argument(
         "--package-dir",
@@ -55,20 +54,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--batch-size", type=int, default=None)
     args = parser.parse_args(argv)
 
-    if args.package_dir is None and args.csv is None:
+    if args.package_dir is None:
         print(
-            f"FAIL: --package-dir or --csv is required unless {PACKAGE_DIR_ENV} is set.",
+            f"FAIL: --package-dir is required unless {PACKAGE_DIR_ENV} is set; "
+            "CSV-only imports are not a supported trust boundary.",
             file=sys.stderr,
         )
         return 1
 
-    package_dir = args.package_dir.resolve() if args.package_dir is not None else REPO_ROOT
-    register_csv = resolve_register_csv(package_dir, args.csv)
-    if not register_csv.exists():
-        print(f"FAIL: register CSV not found: {register_csv}", file=sys.stderr)
-        return 1
-
-    command = [resolve_python_executable(), str(IMPORT_SCRIPT), "--csv", str(register_csv)]
+    command = [
+        resolve_python_executable(),
+        str(FULL_PACKAGE_IMPORT_SCRIPT),
+        "--package-dir",
+        str(args.package_dir),
+        "--skip-standard-versioning",
+        "--skip-calculation-contract",
+        "--skip-values",
+    ]
+    if args.csv is not None:
+        command.extend(["--register-csv", str(args.csv)])
     if args.db_url:
         command.extend(["--db-url", args.db_url])
     if args.dry_run:
@@ -78,7 +82,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.batch_size is not None:
         command.extend(["--batch-size", str(args.batch_size)])
 
-    return subprocess.call(command, cwd=str(REPO_ROOT))
+    try:
+        return subprocess.call(
+            command,
+            cwd=str(REPO_ROOT),
+            timeout=IMPORT_SUBPROCESS_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        print("FAIL: hardened Atomizer package import timed out.", file=sys.stderr)
+        return 1
+    except OSError as exc:
+        print(
+            f"FAIL: hardened Atomizer package import could not start: {type(exc).__name__}",
+            file=sys.stderr,
+        )
+        return 1
 
 
 if __name__ == "__main__":

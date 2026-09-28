@@ -5,7 +5,7 @@ Pydantic models for API request/response validation.
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
@@ -259,6 +259,8 @@ class ValueRevisionEventResponse(BaseModel):
     pointer_moved: bool
     event_payload: Optional[Dict[str, Any]] = None
     idempotency_key: Optional[str] = None
+    previous_event_hash: Optional[str] = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    event_hash: str = Field(..., pattern=r"^[0-9a-f]{64}$")
     occurred_at: Optional[datetime] = None
     occurred_by: Optional[str] = None
 
@@ -1263,9 +1265,9 @@ class EquivalenceInfo(BaseModel):
 class SPARQLQuery(BaseModel):
     """Model for SPARQL query."""
 
-    query: str = Field(..., description="SPARQL query string")
-    format: Optional[str] = Field(
-        "json", description="Result format (json, xml, turtle)"
+    query: str = Field(..., max_length=32_768, description="SPARQL query string")
+    format: Literal["json"] = Field(
+        "json", description="Flat JSON result projection (only supported format)"
     )
 
 
@@ -1278,10 +1280,19 @@ class UnitConversionRequest(BaseModel):
     value: Union[float, int, Decimal] = Field(..., description="Value to convert")
     from_unit: str = Field(..., description="Source unit")
     to_unit: str = Field(..., description="Target unit")
+    as_of: Optional[date] = Field(
+        None,
+        description="Effective date used to select a historical conversion rule",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {"value": 1000, "from_unit": "kg", "to_unit": "t"}
+            "example": {
+                "value": 1000,
+                "from_unit": "kg",
+                "to_unit": "t",
+                "as_of": "2026-01-01",
+            }
         }
     )
 

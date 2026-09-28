@@ -5,7 +5,11 @@ Configuración global de pytest para el proyecto SustainabilityDataSpace.
 import os
 
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-pytest-minimum-32-chars!")
+os.environ.setdefault(
+    "EXPORT_SIGNING_SECRET", "test-export-signing-secret-separate-from-jwt-2026!"
+)
 os.environ.setdefault("REQUIRE_DATABASE", "false")
+os.environ.setdefault("ALLOW_IN_MEMORY_AUTH", "true")
 
 import json
 import tempfile
@@ -439,6 +443,35 @@ def viewer_token():
     )
 
 
+def _build_test_user_store():
+    """Create explicit test-only accounts without production credential seeding."""
+    from src.auth.models import UserCreate, UserRole
+    from src.services.user_store import InMemoryUserStore
+
+    store = InMemoryUserStore()
+    for user_id, username, password, role in (
+        ("admin-001", "admin", "admin123", UserRole.ADMIN),
+        ("dm-001", "data_manager", "manager123", UserRole.DATA_MANAGER),
+        ("analyst-001", "analyst", "analyst123", UserRole.ANALYST),
+        ("viewer-001", "viewer", "viewer123", UserRole.VIEWER),
+    ):
+        store.create_user(
+            UserCreate(
+                username=username,
+                email=f"{username}@example.com",
+                full_name=username.replace("_", " ").title(),
+                company_id="sds_company",
+                role=role,
+                password=password,
+                is_active=True,
+            ),
+            created_by="pytest",
+        )
+        # Preserve stable IDs used by existing authorization fixtures.
+        store._users[username].id = user_id
+    return store
+
+
 @pytest.fixture
 def client(mock_unit_converter_database):
     """Synchronous HTTP client bound to the FastAPI app (no TestClient/threads).
@@ -494,6 +527,7 @@ def client(mock_unit_converter_database):
     # Run FastAPI's lifespan manually so app.state is initialized (unit_converter, etc.).
     lifespan_cm = app.router.lifespan_context(app)
     loop.run_until_complete(lifespan_cm.__aenter__())
+    app.state.user_store = _build_test_user_store()
 
     transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
     async_client = httpx.AsyncClient(transport=transport, base_url="http://testserver")

@@ -1,0 +1,35 @@
+{
+  "counts": {
+    "current_value_pointers": 1000,
+    "esg_values": 1000,
+    "value_contexts": 1000,
+    "value_revision_events": 1000,
+    "value_revisions": 1000
+  },
+  "deleted": {
+    "current_value_pointers": 1000,
+    "esg_values": 1000,
+    "reported_value_pointers": 0,
+    "value_contexts": 1000,
+    "value_revision_events": 1000,
+    "value_revisions": 1000
+  },
+  "failures": [],
+  "gate": "e4_raw_value_transform_matrix",
+  "imported": 1000,
+  "matrix_path": "data/extracted/analysis/e4_raw_transform_matrix.csv",
+  "min_success_rate": 0.95,
+  "passed": true,
+  "row_count": 1000,
+  "rules": {
+    "emissions_kgco2e_to_tco2e": 333,
+    "energy_kwh_to_mwh": 333,
+    "water_l_to_m3": 334
+  },
+  "transform_summary": {
+    "error": 0,
+    "success": 1000,
+    "success_rate": 1.0,
+    "total": 1000
+  }
+}

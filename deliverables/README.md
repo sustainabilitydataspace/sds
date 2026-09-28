@@ -56,11 +56,11 @@ All deliverables inherit the shared citation rules in
 
 ## Current Status
 
-- Published locally: `E01`, `E02`, `E03`, `E04`, `E05`, `E06`, `E08`, `E09`, `E10`
-- Official URL evidence: `E11`
-- Draft locally, pending final evidence: `E12`
-- Candidate for review, not registered final evidence: `E13`
-- External or pending import: `E07`
+- Published locally: `E01`, `E02`, `E03`, `E04`, `E05`, `E06`, `E07`, `E08`, `E09`, `E10`, `E11`, `E12`, `E13`
+- The English E06 translation (`E06-EN`) is separately registered as published-local.
+- This is the owner-accepted project closeout as of 2026-09-18. See
+  `evidence-public/dossier-closure-status-sds-v2026-09-18.md` for R1–R23;
+  dated observations below describe earlier evidence, not current approval gaps.
 
 Latest checked public gate evidence, refreshed on 2026-06-09:
 
@@ -80,8 +80,8 @@ Latest checked public gate evidence, refreshed on 2026-06-09:
 - `E11`: the official URL remains recorded; HEAD and GET checks on 2026-06-23
   returned HTTP 200, and a 2026-07-22 maintenance pass corrected legal-page
   duplicate-header risk and body-text weight. These observations prove dated
-  reachability and visual/legibility maintenance, not content acceptance,
-  analytics, or E12 impact closure.
+  reachability and visual/legibility maintenance; they did not alone constitute
+  content acceptance. The separate 2026-09-18 owner decision closed R21 and R22.
 
 Base-language publication note: `E01`-`E06` now use Spanish (Spain) Markdown
 sources dated 2026-06-09 as their canonical public paths in

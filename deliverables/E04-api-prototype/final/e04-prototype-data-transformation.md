@@ -1,5 +1,9 @@
 # E4 - API Prototype and Data Transformation
 
+> Superseded non-canonical snapshot. The current E04 acceptance evidence is
+> `e04-prototipo-api-transformacion-datos-v2026-06-09.md` and the public
+> register. This historical snapshot must not be used as current E4 acceptance evidence.
+
 **Date:** 2026-06-08
 **Version:** V2026-06-08
 **Deliverable:** E4 - API Prototype / Prototype Data Transformation
@@ -22,7 +26,7 @@ E4 covers the following prototype capabilities:
 - Evidence generation for timing, success rate, family coverage, and reproducibility.
 - Governance-aware access to protected API functions through the policy and authentication layer defined in E6.
 
-The prototype supports standards-aligned data products for ESRS, GRI, and GHG Protocol through the same SDS register/API contract. The reporting obligations remain defined by the source standards; E4 proves the SDS technical transformation and API publication layer. [@EU_ESRS_2023_2772] [@GRI_STANDARDS_2025] [@GHG_PROTOCOL_CORPORATE_STANDARD] [@GHG_PROTOCOL_SCOPE3_STANDARD]
+The prototype supports standards-aligned data products for ESRS, GRI, and GHG Protocol through the same SDS register/API contract. The reporting obligations remain defined by the source standards; current acceptance of the transformation and API publication layer is recorded in the canonical Spanish E04 report and its executable gates. [@EU_ESRS_2023_2772] [@GRI_STANDARDS_2025] [@GHG_PROTOCOL_CORPORATE_STANDARD] [@GHG_PROTOCOL_SCOPE3_STANDARD]
 
 ## Prototype Surface
 

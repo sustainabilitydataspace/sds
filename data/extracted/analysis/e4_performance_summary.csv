@@ -1,0 +1,2 @@
+dimension_ledger_path,dimension_ledger_checksum,ledger_groups,reportable_coordinates,coordinates_summed,timestamp_utc,gate,gate_result,source_mode,elapsed_seconds,rows_environmental,rows_social,rows_governance,rows_transversal,failure_reasons
+deliverables/E01-mapeo-datos-normativas/evidence/dimension-expanded-value-coordinate-calculation-v2026-06-05.csv,fb7add58b8aa38950c14dad746f98b31,512,87547,87547,2026-07-10T20:05:49Z,E4,PASS,dimension-ledger,0.005,80711,2126,3973,737,

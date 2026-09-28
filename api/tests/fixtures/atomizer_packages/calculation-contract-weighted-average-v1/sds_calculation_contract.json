@@ -1,0 +1,172 @@
+{
+  "contract_version": "atomizer-sds-calculation-contract-v1",
+  "source_package": {
+    "producer": "atomizer",
+    "package_id": "calculation-contract-weighted-average-v1",
+    "version": "1.0.0",
+    "manifest_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "generated_at": "2026-05-19T00:00:00Z"
+  },
+  "register": {
+    "path": "sds_dataset_register.csv",
+    "sha256": "053523f81cf9148ed5e5a5fdbc479adf47d81dd046ddef1465eceb766f6813fe"
+  },
+  "values": {
+    "path": "sds_values.csv",
+    "sha256": "0b20579647c9c632b3dba5d51cfb522a869450d5cc16f90d0f7865c6b49db7eb"
+  },
+  "source": {
+    "project": "atomizer",
+    "generator": "tests",
+    "canonical_model_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "models": [
+    {
+      "model_id": "FIXTURE_WEIGHTED_AVERAGE_CALCULATION",
+      "standard_id": "SDS Fixture",
+      "requirement_id": "calculation:weighted-average",
+      "source_model": "canonical"
+    }
+  ],
+  "nodes": [
+    {
+      "node_id": "fixture:weighted_training_score",
+      "model_id": "FIXTURE_WEIGHTED_AVERAGE_CALCULATION",
+      "indicator_identifier": "urn:sds:reg:test:weighted_training_score",
+      "canonical_datapoint_id": "fixture_weighted_training_score",
+      "label": "Fixture weighted training score",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "calculation",
+      "unit_name": "points",
+      "unit_type": "Score",
+      "parent_id": null,
+      "relation_to_parent": "",
+      "formula": {
+        "kind": "weighted_average",
+        "semantic_expression": "weighted_average(fixture_training_score_points, fixture_training_employee_count)",
+        "runtime_expression": "weighted_average(training_score_points, training_employee_count)",
+        "component_ids": [
+          "fixture_training_score_points",
+          "fixture_training_employee_count"
+        ],
+        "component_refs": [
+          {
+            "component_id": "fixture_training_score_points",
+            "node_id": "fixture:training_score_points",
+            "component_scope": "internal_node",
+            "local_variable": "training_score_points"
+          },
+          {
+            "component_id": "fixture_training_employee_count",
+            "node_id": "fixture:training_employee_count",
+            "component_scope": "internal_node",
+            "local_variable": "training_employee_count",
+            "weight_hint": "denominator"
+          }
+        ],
+        "note": "Pair each score observation with the employee-count weight for the same entity and period."
+      },
+      "aggregation": {
+        "temporal": "WEIGHTED_AVERAGE",
+        "perimeter": "WEIGHTED_AVERAGE",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "dimensions": [
+        {
+          "dimension_id": "social_metric",
+          "mode": "fixed",
+          "fixed_value": "training_score",
+          "member_values": [],
+          "required": true,
+          "rationale": "Weighted social metric fixture"
+        }
+      ],
+      "gate_ids": [
+        "gate_weighted_pairing"
+      ],
+      "support_rule_ids": [
+        "sr_weighted_no_unpaired_values"
+      ],
+      "evidence": [
+        {
+          "source_id": "SDS calculation fixture",
+          "anchor": "weighted-average",
+          "role": "formula_rule"
+        }
+      ],
+      "provenance": {
+        "test": true
+      }
+    },
+    {
+      "node_id": "fixture:training_score_points",
+      "model_id": "FIXTURE_WEIGHTED_AVERAGE_CALCULATION",
+      "canonical_datapoint_id": "fixture_training_score_points",
+      "label": "Fixture training score points",
+      "exposure": "runtime_support",
+      "runtime_status": "semantic_only",
+      "role": "input",
+      "value_kind": "numeric",
+      "source_kind": "calculation_input",
+      "unit_name": "points",
+      "unit_type": "Score",
+      "formula": {
+        "kind": "input"
+      },
+      "aggregation": {
+        "temporal": "AVERAGE",
+        "perimeter": "AVERAGE",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "dimensions": [],
+      "gate_ids": [],
+      "support_rule_ids": [],
+      "evidence": []
+    },
+    {
+      "node_id": "fixture:training_employee_count",
+      "model_id": "FIXTURE_WEIGHTED_AVERAGE_CALCULATION",
+      "canonical_datapoint_id": "fixture_training_employee_count",
+      "label": "Fixture training employee count",
+      "exposure": "runtime_support",
+      "runtime_status": "semantic_only",
+      "role": "input",
+      "value_kind": "numeric",
+      "source_kind": "calculation_input",
+      "unit_name": "FTE",
+      "unit_type": "Workforce",
+      "formula": {
+        "kind": "input"
+      },
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "dimensions": [],
+      "gate_ids": [],
+      "support_rule_ids": [],
+      "evidence": []
+    }
+  ],
+  "support_rules": [
+    {
+      "support_rule_id": "sr_weighted_no_unpaired_values",
+      "title": "No unpaired weighted values",
+      "description": "Each value observation must have a weight observation for the same entity and period."
+    }
+  ],
+  "gates": [
+    {
+      "gate_id": "gate_weighted_pairing",
+      "title": "Weighted pairing check",
+      "description": "The weighted-average engine must pair numerator values and denominator weights before aggregation."
+    }
+  ]
+}

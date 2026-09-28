@@ -1,0 +1,264 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix odrl: <http://www.w3.org/ns/odrl/2/> .
+@prefix sds: <https://sustainabilitydataspace.com/ontology#> .
+
+# SHACL shape for SDS Dataset entities (documentation/reference)
+
+sds:DatasetShape a sh:NodeShape ;
+  sh:targetClass sds:Dataset ;
+  sh:property [
+    sh:path dct:identifier ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "identifier" ;
+  ] ;
+  sh:property [
+    sh:path dct:title ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "title" ;
+  ] ;
+  sh:property [
+    sh:path dct:description ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "description" ;
+  ] ;
+  sh:property [
+    sh:path sds:dimension ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "dimension (E/S/G/Transversal)" ;
+  ] ;
+  sh:property [
+    sh:path sds:evidencePath ;
+    sh:minCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "evidencePath" ;
+  ] ;
+  sh:property [
+    sh:path sds:sourceRow ;
+    sh:minCount 1 ;
+    sh:datatype xsd:integer ;
+    sh:name "sourceRow" ;
+  ] ;
+  sh:property [
+    sh:path sds:codeESRS ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "ESRS code" ;
+  ] ;
+  sh:property [
+    sh:path sds:codeGRI ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "GRI code" ;
+  ] ;
+  sh:property [
+    sh:path sds:codeGHG ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "GHG Protocol code" ;
+  ] ;
+  sh:property [
+    sh:path sds:sourceStandard ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "source standard" ;
+  ] ;
+  sh:property [
+    sh:path sds:standardVersion ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "standard version" ;
+  ] ;
+  sh:property [
+    sh:path sds:sourceIndicator ;
+    sh:minCount 0 ;
+    sh:nodeKind sh:IRI ;
+    sh:name "source indicator" ;
+  ] ;
+  sh:property [
+    sh:path sds:targetIndicator ;
+    sh:minCount 0 ;
+    sh:nodeKind sh:IRI ;
+    sh:name "target indicator" ;
+  ] ;
+  sh:property [
+    sh:path sds:canonicalPivot ;
+    sh:minCount 0 ;
+    sh:nodeKind sh:IRI ;
+    sh:name "canonical pivot" ;
+  ] ;
+  sh:property [
+    sh:path sds:relationshipType ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "relationship type" ;
+  ] ;
+  sh:property [
+    sh:path sds:relationshipStatus ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "relationship status" ;
+  ] ;
+  sh:property [
+    sh:path sds:activationStatus ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "activation status" ;
+  ] ;
+  sh:property [
+    sh:path sds:unitName ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "unit name" ;
+  ] ;
+  sh:property [
+    sh:path sds:unitType ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "unit type" ;
+  ] ;
+  sh:property [
+    sh:path sds:unitConversionPolicy ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "unit conversion policy" ;
+  ] ;
+  sh:property [
+    sh:path sds:conversionStatus ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "conversion status" ;
+  ] ;
+  sh:property [
+    sh:path sds:nonConvertible ;
+    sh:minCount 0 ;
+    sh:datatype xsd:boolean ;
+    sh:name "non-convertible unit flag" ;
+  ] ;
+  sh:property [
+    sh:path sds:calculationStatus ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "calculation status" ;
+  ] ;
+  sh:property [
+    sh:path sds:formula ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "formula" ;
+  ] ;
+  sh:property [
+    sh:path sds:formulaLanguage ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "formula language" ;
+  ] ;
+  sh:property [
+    sh:path sds:componentRef ;
+    sh:minCount 0 ;
+    sh:nodeKind sh:IRI ;
+    sh:name "formula component reference" ;
+  ] ;
+  sh:property [
+    sh:path sds:runtimeExternalInput ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "runtime external input" ;
+  ] ;
+  sh:property [
+    sh:path sds:valueBoundary ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "value boundary" ;
+  ] ;
+  sh:property [
+    sh:path sds:periodicity ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "periodicity" ;
+  ] ;
+  sh:property [
+    sh:path sds:referenceDataSource ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "reference data source" ;
+  ] ;
+  sh:property [
+    sh:path odrl:purpose ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "purpose" ;
+  ] ;
+  sh:property [
+    sh:path dct:spatial ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "spatial coverage" ;
+  ] ;
+  sh:property [
+    sh:path odrl:hasPolicy ;
+    sh:minCount 0 ;
+    sh:nodeKind sh:IRI ;
+    sh:name "policy relationship" ;
+  ] ;
+  sh:property [
+    sh:path dct:conformsTo ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "conforms to" ;
+  ] ;
+  sh:property [
+    sh:path dct:publisher ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "provider" ;
+  ] ;
+  sh:property [
+    sh:path dct:provenance ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "provenance" ;
+  ] ;
+  sh:property [
+    sh:path sds:effectiveFrom ;
+    sh:minCount 0 ;
+    sh:datatype xsd:date ;
+    sh:name "effective from" ;
+  ] ;
+  sh:property [
+    sh:path sds:effectiveTo ;
+    sh:minCount 0 ;
+    sh:datatype xsd:date ;
+    sh:name "effective to" ;
+  ] ;
+  sh:property [
+    sh:path sds:sourceRef ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "sourceRef" ;
+  ] ;
+  sh:property [
+    sh:path dct:creator ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "owner" ;
+  ] ;
+  sh:property [
+    sh:path dct:accessRights ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "accessRights" ;
+  ] ;
+  sh:property [
+    sh:path sds:validationMethod ;
+    sh:minCount 0 ;
+    sh:datatype xsd:string ;
+    sh:name "validationMethod" ;
+  ] .

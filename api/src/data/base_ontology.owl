@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://sustainabilitydataspace.com/ontology#"
+     xml:base="http://sustainabilitydataspace.com/ontology"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:sds="http://sustainabilitydataspace.com/ontology#">
+    <owl:Ontology rdf:about="http://sustainabilitydataspace.com/ontology">
+        <rdfs:label>SustainabilityDataSpace Base Ontology</rdfs:label>
+        <rdfs:comment>Ontología base para el sistema de datos de sostenibilidad</rdfs:comment>
+        <owl:versionInfo>1.0.0</owl:versionInfo>
+    </owl:Ontology>
+
+    <!-- Classes -->
+    <owl:Class rdf:about="#Variable">
+        <rdfs:label>Variable</rdfs:label>
+        <rdfs:comment>Variable de datos ESG</rdfs:comment>
+    </owl:Class>
+
+    <owl:Class rdf:about="#Indicator">
+        <rdfs:label>Indicator</rdfs:label>
+        <rdfs:comment>Indicador calculado ESG</rdfs:comment>
+    </owl:Class>
+
+    <owl:Class rdf:about="#Entity">
+        <rdfs:label>Entity</rdfs:label>
+        <rdfs:comment>Entidad organizativa</rdfs:comment>
+    </owl:Class>
+
+    <owl:Class rdf:about="#Unit">
+        <rdfs:label>Unit</rdfs:label>
+        <rdfs:comment>Unidad de medida</rdfs:comment>
+    </owl:Class>
+
+    <!-- Properties -->
+    <owl:ObjectProperty rdf:about="#hasVariable">
+        <rdfs:label>has variable</rdfs:label>
+        <rdfs:domain rdf:resource="#Indicator"/>
+        <rdfs:range rdf:resource="#Variable"/>
+    </owl:ObjectProperty>
+
+    <owl:ObjectProperty rdf:about="#hasUnit">
+        <rdfs:label>has unit</rdfs:label>
+        <rdfs:range rdf:resource="#Unit"/>
+    </owl:ObjectProperty>
+
+    <owl:ObjectProperty rdf:about="#hasParentEntity">
+        <rdfs:label>has parent entity</rdfs:label>
+        <rdfs:domain rdf:resource="#Entity"/>
+        <rdfs:range rdf:resource="#Entity"/>
+    </owl:ObjectProperty>
+
+    <owl:DatatypeProperty rdf:about="#hasFormula">
+        <rdfs:label>has formula</rdfs:label>
+        <rdfs:domain rdf:resource="#Indicator"/>
+        <rdfs:range rdf:resource="xsd:string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="#hasValue">
+        <rdfs:label>has value</rdfs:label>
+        <rdfs:range rdf:resource="xsd:decimal"/>
+    </owl:DatatypeProperty>
+
+</rdf:RDF>

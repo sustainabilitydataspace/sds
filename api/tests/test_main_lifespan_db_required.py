@@ -12,20 +12,23 @@ from src.config.settings import settings
 
 
 @pytest.mark.asyncio
-async def test_lifespan_runs_with_require_database_and_bootstrap(monkeypatch):
+@pytest.mark.parametrize("externally_managed", [False, True])
+async def test_lifespan_runs_with_require_database_and_bootstrap(
+    monkeypatch, externally_managed
+):
     events: list[object] = []
-    bootstrap_paths: dict[str, dict[str, object]] = {}
 
     # Enable DB-required path without hitting a real Postgres instance.
     monkeypatch.setattr(settings, "require_database", True)
+    monkeypatch.setattr(
+        settings, "schema_migrations_externally_managed", externally_managed
+    )
     monkeypatch.setattr(settings, "seed_default_users", True)
     monkeypatch.setattr(settings, "seed_reference_data_on_startup", True)
     monkeypatch.setattr(settings, "bootstrap_admin_username", "admin")
-    monkeypatch.setattr(settings, "bootstrap_admin_password", SecretStr("secret"))
-    monkeypatch.setattr(settings, "reference_indicators_path", "/operator/indicators.json")
-    monkeypatch.setattr(settings, "reference_mappings_path", "/operator/mappings.json")
-    monkeypatch.setattr(settings, "units_json_path", "/operator/units.json")
-    monkeypatch.setattr(settings, "currencies_seed_path", "/operator/currencies.json")
+    monkeypatch.setattr(
+        settings, "bootstrap_admin_password", SecretStr("TestOnly-9K_Auth2026")
+    )
     monkeypatch.setattr(
         settings,
         "jwt_secret_key",
@@ -38,7 +41,8 @@ async def test_lifespan_runs_with_require_database_and_bootstrap(monkeypatch):
         "src.database.init_db.ping_db", lambda: events.append("ping_db")
     )
     monkeypatch.setattr(
-        "src.database.init_db.init_db", lambda: events.append("init_db")
+        "src.database.init_db.init_db",
+        lambda *, externally_managed: events.append(("init_db", externally_managed)),
     )
 
     # Mock sessions created in lifespan.
@@ -49,15 +53,25 @@ async def test_lifespan_runs_with_require_database_and_bootstrap(monkeypatch):
         MagicMock(side_effect=lambda: events.append("SessionLocal()") or db_session),
     )
 
+    monkeypatch.setattr(
+        "src.services.value_import_job_store.DatabaseValueImportJobStore.reconcile_legacy_active_jobs",
+        lambda _store: events.append("reconcile_legacy_active_jobs") or 0,
+    )
+
+    monkeypatch.setattr(
+        "src.services.canonical_mapping_package_job_store.DatabaseCanonicalMappingPackageJobStore.reconcile_legacy_active_jobs",
+        lambda _store: events.append("reconcile_mapping_jobs") or 0,
+    )
+
     # Mock bootstrap + config loader.
     monkeypatch.setattr(
         "src.database.bootstrap.bootstrap_default_admin",
         lambda _db: events.append("bootstrap_default_admin") or True,
     )
-    def reference_bootstrap(_db, **kwargs):
-        bootstrap_paths["reference"] = kwargs
-        events.append("bootstrap_reference_data_if_empty")
-        return {
+    monkeypatch.setattr(
+        "src.database.bootstrap_reference_data.bootstrap_reference_data_if_empty",
+        lambda _db: events.append("bootstrap_reference_data_if_empty")
+        or {
             "indicators_before": 0,
             "mappings_before": 0,
             "indicators_seeded": 0,
@@ -65,16 +79,12 @@ async def test_lifespan_runs_with_require_database_and_bootstrap(monkeypatch):
             "standards_created": 0,
             "indicators_total": 0,
             "mappings_total": 0,
-        }
-
-    monkeypatch.setattr(
-        "src.database.bootstrap_reference_data.bootstrap_reference_data_if_empty",
-        reference_bootstrap,
+        },
     )
-    def unit_bootstrap(_db, **kwargs):
-        bootstrap_paths["units"] = kwargs
-        events.append("bootstrap_units_if_empty")
-        return {
+    monkeypatch.setattr(
+        "src.database.bootstrap_units.bootstrap_units_if_empty",
+        lambda _db: events.append("bootstrap_units_if_empty")
+        or {
             "categories_before": 0,
             "units_before": 0,
             "rules_before": 0,
@@ -87,24 +97,7 @@ async def test_lifespan_runs_with_require_database_and_bootstrap(monkeypatch):
             "categories_total": 0,
             "units_total": 1,
             "rules_total": 0,
-        }
-
-    monkeypatch.setattr(
-        "src.database.bootstrap_units.bootstrap_units_if_empty",
-        unit_bootstrap,
-    )
-    def currency_bootstrap(_db, **kwargs):
-        bootstrap_paths["currencies"] = kwargs
-        return {
-            "currencies_created": 0,
-            "policies_created": 0,
-            "rate_observations_created": 0,
-            "rate_periods_created": 0,
-        }
-
-    monkeypatch.setattr(
-        "src.database.bootstrap_conversion_catalog.bootstrap_conversion_catalog_if_empty",
-        currency_bootstrap,
+        },
     )
     monkeypatch.setattr(
         "src.database.bootstrap_semantic_model.bootstrap_semantic_model_if_empty",
@@ -154,9 +147,13 @@ async def test_lifespan_runs_with_require_database_and_bootstrap(monkeypatch):
         # No-op; the assertion is that the lifecycle path executes without raising.
         pass
 
-    assert events[:5] == [
+    assert events[:9] == [
         "ping_db",
-        "init_db",
+        ("init_db", externally_managed),
+        "SessionLocal()",
+        "reconcile_legacy_active_jobs",
+        "reconcile_mapping_jobs",
+        "db_session.close",
         "SessionLocal()",
         "bootstrap_default_admin",
         "db_session.close",
@@ -180,16 +177,15 @@ async def test_lifespan_runs_with_require_database_and_bootstrap(monkeypatch):
     )
     assert "PostgresStrategy.close" in events
     assert db_session.close.call_count >= 2
-    assert str(bootstrap_paths["reference"]["indicators_path"]) == "/operator/indicators.json"
-    assert str(bootstrap_paths["reference"]["mappings_path"]) == "/operator/mappings.json"
-    assert str(bootstrap_paths["units"]["units_json_path"]) == "/operator/units.json"
-    assert str(bootstrap_paths["currencies"]["currencies_seed_path"]) == "/operator/currencies.json"
 
 
 @pytest.mark.asyncio
 async def test_lifespan_reraises_default_user_bootstrap_failure(monkeypatch):
     monkeypatch.setattr(settings, "require_database", True)
     monkeypatch.setattr(settings, "seed_default_users", True)
+    monkeypatch.setattr(
+        settings, "bootstrap_admin_password", SecretStr("TestOnly-9K_Auth2026")
+    )
     monkeypatch.setattr(
         settings,
         "jwt_secret_key",
@@ -198,8 +194,18 @@ async def test_lifespan_reraises_default_user_bootstrap_failure(monkeypatch):
     monkeypatch.setattr(settings, "allowed_origins", ["http://localhost:8090"])
 
     monkeypatch.setattr("src.database.init_db.ping_db", lambda: None)
-    monkeypatch.setattr("src.database.init_db.init_db", lambda: None)
+    monkeypatch.setattr(
+        "src.database.init_db.init_db", lambda *, externally_managed: None
+    )
     monkeypatch.setattr("src.database.session.SessionLocal", lambda: MagicMock())
+    monkeypatch.setattr(
+        "src.services.value_import_job_store.DatabaseValueImportJobStore.reconcile_legacy_active_jobs",
+        lambda _store: 0,
+    )
+    monkeypatch.setattr(
+        "src.services.canonical_mapping_package_job_store.DatabaseCanonicalMappingPackageJobStore.reconcile_legacy_active_jobs",
+        lambda _store: 0,
+    )
     monkeypatch.setattr(
         "src.database.bootstrap.bootstrap_default_admin",
         lambda _db: (_ for _ in ()).throw(RuntimeError("admin seed failed")),
@@ -225,8 +231,18 @@ async def test_lifespan_reraises_database_unit_bootstrap_failure(monkeypatch):
     monkeypatch.setattr(settings, "allowed_origins", ["http://localhost:8090"])
 
     monkeypatch.setattr("src.database.init_db.ping_db", lambda: None)
-    monkeypatch.setattr("src.database.init_db.init_db", lambda: None)
+    monkeypatch.setattr(
+        "src.database.init_db.init_db", lambda *, externally_managed: None
+    )
     monkeypatch.setattr("src.database.session.SessionLocal", lambda: MagicMock())
+    monkeypatch.setattr(
+        "src.services.value_import_job_store.DatabaseValueImportJobStore.reconcile_legacy_active_jobs",
+        lambda _store: 0,
+    )
+    monkeypatch.setattr(
+        "src.services.canonical_mapping_package_job_store.DatabaseCanonicalMappingPackageJobStore.reconcile_legacy_active_jobs",
+        lambda _store: 0,
+    )
     monkeypatch.setattr(
         "src.database.bootstrap_semantic_model.bootstrap_semantic_model_if_empty",
         lambda _db: {"status": "skipped"},
@@ -249,7 +265,9 @@ async def test_lifespan_rejects_empty_postgres_unit_catalog(monkeypatch):
     monkeypatch.setattr(settings, "use_postgres_units", True)
 
     monkeypatch.setattr("src.database.init_db.ping_db", lambda: None)
-    monkeypatch.setattr("src.database.init_db.init_db", lambda: None)
+    monkeypatch.setattr(
+        "src.database.init_db.init_db", lambda *, externally_managed: None
+    )
     monkeypatch.setattr("src.database.session.SessionLocal", lambda: MagicMock())
     monkeypatch.setattr(
         "src.database.bootstrap_units.bootstrap_units_if_empty",

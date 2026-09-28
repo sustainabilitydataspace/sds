@@ -1,0 +1,3 @@
+concept,entity,period,external_key,value,unit,value_type,metadata_json,currency,value_date,period_start,period_end,expected_unit,expected_currency,fx_policy_id
+urn:sds:reg:test:conversion_revenue,fixture_entity_fx,2024-12-31,fixture:conversion:revenue:2024,12.5,CurrencyMillion,numeric,"{""observed"":true,""source"":""conversion_contract_fixture""}",GBP,,2024-01-01,2024-12-31,,EUR,ecb-reference-monthly-average
+urn:sds:reg:test:conversion_scope1_emissions,fixture_entity_fx,2024-12-31,fixture:conversion:scope1:2024,250,tCO2e,numeric,"{""observed"":true,""source"":""conversion_contract_fixture""}",,2024-12-31,,,tCO2e,,

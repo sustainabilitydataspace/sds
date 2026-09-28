@@ -72,7 +72,11 @@ def backfill_esg_values_to_revisions(
         tenant_id=_required_text(tenant_id, "tenant_id"),
     )
     revision_store = ValueRevisionStore(db)
-    query = db.query(ESGValue).order_by(ESGValue.period.asc(), ESGValue.id.asc())
+    query = (
+        db.query(ESGValue)
+        .filter(ESGValue.tenant_id == report.tenant_id)
+        .order_by(ESGValue.period.asc(), ESGValue.id.asc())
+    )
     if limit is not None:
         query = query.limit(max(int(limit), 0))
 

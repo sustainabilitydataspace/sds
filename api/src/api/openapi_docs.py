@@ -120,14 +120,18 @@ OPERATION_GUIDANCE: dict[tuple[str, str], OperationGuidance] = {
         ),
     ),
     ("/api/v1/values/import-csv-jobs", "post"): OperationGuidance(
-        purpose="Upload one strict operational values CSV as an asynchronous import job.",
+        purpose="Upload one strict values CSV as a memory/demo-only asynchronous import job.",
         how=(
-            "Use the same CSV contract as `/api/v1/values/import-csv`. Poll the "
+            "Requires `REQUIRE_DATABASE=false`. DB mode returns `503` pending H15, "
+            "before body parsing, upload spooling, authorization or job admission. "
+            "Use `/api/v1/values/import-csv` for supported synchronous imports. "
+            "In memory/demo mode, use the same CSV contract and poll the "
             "returned job id with `/api/v1/values/import-jobs/{job_id}` until "
-            "`status` is `completed` or `failed`."
+            "`status` is `completed` or `failed`. Job state is not durable across restarts."
         ),
         example=(
-            "In Swagger, click **Try it out**, upload a values CSV with header "
+            "In memory/demo mode only, in Swagger, click **Try it out**, "
+            "upload a values CSV with header "
             "`concept,entity,period,value,unit,external_key,value_type,"
             "period_start,period_end`, click **Execute**, then copy the returned "
             "`id` into `/api/v1/values/import-jobs/{job_id}`."
@@ -420,18 +424,22 @@ OPERATION_GUIDANCE: dict[tuple[str, str], OperationGuidance] = {
         ),
     ),
     ("/api/v1/indicators/import-csv-jobs", "post"): OperationGuidance(
-        purpose="Confirm a full SDS indicator register CSV import as an asynchronous all-or-nothing job.",
+        purpose="Async indicator register import admission is unavailable in DB mode pending H15.",
         how=(
-            "Upload a CSV with the same full register header used by the "
-            "validation endpoint, or submit a retained validation id. Poll "
-            "`/api/v1/indicators/import-jobs/{job_id}` and inspect row errors "
-            "with `/errors` if the job fails."
+            "DB mode returns `503` pending H15 for both CSV uploads and retained "
+            "`validation_id` submissions, before body parsing, upload spooling, "
+            "authorization or job admission. Synchronous CSV validation and CLI "
+            "imports remain supported. Existing jobs can still be inspected at "
+            "`/api/v1/indicators/import-jobs/{job_id}` and `/errors`. "
+            "Memory/demo behavior is unchanged; this does not enable catalog "
+            "imports without a database."
         ),
         example=(
-            "In Swagger, click **Try it out**, upload the same full indicator "
-            "register CSV used for validation, click **Execute**, then copy the "
-            "returned `id` into `/api/v1/indicators/import-jobs/{job_id}` until "
-            "the job reaches `completed` or `failed`."
+            "In DB mode, submitting either form returns HTTP `503` with JSON "
+            '`{"detail":"Database-backed async indicator import jobs are unsupported pending H15"}`. '
+            "No job is created or scheduled, and existing jobs are not repaired "
+            "or terminalized. H15 remains open for durable worker leases, fencing "
+            "and restart recovery."
         ),
     ),
     ("/api/v1/mappings/from/{standard}/{code}", "get"): OperationGuidance(

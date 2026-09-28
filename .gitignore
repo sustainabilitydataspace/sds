@@ -8,7 +8,11 @@ api/.venv/
 **/*.py[cod]
 .pytest_cache/
 .coverage
+.coverage*
+api/.coverage*
 htmlcov/
+api/htmlcov/
+api/artifacts/
 
 # Runtime configuration and operator-supplied content
 .env

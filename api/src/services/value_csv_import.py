@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import json
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Optional, TextIO
@@ -11,6 +10,7 @@ from typing import Any, Optional, TextIO
 from pydantic import ValidationError
 
 from src.api.models import ValueCreate, ValueScalar
+from src.services.strict_json import StrictJsonError, loads_strict_json
 
 REQUIRED_VALUE_COLUMNS = ("concept", "entity", "period", "value", "unit")
 OPTIONAL_VALUE_COLUMNS = (
@@ -73,6 +73,10 @@ def load_values_from_handle(
                 f"Values CSV exceeds configured row limit of {max_rows}."
             )
         try:
+            if None in row:
+                raise ValueCsvContractError(
+                    "row contains extra cells beyond the header"
+                )
             payload = {
                 "concept": (row.get("concept") or "").strip(),
                 "entity": ((row.get("entity") or "").strip() or default_entity or ""),
@@ -178,10 +182,10 @@ def _build_metadata(
     if not text:
         return metadata
     try:
-        parsed = json.loads(text)
-    except json.JSONDecodeError as error:
+        parsed = loads_strict_json(text)
+    except StrictJsonError as error:
         raise ValueCsvContractError(
-            f"Invalid metadata_json payload: {error.msg}"
+            f"Invalid metadata_json payload: {error}"
         ) from error
 
     if not isinstance(parsed, dict):

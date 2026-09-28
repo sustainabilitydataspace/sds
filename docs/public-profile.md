@@ -1,22 +1,30 @@
 # Perfil público de SDS
 
-La distribución pública SDS tiene dos carriles deliberadamente separados:
+La distribución pública SDS contiene el código completo de la API, sus
+migraciones, pruebas, contratos y herramientas de importación. Las
+instrucciones de instalación describen una evaluación técnica, no una licencia
+para explotación propia o prestación de servicios a terceros. Véase el
+apartado «Alcance de uso previsto» del `README.md` antes de instalar. Distingue
+dos tipos de datos para quienes la evalúen:
 
-1. Un perfil de demostración autocontenido: PostgreSQL, código, migraciones,
-   ontología mínima SDS, paquete sintético, ejemplos y gates E4/R8–R10.
-2. Un perfil de operador: paquetes externos de indicadores, mapeos, unidades,
-   divisas y semántica que el operador tenga derecho a usar.
+1. Un paquete de demostración sintético incluido para probar la API completa
+   sobre PostgreSQL sin datos operativos de terceros.
+2. Paquetes de operador externos para indicadores, valores y mapeos que cada
+   operador tenga derecho a usar.
 
-El primer carril puede instalarse con claves generadas localmente por
-`make public-env` y no depende de cuentas ni contraseñas de la organización.
-Para procesar paquetes propios en el segundo, cada operador aporta su
-infraestructura, configuración y derechos de uso; la demostración sintética
-no prueba por sí sola ese despliegue operativo.
+La API y el paquete sintético pueden instalarse con claves generadas localmente
+por `make public-env`. Ninguna parte del código requiere las contraseñas del
+equipo que desarrolló SDS.
+Una futura instalación operativa con paquetes propios requiere autorización
+separada del titular de SDS, además de infraestructura, configuración y derechos
+de uso sobre los paquetes externos. La demostración sintética no autoriza ni
+prueba por sí sola ese despliegue operativo.
 
-El perfil de demostración no contiene valores operativos, datos personales,
-secretos, mapeos completos de estándares ni descripciones o etiquetas de
-catálogos de terceros. Sus tres métricas son identificadores SDS propios bajo
-`urn:sds:sample:*`.
+El paquete sintético `api/demo/` no contiene valores operativos, datos
+personales ni secretos. UC-01 a UC-03 prueban observaciones y conversiones;
+UC-04 a UC-06 muestran contratos de almacenamiento y metadatos, sin afirmar
+cálculos o certificaciones no ejecutados. Los paquetes operativos no se
+distribuyen con el repositorio.
 
 Los entregables públicos E01–E13 y el registro de trazabilidad justifican el
 alcance del proyecto. El estado vigente de 2026-09-18 registra el cierre de

@@ -73,21 +73,22 @@ class SemanticDimensionsResponse(BaseModel):
 
 
 def _cursor_secret() -> bytes:
-    secret = settings.export_signing_secret
-    raw = (
-        secret.get_secret_value()
-        if secret is not None
-        else settings.jwt_secret_key.get_secret_value()
-    )
-    return raw.encode("utf-8")
+    return settings.export_signing_secret.get_secret_value().encode("utf-8")
 
 
 def _aware(ts: datetime) -> datetime:
     return ts if ts.tzinfo is not None else ts.replace(tzinfo=timezone.utc)
 
 
-def _cursor_query_filters(scope: str) -> dict[str, str]:
-    return {"scope": scope}
+def _cursor_query_filters(scope: str, tenant: str | None) -> dict[str, str]:
+    filters = {"scope": scope}
+    if tenant is not None:
+        filters["tenant"] = tenant
+    return filters
+
+
+def _scope_context(scope: str, tenant: str | None) -> str:
+    return f"tenant:{tenant}" if tenant is not None else scope
 
 
 def _cursor_valid_time(cursor: BitemporalCursor) -> datetime:
@@ -166,7 +167,7 @@ def list_semantic_dimensions(
 
     # centralized scope authorization (VARCH-8a).
     try:
-        eval_scope, _eval_tenant = resolve_eval_scope(
+        eval_scope, eval_tenant = resolve_eval_scope(
             requested_scope_class=scope,
             user_company_id=current_user.company_id,
             is_admin=current_user.role.value == "admin",
@@ -203,7 +204,7 @@ def list_semantic_dimensions(
                 decoded_cursor,
                 endpoint="/api/v1/semantic-dimensions",
                 authorization_scope_class=eval_scope,
-                query_filters=_cursor_query_filters(scope),
+                query_filters=_cursor_query_filters(scope, eval_tenant),
             )
             if (
                 request_decision is not None
@@ -239,7 +240,7 @@ def list_semantic_dimensions(
         read = resolve_read_context(
             repo,
             evs_key=CATALOG_EVS_KEY,
-            scope_context=eval_scope,
+            scope_context=_scope_context(eval_scope, eval_tenant),
             reporting_period=valid_anchor,
             request_decision_commit_id=request_decision,
         )
@@ -309,7 +310,7 @@ def list_semantic_dimensions(
     if has_more and evs is not None and manifest_hash is not None:
         cursor = BitemporalCursor(
             endpoint="/api/v1/semantic-dimensions",
-            query_filters={"scope": scope},
+            query_filters=_cursor_query_filters(scope, eval_tenant),
             valid_time_selector=ctx.valid_as_of.isoformat(),
             decision_commit_id=ctx.decision_commit_id,
             effective_version_set_hash=evs.evs_hash,

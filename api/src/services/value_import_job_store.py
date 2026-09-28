@@ -212,6 +212,10 @@ class DatabaseValueImportJobStore:
             self._to_response(job) for job in self._repo.list_active_for_recovery(limit)
         ]
 
+    def reconcile_legacy_active_jobs(self) -> int:
+        """Reconcile DB jobs under the repository's quiescence precondition."""
+        return self._repo.reconcile_legacy_active_jobs()
+
     def complete(
         self,
         *,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from src.api.models import IndicatorImportJobStatus
 from src.config.settings import settings
 from src.database.session import SessionLocal
 from src.services.indicator_import import (
@@ -26,7 +27,9 @@ def run_indicator_import_job(
     if not settings.require_database:
         store = getattr(app.state, "indicator_import_job_store", None)
         if store is not None:
-            store.mark_running(job_id)
+            claim = store.mark_running(job_id)
+            if claim is None or claim.status != IndicatorImportJobStatus.RUNNING:
+                return
             store.fail(
                 job_id=job_id,
                 error_message="Indicator imports require database-backed mode",
@@ -35,9 +38,13 @@ def run_indicator_import_job(
         return
 
     db = SessionLocal()
+    claimed = False
     try:
         job_store = DatabaseIndicatorImportJobStore(db)
-        job_store.mark_running(job_id)
+        claim = job_store.mark_running(job_id)
+        if claim is None or claim.status != IndicatorImportJobStatus.RUNNING:
+            return
+        claimed = True
         plan = apply_indicator_import_transactional(
             csv_text=csv_text,
             db=db,
@@ -56,6 +63,9 @@ def run_indicator_import_job(
             committed=plan.committed,
         )
     except IndicatorImportValidationError as error:
+        if not claimed:
+            db.rollback()
+            return
         result_body = error.plan.to_result_body()
         DatabaseIndicatorImportJobStore(db).fail(
             job_id=job_id,
@@ -68,8 +78,9 @@ def run_indicator_import_job(
         )
     except Exception as error:
         db.rollback()
-        DatabaseIndicatorImportJobStore(db).fail(
-            job_id=job_id, error_message=str(error), committed=False
-        )
+        if claimed:
+            DatabaseIndicatorImportJobStore(db).fail(
+                job_id=job_id, error_message=str(error), committed=False
+            )
     finally:
         db.close()

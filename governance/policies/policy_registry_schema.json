@@ -1,0 +1,282 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sustainabilitydataspace.com/schema/sds/policy-registry-v1.json",
+  "title": "SDS Policy Registry Schema",
+  "description": "JSON Schema for validating SDS policy registry with deny-by-default semantics",
+  "type": "object",
+  "required": ["version", "denyByDefault", "defaultDenyPolicy", "policies"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Version date in ISO format"
+    },
+    "effectiveDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when this registry version becomes effective"
+    },
+    "description": {
+      "type": "string"
+    },
+    "denyByDefault": {
+      "type": "boolean",
+      "const": true,
+      "description": "Must be true to enforce deny-by-default semantics"
+    },
+    "defaultDenyPolicy": {
+      "type": "string",
+      "description": "Policy UID to apply when no explicit policy matches"
+    },
+    "policies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/policy"
+      }
+    },
+    "purposeVocabulary": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/vocabularyEntry"
+      }
+    },
+    "regionVocabulary": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/regionEntry"
+      }
+    }
+  },
+  "definitions": {
+    "policy": {
+      "type": "object",
+      "required": ["uid", "name", "status", "legalBasis", "odrl"],
+      "properties": {
+        "uid": {
+          "type": "string",
+          "pattern": "^policy-[a-z0-9-]+$",
+          "description": "Unique policy identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "deprecated", "pilot", "planned"],
+          "description": "Policy lifecycle status"
+        },
+        "effectiveDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "sunsetDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Date when policy will be deprecated"
+        },
+        "legalBasis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Legal basis reference (e.g., GDPR Art. 6(1)(c))"
+        },
+        "purpose": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Purposes this policy applies to"
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Regions this policy applies to"
+        },
+        "retentionDays": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum retention period in days"
+        },
+        "compositionMode": {
+          "type": "string",
+          "enum": ["standalone", "additive"],
+          "default": "standalone",
+          "description": "How this policy combines with others"
+        },
+        "odrl": {
+          "$ref": "#/definitions/odrlPolicy"
+        }
+      }
+    },
+    "odrlPolicy": {
+      "type": "object",
+      "required": ["@context", "@type"],
+      "properties": {
+        "@context": {
+          "type": "string"
+        },
+        "@type": {
+          "type": "string",
+          "enum": ["Set", "Offer", "Agreement"]
+        },
+        "permission": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odrlRule"
+          }
+        },
+        "prohibition": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odrlRule"
+          }
+        },
+        "obligation": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odrlRule"
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "permission": {
+              "type": "array",
+              "minItems": 0
+            },
+            "prohibition": {
+              "type": "array",
+              "minItems": 1
+            }
+          },
+          "required": ["prohibition"]
+        },
+        {
+          "properties": {
+            "permission": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["constraint"],
+                "properties": {
+                  "constraint": {
+                    "type": "array",
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          },
+          "required": ["permission"]
+        }
+      ],
+      "description": "ODRL policy must have either prohibitions or permissions with non-empty constraints (no allow-all)"
+    },
+    "odrlRule": {
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object" }
+          ]
+        },
+        "target": {
+          "type": "string"
+        },
+        "assignee": {
+          "type": "string"
+        },
+        "constraint": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odrlConstraint"
+          }
+        },
+        "duty": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odrlRule"
+          }
+        },
+        "remedy": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odrlRule"
+          }
+        },
+        "refinement": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odrlConstraint"
+          }
+        }
+      }
+    },
+    "odrlConstraint": {
+      "type": "object",
+      "required": ["leftOperand", "operator", "rightOperand"],
+      "properties": {
+        "leftOperand": {
+          "type": "string"
+        },
+        "operator": {
+          "type": "string",
+          "enum": ["eq", "neq", "lt", "lteq", "gt", "gteq", "isA", "isAnyOf", "isNoneOf", "isAllOf", "hasPart", "isPartOf"]
+        },
+        "rightOperand": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "unit": {
+          "type": "string"
+        }
+      }
+    },
+    "vocabularyEntry": {
+      "type": "object",
+      "required": ["description"],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "defaultPolicyId": {
+          "type": "string"
+        }
+      }
+    },
+    "regionEntry": {
+      "type": "object",
+      "required": ["description"],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "includes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parentRegion": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

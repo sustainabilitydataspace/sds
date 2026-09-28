@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
-import json
 import uuid
 from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy.exc import TimeoutError as SQLAlchemyTimeoutError
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from src.api.models import CanonicalMappingPackageJobResponse
+from src.auth.authorization import has_cross_tenant_admin_access
 from src.auth.models import User
 from src.config.settings import settings
+from src.database.repositories.canonical_mapping_package_job_repository import (
+    CanonicalMappingImportBusy,
+    canonical_mapping_import_session,
+)
 from src.database.session import get_db_optional
 from src.policies.policy_enforcer import require_policy
 from src.services.canonical_mapping_db_import import (
@@ -26,6 +32,7 @@ from src.services.canonical_mapping_installed_standards import (
     validate_canonical_mapping_installed_standard_compatibility,
 )
 from src.services.canonical_mapping_package_job_store import (
+    DatabaseCanonicalMappingPackageJobStore,
     get_canonical_mapping_package_job_store,
 )
 from src.services.canonical_pairwise_materialization import (
@@ -34,7 +41,20 @@ from src.services.canonical_pairwise_materialization import (
     materialize_pairwise_mappings,
 )
 
-router = APIRouter()
+
+async def _require_global_canonical_mapping_operator(
+    user: User = Depends(require_policy("mappings", "write")),
+) -> User:
+    """Global package jobs and inputs are not tenant-local mapping writes."""
+    if not has_cross_tenant_admin_access(user):
+        raise HTTPException(
+            status_code=403,
+            detail="Bearer administrator required for global canonical mapping packages.",
+        )
+    return user
+
+
+router = APIRouter(dependencies=[Depends(_require_global_canonical_mapping_operator)])
 
 INTERNAL_ASSERTION_INSPECTION_CONTRACT = {
     "surface": "internal_shadow_mapping_assertions",
@@ -66,6 +86,7 @@ class MappingAssertionPackageInspectionResponse(BaseModel):
     relationship_type_counts: dict[str, int]
     non_operational_relationship_type_counts: dict[str, int]
     target_identity_status_counts: dict[str, int]
+    truncated: bool
     candidates: list[dict[str, Any]]
 
 
@@ -111,11 +132,11 @@ async def inspect_mapping_assertion_package(
         default=False,
         description="Include operational relationship candidates as well as review-only rows.",
     ),
-    limit: int | None = Query(
-        default=None,
+    limit: int = Query(
+        default=1000,
         ge=1,
         le=1000,
-        description="Maximum candidates to return. Null means no explicit API cap.",
+        description="Maximum candidates to return; always bounded server-side.",
     ),
     user: User = Depends(require_policy("mappings", "write")),
 ) -> MappingAssertionPackageInspectionResponse:
@@ -129,11 +150,10 @@ async def inspect_mapping_assertion_package(
     )
     payload = report.as_dict()
     validation_payload = payload["validation"]
-    manifest_payload = _load_manifest_payload(package_dir)
     return MappingAssertionPackageInspectionResponse(
         api_contract=dict(INTERNAL_ASSERTION_INSPECTION_CONTRACT),
         package_id=package_id,
-        source_version=_optional_text(manifest_payload.get("source_version")),
+        source_version=_optional_text(validation_payload.get("source_version")),
         manifest_hash=validation_payload.get("manifest_hash"),
         package_schema_version=validation_payload.get("package_schema_version"),
         operational_blockers=list(validation_payload.get("operational_blockers", [])),
@@ -218,25 +238,7 @@ async def get_mapping_package_validation_job(
     return job
 
 
-@router.post(
-    "/{package_id}/import-jobs",
-    response_model=CanonicalMappingPackageJobResponse,
-    status_code=202,
-)
-async def submit_mapping_package_import_job(
-    package_id: str,
-    request_body: CanonicalMappingPackageImportRequest,
-    db: Session | None = Depends(get_db_optional),
-    job_store=Depends(get_canonical_mapping_package_job_store),
-    user: User = Depends(require_policy("mappings", "write")),
-) -> CanonicalMappingPackageJobResponse:
-    """Import only the installed-compatible canonical mapping package slice."""
-
-    if db is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Canonical mapping package imports require database-backed mode.",
-        )
+def _preflight_mapping_import(package_id, request_body, db, job_store):
     package_dir = _resolve_allowed_package_id(package_id)
     installed_releases = _installed_release_keys_from_request(
         request_body.installed_standard_releases,
@@ -261,9 +263,118 @@ async def submit_mapping_package_import_job(
             request_body=request_body,
             installed_releases=installed_releases,
         )
+    return package_dir, installed_releases, request_body.compatibility_mode == "partial"
 
-    allow_partial = request_body.compatibility_mode == "partial"
 
+@router.post(
+    "/{package_id}/import-jobs",
+    response_model=CanonicalMappingPackageJobResponse,
+    status_code=202,
+)
+async def submit_mapping_package_import_job(
+    package_id: str,
+    request_body: CanonicalMappingPackageImportRequest,
+    db: Session | None = Depends(get_db_optional),
+    job_store=Depends(get_canonical_mapping_package_job_store),
+    user: User = Depends(require_policy("mappings", "write")),
+) -> CanonicalMappingPackageJobResponse:
+    """Import only the installed-compatible canonical mapping package slice."""
+
+    if db is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Canonical mapping package imports require database-backed mode.",
+        )
+    if isinstance(job_store, DatabaseCanonicalMappingPackageJobStore):
+        if not isinstance(db, Session):
+            raise HTTPException(status_code=503, detail="Database session unavailable")
+
+        def prepare_database_import():
+            try:
+                prepared = _preflight_mapping_import(
+                    package_id, request_body, db, job_store
+                )
+                return db.get_bind(), prepared
+            finally:
+                db.rollback()
+                db.close()  # Release auth/preflight before import admission.
+
+        try:
+            bind, (package_dir, installed_releases, allow_partial) = (
+                await run_in_threadpool(prepare_database_import)
+            )
+        except SQLAlchemyTimeoutError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="Canonical mapping preflight capacity unavailable.",
+            ) from exc
+
+        def run_pinned_import():
+            try:
+                with canonical_mapping_import_session(bind) as import_db:
+                    pinned_store = DatabaseCanonicalMappingPackageJobStore(import_db)
+                    return _execute_mapping_import_job(
+                        package_id,
+                        request_body,
+                        package_dir,
+                        installed_releases,
+                        allow_partial,
+                        user,
+                        import_db,
+                        pinned_store,
+                    )
+            except CanonicalMappingImportBusy as exc:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Another canonical mapping package import is pending or running.",
+                ) from exc
+            except SQLAlchemyTimeoutError as exc:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Canonical mapping import capacity unavailable.",
+                ) from exc
+
+        return await run_in_threadpool(run_pinned_import)
+
+    package_dir, installed_releases, allow_partial = _preflight_mapping_import(
+        package_id, request_body, db, job_store
+    )
+
+    def run_test_store_import():
+        with job_store.import_lifecycle_lock():
+            return _execute_mapping_import_job(
+                package_id,
+                request_body,
+                package_dir,
+                installed_releases,
+                allow_partial,
+                user,
+                db,
+                job_store,
+            )
+
+    if isinstance(db, Session) and db.get_bind().dialect.name == "sqlite":
+        # Local SQLite fixtures keep one thread-bound connection per session.
+        return run_test_store_import()
+    return await run_in_threadpool(run_test_store_import)
+
+
+def _execute_mapping_import_job(
+    package_id,
+    request_body,
+    package_dir,
+    installed_releases,
+    allow_partial,
+    user,
+    db,
+    job_store,
+) -> CanonicalMappingPackageJobResponse:
+    """Submit and terminate one import while the lifecycle lock is held."""
+
+    # With the session-scoped lifecycle lock held, a pending/running row from
+    # an earlier worker has no live owner. Reconcile before admitting the next
+    # job; a rival live owner is rejected before reaching this function.
+    job_store.reconcile_legacy_active_jobs()
     job_store.acquire_import_submission_lock()
     if job_store.has_active_import():
         raise HTTPException(
@@ -303,34 +414,40 @@ async def submit_mapping_package_import_job(
             created_by=getattr(user, "username", "canonical_mapping_package_api"),
             installed_standard_releases=installed_releases,
             allow_partial_installed_standards=allow_partial,
+            commit=False,
         )
-    except Exception as exc:
+        report.committed = bool(
+            report.valid and not report.blocked and not request_body.dry_run
+        )
+        compatibility = report.compatibility or {}
+        total_rows = sum(compatibility.get("status_counts", {}).values())
+        accepted_rows = int(compatibility.get("importable_assertion_group_count") or 0)
+        rejected_rows = total_rows - accepted_rows
+        completed = job_store.complete(
+            job_id=job_id,
+            result_body=report.as_dict(),
+            total_rows=total_rows,
+            accepted_rows=accepted_rows,
+            rejected_rows=rejected_rows,
+            committed=report.committed,
+            error_message="; ".join(report.blockers) if report.blocked else None,
+            commit=False,
+        )
+        if completed is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Canonical mapping package import job could not be completed.",
+            )
+        job_store.commit_import()
+        return completed
+    except Exception:
+        job_store.rollback_import()
         job_store.fail(
             job_id=job_id,
-            error_message=str(exc),
+            error_message="Canonical mapping package import failed; transaction rolled back.",
             committed=False,
         )
         raise
-
-    compatibility = report.compatibility or {}
-    total_rows = sum(compatibility.get("status_counts", {}).values())
-    accepted_rows = int(compatibility.get("importable_assertion_group_count") or 0)
-    rejected_rows = total_rows - accepted_rows
-    completed = job_store.complete(
-        job_id=job_id,
-        result_body=report.as_dict(),
-        total_rows=total_rows,
-        accepted_rows=accepted_rows,
-        rejected_rows=rejected_rows,
-        committed=report.committed,
-        error_message="; ".join(report.blockers) if report.blocked else None,
-    )
-    if completed is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Canonical mapping package import job could not be completed.",
-        )
-    return completed
 
 
 @router.get(
@@ -402,11 +519,12 @@ def _resolve_allowed_package_id(package_id: str) -> Path:
         )
 
     for root in allowed_roots:
-        candidate = (root / package_id).resolve()
+        candidate = root / package_id
         if (
             _is_relative_to(candidate, root)
             and candidate.exists()
             and candidate.is_dir()
+            and not candidate.is_symlink()
         ):
             return candidate
     raise HTTPException(
@@ -434,16 +552,6 @@ def _is_relative_to(path: Path, root: Path) -> bool:
         return True
     except ValueError:
         return False
-
-
-def _load_manifest_payload(package_dir: Path) -> dict[str, Any]:
-    try:
-        payload = json.loads(
-            (package_dir / "manifest.json").read_text(encoding="utf-8")
-        )
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
 
 
 def _optional_text(value: object) -> str | None:

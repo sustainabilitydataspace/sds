@@ -1,0 +1,13 @@
+[flake8]
+# Baseline gate for the current service state.
+# Full style enforcement should be introduced with a separate Black/isort
+# formatting migration because the existing tree would reformat broadly.
+select = E9,F63,F7,F82
+exclude =
+    .git,
+    .pytest_cache,
+    .venv,
+    __pycache__,
+    archive,
+    artifacts,
+    htmlcov

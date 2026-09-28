@@ -19,6 +19,11 @@ def _utc(value: datetime) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def _require_identity(name: str, value: str) -> None:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be a non-blank string")
+
+
 class IndicatorImportJobRepository:
     """Persist and query indicator import jobs."""
 
@@ -32,6 +37,8 @@ class IndicatorImportJobRepository:
         job_type: str,
         source_format: str,
         submitted_by: str,
+        tenant_id: str,
+        owner_user_id: str,
         source_filename: Optional[str] = None,
         source_sha256: Optional[str] = None,
         source_size_bytes: Optional[int] = None,
@@ -46,12 +53,19 @@ class IndicatorImportJobRepository:
         committed: Optional[bool] = None,
         error_message: Optional[str] = None,
     ) -> IndicatorImportJob:
+        _require_identity("tenant_id", tenant_id)
+        _require_identity("owner_user_id", owner_user_id)
         now = datetime.now(timezone.utc)
         persisted_source_payload = source_payload
-        if job_type == "import" and status in {"completed", "failed"}:
+        if job_type == "validation" or (
+            job_type == "import" and status in {"completed", "failed"}
+        ):
             persisted_source_payload = None
         job = IndicatorImportJob(
             id=job_id,
+            tenant_id=tenant_id,
+            owner_user_id=owner_user_id,
+            ownership_state="resolved",
             job_type=job_type,
             source_format=source_format,
             status=status,
@@ -90,10 +104,25 @@ class IndicatorImportJobRepository:
             {"key": INDICATOR_IMPORT_SUBMISSION_LOCK_KEY},
         )
 
-    def get(self, job_id: str) -> Optional[IndicatorImportJob]:
+    def get(self, job_id: str, *, tenant_id: str) -> Optional[IndicatorImportJob]:
+        _require_identity("tenant_id", tenant_id)
         return (
             self.db.query(IndicatorImportJob)
-            .filter(IndicatorImportJob.id == job_id)
+            .filter(
+                IndicatorImportJob.id == job_id,
+                IndicatorImportJob.tenant_id == tenant_id,
+                IndicatorImportJob.ownership_state == "resolved",
+            )
+            .first()
+        )
+
+    def _get_unscoped(self, job_id: str) -> Optional[IndicatorImportJob]:
+        return (
+            self.db.query(IndicatorImportJob)
+            .filter(
+                IndicatorImportJob.id == job_id,
+                IndicatorImportJob.ownership_state == "resolved",
+            )
             .first()
         )
 
@@ -103,6 +132,7 @@ class IndicatorImportJobRepository:
             .filter(
                 IndicatorImportJob.job_type == "import",
                 IndicatorImportJob.status.in_(("pending", "running")),
+                IndicatorImportJob.ownership_state == "resolved",
             )
             .first()
             is not None
@@ -125,7 +155,10 @@ class IndicatorImportJobRepository:
             .filter(
                 IndicatorImportJob.job_type == "import",
                 IndicatorImportJob.status.in_(("pending", "running")),
+                IndicatorImportJob.ownership_state == "resolved",
             )
+            .populate_existing()
+            .with_for_update()
             .all()
         )
         recovered = 0
@@ -139,7 +172,6 @@ class IndicatorImportJobRepository:
                 f"the active timeout of {max_age_minutes} minutes."
             )
             job.committed = False
-            job.source_payload = None
             job.completed_at = reference_now
             job.updated_at = reference_now
             recovered += 1
@@ -155,10 +187,11 @@ class IndicatorImportJobRepository:
         self,
         job_id: str,
         *,
+        tenant_id: str,
         validation_payload_retention_hours: int | None = None,
         now: datetime | None = None,
     ) -> Optional[str]:
-        job = self.get(job_id)
+        job = self.get(job_id, tenant_id=tenant_id)
         if job is None or job.source_payload is None:
             return None
         if (
@@ -178,17 +211,35 @@ class IndicatorImportJobRepository:
                 return None
         return job.source_payload
 
-    def mark_running(self, job_id: str) -> Optional[IndicatorImportJob]:
-        job = self.get(job_id)
-        if job is None:
+    def _transition(
+        self, job_id: str, *, from_statuses: tuple[str, ...], values: dict
+    ) -> Optional[IndicatorImportJob]:
+        """Compare and set in SQL, including when this session has stale objects."""
+        changed = (
+            self.db.query(IndicatorImportJob)
+            .filter(
+                IndicatorImportJob.id == job_id,
+                IndicatorImportJob.status.in_(from_statuses),
+                IndicatorImportJob.ownership_state == "resolved",
+            )
+            .update(values, synchronize_session=False)
+        )
+        if changed != 1:
+            self.db.rollback()
             return None
-        now = datetime.now(timezone.utc)
-        job.status = "running"
-        job.started_at = now
-        job.updated_at = now
         self.db.commit()
+        job = self._get_unscoped(job_id)
         self.db.refresh(job)
         return job
+
+    def mark_running(self, job_id: str) -> Optional[IndicatorImportJob]:
+        """Return a claim only for the winner of pending -> running."""
+        now = datetime.now(timezone.utc)
+        return self._transition(
+            job_id,
+            from_statuses=("pending",),
+            values={"status": "running", "started_at": now, "updated_at": now},
+        )
 
     def complete(
         self,
@@ -200,24 +251,22 @@ class IndicatorImportJobRepository:
         rejected_rows: int,
         committed: bool,
     ) -> Optional[IndicatorImportJob]:
-        job = self.get(job_id)
-        if job is None:
-            return None
         now = datetime.now(timezone.utc)
-        job.status = "completed"
-        job.result_body = result_body
-        job.total_rows = total_rows
-        job.accepted_rows = accepted_rows
-        job.rejected_rows = rejected_rows
-        job.committed = committed
-        job.error_message = None
-        if job.job_type == "import":
-            job.source_payload = None
-        job.completed_at = now
-        job.updated_at = now
-        self.db.commit()
-        self.db.refresh(job)
-        return job
+        return self._transition(
+            job_id,
+            from_statuses=("running",),
+            values={
+                "status": "completed",
+                "result_body": result_body,
+                "total_rows": total_rows,
+                "accepted_rows": accepted_rows,
+                "rejected_rows": rejected_rows,
+                "committed": committed,
+                "error_message": None,
+                "completed_at": now,
+                "updated_at": now,
+            },
+        )
 
     def fail(
         self,
@@ -230,21 +279,19 @@ class IndicatorImportJobRepository:
         rejected_rows: Optional[int] = None,
         committed: Optional[bool] = None,
     ) -> Optional[IndicatorImportJob]:
-        job = self.get(job_id)
-        if job is None:
-            return None
         now = datetime.now(timezone.utc)
-        job.status = "failed"
-        job.result_body = result_body
-        job.total_rows = total_rows
-        job.accepted_rows = accepted_rows
-        job.rejected_rows = rejected_rows
-        job.committed = committed
-        job.error_message = error_message
-        if job.job_type == "import":
-            job.source_payload = None
-        job.completed_at = now
-        job.updated_at = now
-        self.db.commit()
-        self.db.refresh(job)
-        return job
+        return self._transition(
+            job_id,
+            from_statuses=("pending", "running"),
+            values={
+                "status": "failed",
+                "result_body": result_body,
+                "total_rows": total_rows,
+                "accepted_rows": accepted_rows,
+                "rejected_rows": rejected_rows,
+                "committed": committed,
+                "error_message": error_message,
+                "completed_at": now,
+                "updated_at": now,
+            },
+        )

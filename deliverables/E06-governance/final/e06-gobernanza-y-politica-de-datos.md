@@ -5,6 +5,7 @@ Deliverable: E6 — Gobernanza y Política de Datos
 Work Package: WP3 (Governance)
 Version: V2026-06-08
 Date (UTC): 2026-06-08
+Status: published-local
 Owner: SDS Program Office
 
 ---

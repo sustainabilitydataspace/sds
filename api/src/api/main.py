@@ -2,12 +2,15 @@
 FastAPI main application for SustainabilityDataSpace API.
 """
 
+import asyncio
+import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from ipaddress import ip_address
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import (
     get_redoc_html,
@@ -20,9 +23,14 @@ from fastapi.staticfiles import StaticFiles
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 import structlog
+from src.api.metrics import READINESS_STATE
 from src.api.middleware import (
+    IndicatorJobAdmissionMiddleware,
+    RequestBodyLimitMiddleware,
+    ValueJobAdmissionMiddleware,
     setup_error_handling,
     setup_logging_middleware,
     setup_security_headers_middleware,
@@ -49,7 +57,10 @@ from src.api.routers import (
     units,
     values,
 )
+from src.auth.dependencies import require_permission
+from src.auth.models import Permission
 from src.config.settings import settings
+from src.logging_setup import configure_runtime_logging
 
 logger = structlog.get_logger(__name__)
 
@@ -99,6 +110,23 @@ def _looks_like_placeholder_secret(value: str) -> bool:
 def _validate_security_settings() -> None:
     """Validate security-sensitive settings for production-like deployments."""
     if not settings.require_database:
+        if not settings.allow_in_memory_auth:
+            raise RuntimeError(
+                "REQUIRE_DATABASE=false requires explicit ALLOW_IN_MEMORY_AUTH=true; "
+                "this local-only mode has no durable identity or session state"
+            )
+        configured_host = settings.host.strip().lower()
+        try:
+            is_loopback = (
+                configured_host == "localhost"
+                or ip_address(configured_host).is_loopback
+            )
+        except ValueError:
+            is_loopback = False
+        if not is_loopback:
+            raise RuntimeError(
+                "ALLOW_IN_MEMORY_AUTH is local-only and requires a loopback HOST"
+            )
         return
 
     _jwt_val = settings.jwt_secret_key.get_secret_value()
@@ -124,6 +152,15 @@ def _validate_security_settings() -> None:
                 "(e.g. 'change_me'); set a strong password when SEED_DEFAULT_USERS=true "
                 "and REQUIRE_DATABASE=true"
             )
+        if len(_admin_pw) < 16:
+            raise RuntimeError(
+                "BOOTSTRAP_ADMIN_PASSWORD must be at least 16 characters when "
+                "SEED_DEFAULT_USERS=true"
+            )
+        if len(set(_admin_pw)) < 8:
+            raise RuntimeError(
+                "BOOTSTRAP_ADMIN_PASSWORD must have sufficient character diversity"
+            )
 
     if "*" in (settings.allowed_origins or []):
         raise RuntimeError(
@@ -142,6 +179,7 @@ def _should_use_postgres_units() -> bool:
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
+    configure_runtime_logging(settings.log_level)
     logger.info("Starting SustainabilityDataSpace API")
 
     # Initialize components
@@ -160,8 +198,47 @@ async def lifespan(app: FastAPI):
                 use_postgres_units=use_postgres_units,
             )
             ping_db()
-            init_db()
+            init_db(externally_managed=settings.schema_migrations_externally_managed)
             logger.info("Database ready")
+
+            if settings.require_database:
+                # Controlled maintenance only: old instances/workers must be
+                # stopped and a single writer enforced before starting this API.
+                try:
+                    from src.services.canonical_mapping_package_job_store import (
+                        DatabaseCanonicalMappingPackageJobStore,
+                    )
+                    from src.services.value_import_job_store import (
+                        DatabaseValueImportJobStore,
+                    )
+
+                    db_session = SessionLocal()
+                    try:
+                        reconciled_count = DatabaseValueImportJobStore(
+                            db_session
+                        ).reconcile_legacy_active_jobs()
+                        mapping_reconciled_count = (
+                            DatabaseCanonicalMappingPackageJobStore(
+                                db_session
+                            ).reconcile_legacy_active_jobs()
+                        )
+                    finally:
+                        db_session.close()
+                except Exception:
+                    # Neither application logs nor the server's startup traceback
+                    # may expose driver errors, SQL parameters or retained data.
+                    raise RuntimeError(
+                        "Startup job reconciliation could not complete; "
+                        "startup refused"
+                    ) from None
+                logger.info(
+                    "Legacy value job reconciliation completed",
+                    reconciled_count=reconciled_count,
+                )
+                logger.info(
+                    "Legacy canonical mapping job reconciliation completed",
+                    reconciled_count=mapping_reconciled_count,
+                )
 
             if settings.require_database and settings.seed_default_users:
                 try:
@@ -193,17 +270,8 @@ async def lifespan(app: FastAPI):
                             bootstrap_reference_data_if_empty,
                         )
 
-                        reference_kwargs = {}
-                        if settings.reference_indicators_path:
-                            reference_kwargs["indicators_path"] = Path(
-                                settings.reference_indicators_path
-                            ).expanduser()
-                        if settings.reference_mappings_path:
-                            reference_kwargs["mappings_path"] = Path(
-                                settings.reference_mappings_path
-                            ).expanduser()
                         bootstrap_summary = bootstrap_reference_data_if_empty(
-                            db_session, **reference_kwargs
+                            db_session
                         )
                         logger.info(
                             "Reference data bootstrap checked", **bootstrap_summary
@@ -227,23 +295,13 @@ async def lifespan(app: FastAPI):
 
                     from src.database.bootstrap_units import bootstrap_units_if_empty
 
-                    unit_kwargs = {}
-                    if settings.units_json_path:
-                        unit_kwargs["units_json_path"] = Path(
-                            settings.units_json_path
-                        ).expanduser()
-                    units_summary = bootstrap_units_if_empty(db_session, **unit_kwargs)
+                    units_summary = bootstrap_units_if_empty(db_session)
                     from src.database.bootstrap_conversion_catalog import (
                         bootstrap_conversion_catalog_if_empty,
                     )
 
-                    currency_kwargs = {}
-                    if settings.currencies_seed_path:
-                        currency_kwargs["currencies_seed_path"] = Path(
-                            settings.currencies_seed_path
-                        ).expanduser()
                     conversion_catalog_summary = bootstrap_conversion_catalog_if_empty(
-                        db_session, **currency_kwargs
+                        db_session
                     )
                 finally:
                     db_session.close()
@@ -328,18 +386,20 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SustainabilityDataSpace API",
     description="""
-    ## API de datos ESG
+    ## Unified ESG Ontology API
 
-    Sustainability Data Space importa, gobierna y calcula datos ESG mediante
-    una base de datos y paquetes autorizados por el operador. Los identificadores
-    de estándares se conservan literalmente en los paquetes, pero el servicio no
-    distribuye catálogos ni descripciones de estándares de terceros.
+    The SustainabilityDataSpace API provides a comprehensive solution for managing Environmental, Social, and Governance (ESG) data through an integrated ontology that unifies current reporting taxonomies and operational SDS concepts:
+
+    * **CSRD** - Corporate Sustainability Reporting Directive (European regulatory framework)
+    * **GRI** - Global Reporting Initiative (voluntary global standards)
+    * **GHG Protocol** - Greenhouse gas accounting metrics and calculation guidance
+    * **Sygris** - Operational variables for sustainability data collection
 
     ### Key Features
 
-    * **Conversión de unidades** - Usa el catálogo autorizado que aporte el operador
+    * **Automatic Unit Conversion** - Convert across a broad bundled unit catalog grouped in 16 categories
     * **Hierarchical Aggregation** - Organizational and temporal data aggregation
-    * **Integración semántica** - Relaciones entre los paquetes instalados
+    * **Ontology Integration** - Semantic relationships between taxonomies
     * **Calculation Engine** - Automated ESG indicator calculations
     * **RBAC Security** - Role-based access control with JWT authentication
 
@@ -356,7 +416,8 @@ app = FastAPI(
     * **Interactive Docs**: [/docs](/docs) - Try API endpoints directly
     * **Alternative Docs**: [/redoc](/redoc) - Clean documentation interface
     * **OpenAPI Spec**: [/openapi.json](/openapi.json) - Machine-readable specification
-    * **GitHub**: [sustainabilitydataspace/sds](https://github.com/sustainabilitydataspace/sds)
+    * **GitHub**: [sustainabilityds/api](https://github.com/sustainabilityds/api)
+    * **Support**: api-support@sustainabilitydataspace.com
     """,
     version=settings.app_version,
     contact={
@@ -364,16 +425,16 @@ app = FastAPI(
         "url": "https://sustainabilitydataspace.com",
         "email": "api-support@sustainabilitydataspace.com",
     },
-    license_info={
-        "name": "Proprietary - Sygris",
-    },
     servers=[
         {"url": "/", "description": "Current server (auto-detect)"},
         {
             "url": "http://localhost:8090",
             "description": "Development server (localhost)",
         },
-
+        {
+            "url": "https://api.sustainabilitydataspace.com",
+            "description": "Production server",
+        },
     ],
     docs_url=None,
     redoc_url=None,
@@ -412,6 +473,16 @@ if settings.portal_mount_enabled:
 # Rate limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+# Register admission first so CORS/logging/security wrap its early response,
+# while it still rejects DB job requests before routing or receiving bodies.
+app.add_middleware(
+    RequestBodyLimitMiddleware,
+    max_bytes=settings.request_max_body_bytes,
+)
+app.add_middleware(ValueJobAdmissionMiddleware)
+app.add_middleware(IndicatorJobAdmissionMiddleware)
 
 # Only add CORS middleware when origins are explicitly configured
 if settings.allowed_origins:
@@ -577,9 +648,19 @@ async def root():
     }
 
 
-@app.get("/ready", response_model=Dict[str, Any])
+@app.get(
+    "/ready",
+    response_model=Dict[str, Any],
+    dependencies=[Depends(require_permission(Permission.VIEW_SYSTEM_HEALTH))],
+)
 async def readiness_check():
     """Readiness check endpoint."""
+    status_code, payload = await _bounded_readiness_status()
+    return JSONResponse(status_code=status_code, content=payload)
+
+
+def _readiness_status() -> tuple[int, Dict[str, Any]]:
+    """Evaluate the complete dependency and semantic readiness contract."""
     status_code, payload = _dependency_health()
     semantic_status = None
     if status_code == 200 and settings.require_database:
@@ -592,7 +673,7 @@ async def readiness_check():
     }
     payload["dependency_status"] = payload["status"]
     payload["status"] = "ready" if status_code == 200 else "unhealthy"
-    return JSONResponse(status_code=status_code, content=payload)
+    return status_code, payload
 
 
 def _semantic_projection_readiness() -> Dict[str, Any]:
@@ -603,13 +684,32 @@ def _semantic_projection_readiness() -> Dict[str, Any]:
     db_session = SessionLocal()
     try:
         coverage = SemanticConceptProjector(db_session).coverage_summary()
-    except Exception as exc:
-        return {"status": "unhealthy", "error": str(exc)}
+    except Exception:
+        return {
+            "status": "unhealthy",
+            "error_code": "semantic_projection_unavailable",
+        }
     finally:
         db_session.close()
 
     status = "healthy" if coverage.get("ready") else "unhealthy"
     return {"status": status, **coverage}
+
+
+_health_probe_slots = threading.BoundedSemaphore(2)
+
+
+async def _bounded_readiness_status() -> tuple[int, Dict[str, Any]]:
+    if not _health_probe_slots.acquire(blocking=False):
+        return 503, {"status": "unhealthy"}
+
+    def run_probe():
+        try:
+            return _readiness_status()
+        finally:
+            _health_probe_slots.release()
+
+    return await asyncio.to_thread(run_probe)
 
 
 def _dependency_health() -> tuple[int, Dict[str, Any]]:
@@ -646,16 +746,32 @@ def _dependency_health() -> tuple[int, Dict[str, Any]]:
 
 
 @app.get("/healthz", response_model=Dict[str, Any])
+@limiter.exempt
 async def healthz(request: Request):
     """Health endpoint with dependency status (offline-safe when deps disabled)."""
-    status_code, payload = _dependency_health()
+    if not _health_probe_slots.acquire(blocking=False):
+        return JSONResponse(status_code=503, content={"status": "unhealthy"})
+
+    def run_probe():
+        try:
+            return _dependency_health()
+        finally:
+            _health_probe_slots.release()
+
+    status_code, payload = await asyncio.to_thread(run_probe)
     payload["request_id"] = getattr(request.state, "request_id", None)
     return JSONResponse(status_code=status_code, content=payload)
 
 
-@app.get("/metrics", include_in_schema=False)
+@app.get(
+    "/metrics",
+    include_in_schema=False,
+    dependencies=[Depends(require_permission(Permission.VIEW_SYSTEM_HEALTH))],
+)
 async def metrics():
     """Prometheus metrics endpoint."""
+    readiness_status, _ = await _bounded_readiness_status()
+    READINESS_STATE.set(1 if readiness_status == 200 else 0)
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
@@ -693,5 +809,6 @@ if __name__ == "__main__":
         host=settings.host,
         port=settings.port,
         reload=True,
-        log_level="info",
+        log_level=settings.log_level.casefold(),
+        proxy_headers=False,
     )

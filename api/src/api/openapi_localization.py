@@ -443,7 +443,7 @@ def _spanish_example(method: str, operation: Dict[str, Any]) -> str | None:
 
 
 def _spanish_auth_note(path: str, operation: Dict[str, Any]) -> str:
-    if path in {"/auth/login", "/healthz", "/ready", "/"}:
+    if path in {"/auth/login", "/healthz", "/"}:
         return "No requiere token bearer para la llamada básica."
     if path == "/auth/refresh":
         return "Use el `refresh_token` obtenido en el inicio de sesión."

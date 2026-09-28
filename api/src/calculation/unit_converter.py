@@ -1,6 +1,7 @@
 """Unit conversion system for sustainability metrics."""
 
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
@@ -16,7 +17,6 @@ from src.calculation.conversion.physical import (
     _safe_decimal_eval,
     validate_conversion_formula,
 )
-from src.config.settings import settings
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -125,6 +125,7 @@ class UnitConverter:
 
         # Conversion rules registry
         self.conversion_rules: Dict[Tuple[str, str], ConversionRule] = {}
+        self._conversion_rule_history: Dict[Tuple[str, str], List[ConversionRule]] = {}
 
         # Cached physical converter (invalidated on registry mutation)
         self._physical_converter: PhysicalUnitConverter | None = None
@@ -157,13 +158,17 @@ class UnitConverter:
         """
         from src.calculation.json_strategy import JSONStrategy
         from src.calculation.postgres_strategy import PostgresStrategy
+        from src.config.settings import settings
 
         resolved_json_path = (
             json_path or settings.units_json_path or settings.units_database_path
         )
 
+        explicit_postgres_session = db_session is not None
         force_postgres = (
-            settings.require_database or settings.use_postgres_units is True
+            explicit_postgres_session
+            or settings.require_database
+            or settings.use_postgres_units is True
         )
 
         # PostgreSQL (optional): only attempt when not explicitly disabled.
@@ -181,6 +186,8 @@ class UnitConverter:
             if force_postgres:
                 if settings.require_database:
                     error_msg = "PostgreSQL storage is required in DB-first mode but not available"
+                elif explicit_postgres_session:
+                    error_msg = "PostgreSQL storage requested by explicit DB session but not available"
                 else:
                     error_msg = "PostgreSQL storage forced but not available"
                 self.logger.error(error_msg)
@@ -290,6 +297,7 @@ class UnitConverter:
         self.units.clear()
         self.unit_aliases.clear()
         self.conversion_rules.clear()
+        self._conversion_rule_history.clear()
         self._physical_converter = None
 
         # Reload from storage
@@ -309,7 +317,9 @@ class UnitConverter:
             "read_only": storage_info.read_only,
             "location": storage_info.location,
             "units_count": len(self.units),
-            "rules_count": len(self.conversion_rules),
+            "rules_count": sum(
+                len(rules) for rules in self._conversion_rule_history.values()
+            ),
             "metadata": storage_info.metadata,
         }
 
@@ -638,12 +648,10 @@ class UnitConverter:
                         f"{rule.from_unit}->{rule.to_unit}: {exc}"
                     )
 
-        key = (rule.from_unit, rule.to_unit)
-        self.conversion_rules[key] = rule
+        self._register_conversion_rule_direction(rule)
 
         # Register reverse rule if provided
         if rule.reverse_formula:
-            reverse_key = (rule.to_unit, rule.from_unit)
             reverse_rule = ConversionRule(
                 rule.to_unit,
                 rule.from_unit,
@@ -652,7 +660,7 @@ class UnitConverter:
                 rule.conditions,
                 rule.metadata,
             )
-            self.conversion_rules[reverse_key] = reverse_rule
+            self._register_conversion_rule_direction(reverse_rule)
 
         # Invalidate cached physical converter
         self._physical_converter = None
@@ -663,6 +671,66 @@ class UnitConverter:
             to_unit=rule.to_unit,
             formula=rule.formula,
         )
+
+    def _register_conversion_rule_direction(self, rule: ConversionRule) -> None:
+        key = (rule.from_unit, rule.to_unit)
+        self._conversion_rule_history.setdefault(key, []).append(rule)
+        # Preserve the legacy mapping as a current-view compatibility surface.
+        # Runtime selection uses the complete history below.
+        self.conversion_rules[key] = rule
+
+    def _select_conversion_rule(
+        self,
+        key: Tuple[str, str],
+        *,
+        as_of: date | None,
+    ) -> ConversionRule | None:
+        effective_date = as_of or date.today()
+        candidates = [
+            rule
+            for rule in self._conversion_rule_history.get(key, [])
+            if self._conversion_rule_applies_on(rule, effective_date)
+        ]
+        if not candidates:
+            return None
+        best_priority = min(
+            int(rule.metadata.get("priority", 100)) for rule in candidates
+        )
+        best = [
+            rule
+            for rule in candidates
+            if int(rule.metadata.get("priority", 100)) == best_priority
+        ]
+        if len(best) != 1:
+            raise UnitConversionError(
+                f"Ambiguous conversion rules for {key[0]}->{key[1]} "
+                f"on {effective_date.isoformat()}"
+            )
+        return best[0]
+
+    @classmethod
+    def _conversion_rule_applies_on(cls, rule: ConversionRule, as_of: date) -> bool:
+        valid_from = cls._coerce_rule_date(rule.metadata.get("valid_from"))
+        valid_to = cls._coerce_rule_date(rule.metadata.get("valid_to"))
+        return not (
+            (valid_from is not None and as_of < valid_from)
+            or (valid_to is not None and as_of > valid_to)
+        )
+
+    @staticmethod
+    def _coerce_rule_date(value: Any) -> date | None:
+        if value is None or value == "":
+            return None
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        try:
+            return date.fromisoformat(str(value))
+        except ValueError as exc:
+            raise UnitConversionError(
+                f"Invalid conversion rule effective date: {value!r}"
+            ) from exc
 
     def normalize_unit_symbol(self, unit_symbol: str) -> str:
         """Normalize unit symbol to canonical form.
@@ -734,10 +802,11 @@ class UnitConverter:
                 formula=rule.formula,
                 priority=int(rule.metadata.get("priority", 100)),
                 rule_id=str(rule.metadata.get("rule_id") or f"{from_unit}->{to_unit}"),
-                valid_from=rule.metadata.get("valid_from"),
-                valid_to=rule.metadata.get("valid_to"),
+                valid_from=self._coerce_rule_date(rule.metadata.get("valid_from")),
+                valid_to=self._coerce_rule_date(rule.metadata.get("valid_to")),
             )
-            for (from_unit, to_unit), rule in self.conversion_rules.items()
+            for (from_unit, to_unit), rules in self._conversion_rule_history.items()
+            for rule in rules
         ]
         self._physical_converter = PhysicalUnitConverter(
             units=physical_units, rules=physical_rules, precision=self.precision
@@ -802,7 +871,12 @@ class UnitConverter:
                 return True
 
             # Check for direct conversion rule
-            if (from_normalized, to_normalized) in self.conversion_rules:
+            if (
+                self._select_conversion_rule(
+                    (from_normalized, to_normalized), as_of=None
+                )
+                is not None
+            ):
                 return True
 
             from_def = self.units[from_normalized]
@@ -839,7 +913,12 @@ class UnitConverter:
             return False
 
     def convert(
-        self, value: Union[int, float, Decimal], from_unit: str, to_unit: str
+        self,
+        value: Union[int, float, Decimal],
+        from_unit: str,
+        to_unit: str,
+        *,
+        as_of: date | None = None,
     ) -> ConversionResult:
         """Convert a value from one unit to another.
 
@@ -875,12 +954,13 @@ class UnitConverter:
 
             # Check for direct conversion rule
             rule_key = (from_normalized, to_normalized)
-            if rule_key in self.conversion_rules:
+            direct_rule = self._select_conversion_rule(rule_key, as_of=as_of)
+            if direct_rule is not None:
                 return self._apply_conversion_rule(
                     value,
                     from_normalized,
                     to_normalized,
-                    self.conversion_rules[rule_key],
+                    direct_rule,
                 )
 
             from_def = self.units[from_normalized]
@@ -1139,7 +1219,12 @@ class UnitConverter:
             to_normalized = self.normalize_unit_symbol(to_unit)
 
             # Direct rule
-            if (from_normalized, to_normalized) in self.conversion_rules:
+            if (
+                self._select_conversion_rule(
+                    (from_normalized, to_normalized), as_of=None
+                )
+                is not None
+            ):
                 return [from_normalized, to_normalized]
 
             # Via base unit
@@ -1403,6 +1488,8 @@ class UnitConverter:
             self.units.clear()
             self.unit_aliases.clear()
             self.conversion_rules.clear()
+            self._conversion_rule_history.clear()
+            self._physical_converter = None
             self._load_from_database()
 
         return success
@@ -1418,6 +1505,8 @@ class UnitConverter:
             self.units.clear()
             self.unit_aliases.clear()
             self.conversion_rules.clear()
+            self._conversion_rule_history.clear()
+            self._physical_converter = None
 
             # Reload database
             self.database.load_database()
@@ -1463,6 +1552,8 @@ class UnitConverter:
             self.units.clear()
             self.unit_aliases.clear()
             self.conversion_rules.clear()
+            self._conversion_rule_history.clear()
+            self._physical_converter = None
 
             # Reload from database
             self._load_units_from_database()

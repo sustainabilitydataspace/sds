@@ -1,0 +1,2 @@
+identifier,title,indicator,description,dimension,unitName,unitType,periodicity,periodType,sourceRef,codeESRS,codeGRI,codeGRI_expanded,evidencePath,sourceRow,owner,accessRights,validationMethod,doubleMateriality,valueType
+urn:sds:reg:test:weighted_training_score,Fixture weighted training score,Weighted training score,Executable weighted-average fixture pairing score values with employee-count weights,S,points,Score,annual,fiscal_year,Atomizer calculation fixture,FIX-WEIGHTED,,,,1,system,Internal,automated,,numeric

@@ -16,12 +16,7 @@ from src.database.models import ConversionRule, Unit, UnitCategory
 
 logger = structlog.get_logger(__name__)
 
-UNITS_JSON_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "samples"
-    / "public-demo"
-    / "units_database.json"
-)
+UNITS_JSON_PATH = Path(__file__).resolve().parents[1] / "data" / "units_database.json"
 UNITS_BOOTSTRAP_LOCK_KEY = 640_104_215
 
 

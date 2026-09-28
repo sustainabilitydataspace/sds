@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 import structlog
+from src.api.csv_security import spreadsheet_safe_row
 from src.api.models import (
     ChangeFeedDataset,
     ChangeFeedEventResponse,
@@ -346,16 +347,19 @@ async def export_mappings(
         items=payload,
         last_modified=_mapping_last_modified(mappings),
     )
+    export_etag = manifest.export_etag(format.value)
     if manifest.is_not_modified(
         if_none_match=request.headers.get("if-none-match"),
         if_modified_since=request.headers.get("if-modified-since"),
+        etag=export_etag,
     ):
         return Response(
-            status_code=304, headers=manifest.response_headers(include_filename=False)
+            status_code=304,
+            headers=manifest.response_headers(include_filename=False, etag=export_etag),
         )
 
     filename = f"mappings_export.{format.value}"
-    headers = manifest.response_headers(filename=filename)
+    headers = manifest.response_headers(filename=filename, etag=export_etag)
     if format == DatasetExportFormat.JSON:
         return StreamingResponse(
             _stream_mapping_json(items),
@@ -634,7 +638,7 @@ def _stream_mapping_csv(items: Iterable[MappingResponse]):
     buffer.truncate(0)
 
     for item in items:
-        writer.writerow(item.model_dump(mode="json"))
+        writer.writerow(spreadsheet_safe_row(item.model_dump(mode="json")))
         yield buffer.getvalue()
         buffer.seek(0)
         buffer.truncate(0)

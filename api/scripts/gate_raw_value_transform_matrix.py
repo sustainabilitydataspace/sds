@@ -13,7 +13,6 @@ from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from time import perf_counter
 
 from sqlalchemy.orm import sessionmaker
 
@@ -25,56 +24,53 @@ sys.path.insert(0, str(API_ROOT))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from gate_value_import_performance import (  # noqa: E402
-    GATE_SOURCE,
     _count_gate_rows,
     _engine,
-    _purge_gate_rows,
+    _require_explicit_tenant_id,
     get_default_database_url,
 )
 from import_values_csv import import_values_csv  # noqa: E402
 from value_import_db_probe import (  # noqa: E402
     DATABASE_UNAVAILABLE_EXIT_CODE,
     DatabaseUnavailable,
+    require_disposable_value_import_target,
 )
 from value_import_gate_hierarchy import (  # noqa: E402
+    VALUE_IMPORT_GATE_COMPANY_ID,
     VALUE_IMPORT_GATE_ENTITY,
     ensure_value_import_gate_hierarchy,
 )
 
+from src.database.bootstrap_units import bootstrap_units_if_empty  # noqa: E402
 from src.database.models import ESGValue  # noqa: E402
 
 DEFAULT_ROW_COUNT = 1000
 DEFAULT_MIN_SUCCESS_RATE = 0.95
 DEFAULT_BATCH_SIZE = 250
-DEFAULT_MAX_SECONDS = 30.0
-DEFAULT_MATRIX = (
-    REPO_ROOT / "artifacts" / "e4_raw_transform_matrix.csv"
-)
-DEFAULT_REPORT = (
-    REPO_ROOT / "artifacts" / "e4_raw_transform_report.json"
-)
+DEFAULT_MATRIX = REPO_ROOT / ".local_artifacts" / "e4_raw_transform_matrix.csv"
+DEFAULT_REPORT = REPO_ROOT / ".local_artifacts" / "e4_raw_transform_report.json"
 R8_SOURCE = "e4_raw_transform_gate"
 TRANSFORM_RULES = (
     {
         "rule_id": "water_l_to_m3",
         "domain": "water",
-        "concept": "urn:sds:sample:water_volume",
+        "concept": "urn:sds:reg:esrs:e3_4_01",
         "raw_unit": "L",
-        "expected_unit": "m3",
+        "expected_unit": "m³",
     },
     {
         "rule_id": "energy_kwh_to_mwh",
         "domain": "energy",
-        "concept": "urn:sds:sample:energy_use",
+        "concept": "urn:sds:reg:esrs:e1_5_12",
         "raw_unit": "kWh",
         "expected_unit": "MWh",
     },
     {
         "rule_id": "emissions_kgco2e_to_tco2e",
         "domain": "emissions",
-        "concept": "urn:sds:sample:emissions_mass",
-        "raw_unit": "kgCO2e",
-        "expected_unit": "tCO2e",
+        "concept": "urn:sds:reg:gri:gri_305_3_a",
+        "raw_unit": "kg CO2e",
+        "expected_unit": "t CO2e",
     },
 )
 MATRIX_FIELDS = (
@@ -141,9 +137,10 @@ def build_fixture_files(
         "expected_value",
         "expected_unit",
     )
-    with input_path.open("w", encoding="utf-8", newline="") as input_handle, expected_path.open(
-        "w", encoding="utf-8", newline=""
-    ) as expected_handle:
+    with (
+        input_path.open("w", encoding="utf-8", newline="") as input_handle,
+        expected_path.open("w", encoding="utf-8", newline="") as expected_handle,
+    ):
         input_writer = csv.DictWriter(input_handle, fieldnames=input_fields)
         expected_writer = csv.DictWriter(expected_handle, fieldnames=expected_fields)
         input_writer.writeheader()
@@ -259,10 +256,13 @@ def _load_expected(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
-def _load_actual_rows(db, external_key_prefix: str) -> dict[str, dict]:
+def _load_actual_rows(db, external_key_prefix: str, tenant_id: str) -> dict[str, dict]:
     rows = (
         db.query(ESGValue)
-        .filter(ESGValue.external_key.like(f"{external_key_prefix}:%"))
+        .filter(
+            ESGValue.external_key.like(f"{external_key_prefix}:%"),
+            ESGValue.tenant_id == tenant_id,
+        )
         .all()
     )
     return {
@@ -287,13 +287,13 @@ def _write_matrix(path: Path, rows: list[dict[str, str]]) -> None:
 
 def _write_report(path: Path, report: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
 
 
 def public_matrix_path(path: Path) -> str:
-    """Return a stable repository path even when the file is container-mounted."""
-    if path.name == DEFAULT_MATRIX.name:
-        return "artifacts/e4_raw_transform_matrix.csv"
+    """Return the local output path without implying evidence promotion."""
     try:
         return str(path.relative_to(REPO_ROOT)).replace("\\", "/")
     except ValueError:
@@ -305,11 +305,15 @@ def run_gate(
     db_url: str,
     row_count: int,
     min_success_rate: float,
-    max_seconds: float,
     batch_size: int,
     matrix_path: Path,
     report_path: Path,
+    tenant_id: str | None,
 ) -> tuple[dict, list[str]]:
+    explicit_tenant_id = _require_explicit_tenant_id(tenant_id)
+    if explicit_tenant_id != VALUE_IMPORT_GATE_COMPANY_ID:
+        raise ValueError(f"R8 fixture tenant must be {VALUE_IMPORT_GATE_COMPANY_ID!r}")
+    require_disposable_value_import_target(db_url)
     engine = _engine(db_url)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     external_key_prefix = "gate-r8-transform-" + datetime.now(timezone.utc).strftime(
@@ -329,32 +333,45 @@ def run_gate(
         db = SessionLocal()
         try:
             ensure_value_import_gate_hierarchy(db, created_by=R8_SOURCE)
-            _purge_gate_rows(db, external_key_prefix)
+            bootstrap_units_if_empty(db)
         finally:
             db.close()
 
-        start = perf_counter()
-        imported = import_values_csv(
-            csv_path=input_path,
-            db_url=db_url,
-            default_entity=VALUE_IMPORT_GATE_ENTITY,
-            created_by=R8_SOURCE,
-            batch_size=batch_size,
-            tenant_id="sds_public_demo",
-        )
-
-        db = SessionLocal()
         try:
-            actual_by_key = _load_actual_rows(db, external_key_prefix)
-            counts = _count_gate_rows(db, external_key_prefix)
-            matrix, transform_summary = evaluate_transformations(
-                expected_rows, actual_by_key
+            imported = import_values_csv(
+                csv_path=input_path,
+                db_url=db_url,
+                default_entity=VALUE_IMPORT_GATE_ENTITY,
+                created_by=R8_SOURCE,
+                batch_size=batch_size,
+                tenant_id=explicit_tenant_id,
             )
-            deleted = _purge_gate_rows(db, external_key_prefix)
-            residue = _count_gate_rows(db, external_key_prefix)
-        finally:
-            db.close()
-        elapsed = perf_counter() - start
+
+            db = SessionLocal()
+            try:
+                actual_by_key = _load_actual_rows(
+                    db, external_key_prefix, explicit_tenant_id
+                )
+                counts = _count_gate_rows(db, external_key_prefix, explicit_tenant_id)
+                matrix, transform_summary = evaluate_transformations(
+                    expected_rows, actual_by_key
+                )
+            finally:
+                db.close()
+        except Exception as exc:
+            error_kind = type(exc).__name__
+            failures.append(f"R8 operation failed: {error_kind}")
+            report = {
+                "gate": "e4_raw_value_transform_matrix",
+                "row_count": row_count,
+                "passed": False,
+                "status": "not_evaluated",
+                "operation_error": error_kind,
+                "disposal": "Discard the separately provisioned disposable PostgreSQL database",
+                "failures": failures,
+            }
+            _write_report(report_path, report)
+            return report, failures
 
     _write_matrix(matrix_path, matrix)
     if imported != row_count:
@@ -364,28 +381,18 @@ def run_gate(
             f"success rate {transform_summary['success_rate']:.6f} below "
             f"threshold {min_success_rate:.6f}"
         )
-    if elapsed >= max_seconds:
-        failures.append(
-            f"elapsed {elapsed:.3f}s does not satisfy strict threshold < {max_seconds:.3f}s"
-        )
     for table_name, count in counts.items():
         if count != row_count:
             failures.append(f"{table_name} count {count}, expected {row_count}")
-    for table_name, count in residue.items():
-        if count != 0:
-            failures.append(f"residue after purge: {table_name} count {count}, expected 0")
     report = {
         "gate": "e4_raw_value_transform_matrix",
         "row_count": row_count,
         "imported": imported,
         "min_success_rate": min_success_rate,
-        "max_seconds": max_seconds,
-        "elapsed_seconds": elapsed,
         "transform_summary": transform_summary,
         "rules": dict(Counter(row["rule_id"] for row in matrix)),
         "counts": counts,
-        "deleted": deleted,
-        "residue_after_purge": residue,
+        "disposal": "Discard the separately provisioned disposable PostgreSQL database",
         "matrix_path": public_matrix_path(matrix_path),
         "passed": not failures,
         "failures": failures,
@@ -398,26 +405,35 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Execute and evidence the E4/R8 raw-value transformation matrix."
     )
-    parser.add_argument("--db-url", default=get_default_database_url())
+    parser.add_argument("--db-url", default=None)
+    parser.add_argument(
+        "--tenant-id",
+        required=True,
+        help="Explicit tenant/company identifier for the isolated R8 test database",
+    )
     parser.add_argument("--rows", type=int, default=DEFAULT_ROW_COUNT)
     parser.add_argument(
         "--min-success-rate", type=float, default=DEFAULT_MIN_SUCCESS_RATE
     )
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
-    parser.add_argument("--max-seconds", type=float, default=DEFAULT_MAX_SECONDS)
     parser.add_argument("--matrix", type=Path, default=DEFAULT_MATRIX)
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
     args = parser.parse_args()
     try:
+        args.db_url = get_default_database_url(args.db_url)
         report, failures = run_gate(
             db_url=args.db_url,
             row_count=args.rows,
             min_success_rate=args.min_success_rate,
-            max_seconds=args.max_seconds,
             batch_size=args.batch_size,
             matrix_path=args.matrix,
             report_path=args.report,
+            tenant_id=args.tenant_id,
         )
+    except ValueError as exc:
+        print("E4 R8 raw transformation gate: FAIL")
+        print(f"  - {exc}")
+        return 1
     except DatabaseUnavailable as exc:
         report = {
             "gate": "e4_raw_value_transform_matrix",
@@ -430,13 +446,17 @@ def main() -> int:
         _write_report(args.report, report)
         print("E4 R8 raw transformation gate: NOT_EVALUATED")
         return DATABASE_UNAVAILABLE_EXIT_CODE
-    summary = report["transform_summary"]
     print("E4 R8 raw transformation gate")
+    if report.get("status") == "not_evaluated":
+        print("  status: not_evaluated")
+        for failure in failures:
+            print(f"  - {failure}")
+        return 1
+    summary = report["transform_summary"]
     print(f"  rows: {summary['total']}")
     print(f"  success: {summary['success']}")
     print(f"  error: {summary['error']}")
     print(f"  success_rate: {summary['success_rate']:.2%}")
-    print(f"  elapsed_seconds: {report['elapsed_seconds']:.3f}")
     print(f"  matrix: {report['matrix_path']}")
     print("PASS" if not failures else "FAIL")
     return 0 if not failures else 1

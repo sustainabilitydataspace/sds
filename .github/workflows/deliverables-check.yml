@@ -1,0 +1,45 @@
+name: Deliverables Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deliverables/**"
+      - "docs/quality/acceptance_gates.md"
+      - "scripts/check_deliverables.py"
+      - "scripts/repo_closure_check.py"
+      - ".github/workflows/deliverables-check.yml"
+  pull_request:
+    paths:
+      - "deliverables/**"
+      - "docs/quality/acceptance_gates.md"
+      - "scripts/check_deliverables.py"
+      - "scripts/repo_closure_check.py"
+      - ".github/workflows/deliverables-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deliverables-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deliverables:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate deliverables register
+        run: python scripts/check_deliverables.py
+
+      - name: Validate repo closure layer
+        run: python scripts/repo_closure_check.py

@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, model_serializer
 from sqlalchemy.orm import Session
 
 import structlog
+from src.api.csv_security import spreadsheet_safe_row
 from src.api.models import (
     ChangeFeedDataset,
     ChangeFeedEventResponse,
@@ -65,6 +66,24 @@ from src.services.parquet_export import parquet_bytes_from_rows
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
+
+_DB_ASYNC_INDICATOR_JOB_UNAVAILABLE = {
+    "description": "DB async indicator jobs are unsupported pending H15",
+    "content": {
+        "application/json": {
+            "schema": {
+                "type": "object",
+                "properties": {"detail": {"type": "string"}},
+                "required": ["detail"],
+            },
+            "example": {
+                "detail": (
+                    "Database-backed async indicator import jobs are unsupported pending H15"
+                )
+            },
+        }
+    },
+}
 
 
 def _require_catalog_db(db: Optional[Session], operation: str) -> Optional[Session]:
@@ -269,6 +288,17 @@ def _extract_job_errors(job: IndicatorImportJobResponse) -> list[dict]:
     return errors if isinstance(errors, list) else []
 
 
+def _indicator_job_identity(user: User) -> tuple[str, str]:
+    tenant_id = getattr(user, "company_id", None)
+    owner_user_id = getattr(user, "id", None)
+    if not tenant_id or not owner_user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Indicator jobs require a tenant-bound user identity.",
+        )
+    return str(tenant_id), str(owner_user_id)
+
+
 @router.get("", response_model=IndicatorListResponse)
 async def list_indicators(
     limit: int = Query(default=100, ge=1, le=1000),
@@ -460,16 +490,19 @@ async def export_indicators(
         items=items_payload,
         last_modified=_indicator_last_modified(indicators),
     )
+    export_etag = manifest.export_etag(format.value)
     if manifest.is_not_modified(
         if_none_match=request.headers.get("if-none-match"),
         if_modified_since=request.headers.get("if-modified-since"),
+        etag=export_etag,
     ):
         return Response(
-            status_code=304, headers=manifest.response_headers(include_filename=False)
+            status_code=304,
+            headers=manifest.response_headers(include_filename=False, etag=export_etag),
         )
 
     filename = f"indicators_export.{format.value}"
-    headers = manifest.response_headers(filename=filename)
+    headers = manifest.response_headers(filename=filename, etag=export_etag)
     if format == DatasetExportFormat.JSON:
         return StreamingResponse(
             _stream_indicator_json(items),
@@ -657,6 +690,7 @@ async def validate_indicator_csv_import(
     job_store=Depends(get_indicator_import_job_store),
     user: User = Depends(require_policy("indicators", "write")),
 ) -> IndicatorImportJobResponse:
+    tenant_id, owner_user_id = _indicator_job_identity(user)
     csv_text, size_bytes, source_hash = await _read_limited_csv_upload(file)
     try:
         plan = validate_indicator_import_text(
@@ -674,6 +708,8 @@ async def validate_indicator_csv_import(
         job_type="validation",
         source_format="csv",
         submitted_by=getattr(user, "username", "anonymous"),
+        tenant_id=tenant_id,
+        owner_user_id=owner_user_id,
         source_filename=file.filename,
         source_sha256=source_hash,
         source_size_bytes=size_bytes,
@@ -698,7 +734,8 @@ async def validate_indicator_csv_import(
     response_model=IndicatorImportJobResponse,
     status_code=202,
     summary="Submit an async indicator register import job",
-    description="Confirm an indicator CSV import as a database-backed all-or-nothing background job",
+    description="Async indicator CSV import admission is unsupported in DB mode pending H15",
+    responses={503: _DB_ASYNC_INDICATOR_JOB_UNAVAILABLE},
 )
 async def submit_indicator_csv_import_job(
     request: Request,
@@ -711,6 +748,7 @@ async def submit_indicator_csv_import_job(
     job_store=Depends(get_indicator_import_job_store),
     user: User = Depends(require_policy("indicators", "write")),
 ) -> IndicatorImportJobResponse:
+    tenant_id, owner_user_id = _indicator_job_identity(user)
     if db is None:
         raise HTTPException(
             status_code=503, detail="Indicator imports require database-backed mode."
@@ -733,7 +771,7 @@ async def submit_indicator_csv_import_job(
     source_filename = None
     validation_job_id = None
     if validation_id:
-        validation = job_store.get(validation_id)
+        validation = job_store.get(validation_id, tenant_id=tenant_id)
         if validation is None or validation.job_type.value != "validation":
             raise HTTPException(
                 status_code=404,
@@ -744,7 +782,7 @@ async def submit_indicator_csv_import_job(
                 status_code=400,
                 detail="Cannot import a validation result with rejected rows.",
             )
-        csv_text = job_store.get_source_payload(validation_id)
+        csv_text = job_store.get_source_payload(validation_id, tenant_id=tenant_id)
         if not csv_text:
             raise HTTPException(
                 status_code=410,
@@ -781,6 +819,8 @@ async def submit_indicator_csv_import_job(
         job_type="import",
         source_format="csv",
         submitted_by=getattr(user, "username", "anonymous"),
+        tenant_id=tenant_id,
+        owner_user_id=owner_user_id,
         source_filename=source_filename,
         source_sha256=source_hash,
         source_size_bytes=size_bytes,
@@ -815,7 +855,8 @@ async def get_indicator_import_job(
     job_store=Depends(get_indicator_import_job_store),
     user: User = Depends(require_policy("indicators", "write")),
 ) -> IndicatorImportJobResponse:
-    job = job_store.get(job_id)
+    tenant_id, _owner_user_id = _indicator_job_identity(user)
+    job = job_store.get(job_id, tenant_id=tenant_id)
     if job is None:
         raise HTTPException(
             status_code=404, detail=f"Indicator import job not found: {job_id}"
@@ -836,7 +877,8 @@ async def get_indicator_import_job_errors(
     job_store=Depends(get_indicator_import_job_store),
     user: User = Depends(require_policy("indicators", "write")),
 ) -> IndicatorImportErrorsResponse:
-    job = job_store.get(job_id)
+    tenant_id, _owner_user_id = _indicator_job_identity(user)
+    job = job_store.get(job_id, tenant_id=tenant_id)
     if job is None:
         raise HTTPException(
             status_code=404, detail=f"Indicator import job not found: {job_id}"
@@ -971,7 +1013,9 @@ def _stream_indicator_csv(items: Iterable[IndicatorResponse]):
 
     for item in items:
         writer.writerow(
-            item.model_dump(mode="json", include=set(_INDICATOR_EXPORT_FIELDS))
+            spreadsheet_safe_row(
+                item.model_dump(mode="json", include=set(_INDICATOR_EXPORT_FIELDS))
+            )
         )
         yield buffer.getvalue()
         buffer.seek(0)

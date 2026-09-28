@@ -2,14 +2,32 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from ..models import MaterializedPairwiseMapping, StandardMapping
+
+# Match CPython 3.10 str.strip()/isspace() at the candidate SQL boundary.
+# Keep the test exhaustive so a runtime Unicode-table upgrade cannot silently
+# narrow discovery before the Python authority check.
+_STANDARD_STRIP_WHITESPACE = (
+    "\t\n\x0b\x0c\r\x1c\x1d\x1e\x1f \x85\xa0\u1680"
+    "\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a"
+    "\u2028\u2029\u202f\u205f\u3000"
+)
+
+
+class MappingCandidateLimitExceeded(RuntimeError):
+    """The complete candidate set cannot be classified within its safety bound."""
+
+    def __init__(self, limit: int):
+        self.limit = limit
+        super().__init__(f"mapping candidate set exceeds the safety limit of {limit}")
 
 
 @dataclass
@@ -341,13 +359,33 @@ class CanonicalPairwiseMappingRepository:
 
     @staticmethod
     def _code_prefix_filter(column, codes: list[str]):
-        return or_(*[column.ilike(f"{code}%") for code in codes])
+        # Candidate discovery must use the same separator-insensitive identity
+        # as route matching; a literal ILIKE prefix can hide a contradictory row.
+        normalized_column = func.regexp_replace(
+            func.lower(column), r"[^a-z0-9]+", "", "g"
+        )
+        normalized_codes = {re.sub(r"[^a-z0-9]+", "", code.lower()) for code in codes}
+        return or_(*[normalized_column.like(f"{code}%") for code in normalized_codes])
 
     @staticmethod
     def _side_filter(*, standard_column, code_column, standards, codes):
         conditions = []
         if standards:
-            conditions.append(standard_column.in_(standards))
+            # Python str.strip() accepts more than SQL's default space trim.
+            # Match its whitespace set without removing internal punctuation
+            # (otherwise irrelevant G-R-I rows could exhaust the 501-row cap).
+            # The classifier accepts an empty row standard, so include it.
+            normalized_column = func.upper(
+                func.btrim(
+                    func.coalesce(standard_column, ""), _STANDARD_STRIP_WHITESPACE
+                )
+            )
+            normalized_standards = {
+                str(item or "").strip().upper() for item in standards
+            }
+            conditions.append(
+                normalized_column.in_(sorted(normalized_standards | {""}))
+            )
         if codes:
             conditions.append(
                 CanonicalPairwiseMappingRepository._code_prefix_filter(
@@ -527,6 +565,8 @@ class CanonicalPairwiseMappingRepository:
         target_codes: Optional[List[str]] = None,
         limit: int = 500,
     ) -> List[CanonicalPairwiseMappingData]:
+        if limit <= 0:
+            raise ValueError("candidate route limit must be positive")
         source_standards = [item for item in source_standards or [] if item]
         source_codes = [item for item in source_codes or [] if item]
         target_standards = [item for item in target_standards or [] if item]
@@ -589,9 +629,11 @@ class CanonicalPairwiseMappingRepository:
                 MaterializedPairwiseMapping.target_code,
                 MaterializedPairwiseMapping.id,
             )
-            .limit(limit)
+            .limit(limit + 1)
             .all()
         )
+        if len(rows) > limit:
+            raise MappingCandidateLimitExceeded(limit)
         return [self._as_public_mapping(row) for row in rows]
 
     def get_supported_standards(self) -> List[str]:

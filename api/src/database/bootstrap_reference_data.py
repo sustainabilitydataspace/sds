@@ -104,17 +104,12 @@ def _release_postgres_lock(db: Session, lock_key: int | None) -> None:
     db.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": lock_key})
 
 
-def bootstrap_reference_data_if_empty(
-    db: Session,
-    *,
-    indicators_path: Path = INDICATORS_JSON_PATH,
-    mappings_path: Path = MAPPINGS_JSON_PATH,
-) -> Dict[str, int]:
-    """Seed operator-supplied indicators and mappings when the database is empty.
+def bootstrap_reference_data_if_empty(db: Session) -> Dict[str, int]:
+    """Seed bundled indicators and mappings when the database is empty.
 
-    Public SDS deployments may keep third-party standard content outside the
-    source tree. Missing packs leave the respective catalog empty so the
-    operator can import an authorized package through the normal SDS flow.
+    The API image ships the JSON reference packs under ``src/data``. On a fresh
+    PostgreSQL volume, populate the DB from those files so E1/E2 endpoints are
+    functional immediately after startup.
     """
 
     lock_key = _with_postgres_lock(db)
@@ -129,17 +124,17 @@ def bootstrap_reference_data_if_empty(
         mappings_seeded = 0
 
         if indicators_before == 0:
-            indicator_records = _load_records(indicators_path, "indicators")
+            indicator_records = _load_records(INDICATORS_JSON_PATH, "indicators")
             if indicator_records:
                 indicators_seeded = indicator_repo.bulk_upsert(indicator_records)
                 logger.info(
                     "Seeded bundled indicators into database",
                     count=indicators_seeded,
-                    path=str(indicators_path),
+                    path=str(INDICATORS_JSON_PATH),
                 )
 
         if mappings_before == 0:
-            mapping_records = _load_records(mappings_path, "mappings")
+            mapping_records = _load_records(MAPPINGS_JSON_PATH, "mappings")
             if mapping_records:
                 standards_created = _seed_supported_standards(db)
                 mappings_seeded = mapping_repo.bulk_upsert(mapping_records)
@@ -147,7 +142,7 @@ def bootstrap_reference_data_if_empty(
                     "Seeded bundled mappings into database",
                     count=mappings_seeded,
                     standards_created=standards_created,
-                    path=str(mappings_path),
+                    path=str(MAPPINGS_JSON_PATH),
                 )
 
         summary = {

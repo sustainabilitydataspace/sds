@@ -1,0 +1,27 @@
+E4 Formal Gate Report
+Timestamp (UTC): 2026-07-10T20:05:49Z
+Gate result: PASS
+Source mode: dimension-ledger
+
+Sources:
+  Dimension ledger:     deliverables/E01-mapeo-datos-normativas/evidence/dimension-expanded-value-coordinate-calculation-v2026-06-05.csv
+  Ledger checksum:      fb7add58b8aa38950c14dad746f98b31
+
+Gate evidence:
+  Ledger groups:        512
+  Reportable coordinates: 87547
+  Coordinates summed:   87547
+  Elapsed seconds:      0.005
+
+Rule families:
+  Environmental/carbon: 80711
+  Social:               2126
+  Governance:           3973
+  Transversal:          737
+
+Checks:
+  [ PASS ] structural_ledger_nonempty
+  [ PASS ] reportable_coordinate_total_positive
+  [ PASS ] environmental/carbon family present
+  [ PASS ] social family present
+  [ PASS ] governance family present

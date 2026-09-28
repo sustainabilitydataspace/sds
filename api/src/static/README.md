@@ -21,14 +21,17 @@ guidance is added through the generated OpenAPI schema:
 
 ## Versions (pinned)
 
-- Swagger UI: `swagger-ui-dist@5.11.0`
-  - Source package: `https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/`
+- Swagger UI: `swagger-ui-dist@5.33.0`
+  - Source package: `https://registry.npmjs.org/swagger-ui-dist/-/swagger-ui-dist-5.33.0.tgz`
   - Files vendored:
     - `swagger-ui/swagger-ui-bundle.js`
     - `swagger-ui/swagger-ui-standalone-preset.js`
     - `swagger-ui/swagger-ui.css`
     - `swagger-ui/favicon-16x16.png`
     - `swagger-ui/favicon-32x32.png`
+    - `swagger-ui/LICENSE`, `swagger-ui/NOTICE`
+    - `swagger-ui/swagger-ui-bundle.js.LICENSE.txt`
+    - `swagger-ui/swagger-ui-standalone-preset.js.LICENSE.txt`
 - ReDoc: `redoc@2.1.3`
   - Source bundle: `https://cdn.redoc.ly/redoc/v2.1.3/bundles/redoc.standalone.js`
   - File vendored:
@@ -36,4 +39,13 @@ guidance is added through the generated OpenAPI schema:
 
 ## Licensing
 
-The upstream projects are open-source; keep their licenses in mind if re-distributing outside this repository context.
+- The Swagger `LICENSE`, `NOTICE`, and both JavaScript-specific `.LICENSE.txt`
+  files are byte-for-byte from the pinned `swagger-ui-dist@5.33.0` package.
+  Both vendored JavaScript files and stylesheets match that package as well.
+- `redoc/LICENSE`, `redoc/redoc.standalone.js.LICENSE.txt`, and
+  `redoc/756674defce81e90acea.worker.js.LICENSE.txt` are from the pinned
+  `redoc@2.1.3` npm package. The vendored standalone bundle matches that
+  package byte-for-byte, including the embedded worker's notice reference.
+
+These upstream notices do not establish rights to publish the SDS repository or
+replace a review of the actual release artifact and all its dependencies.

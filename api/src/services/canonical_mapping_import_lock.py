@@ -1,3 +1,4 @@
 """Shared advisory-lock contract for canonical mapping imports."""
 
 CANONICAL_MAPPING_IMPORT_LOCK_KEY = 6401040801
+CANONICAL_MAPPING_JOB_LIFECYCLE_LOCK_KEY = 6401040802

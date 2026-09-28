@@ -1,0 +1,18 @@
+{
+  "profile": "sds-canonical-json-v1",
+  "description": "Conformance vectors bound into the profile hash. Each case rebuilds a typed value and asserts its exact canonical UTF-8 serialization.",
+  "cases": [
+    {"id": "dec_scale_one", "type": "decimal", "input": "1.0", "expected": "\"1.0\""},
+    {"id": "dec_scale_two", "type": "decimal", "input": "1.00", "expected": "\"1.00\""},
+    {"id": "dec_negative_zero", "type": "decimal", "input": "-0.00", "expected": "\"0.00\""},
+    {"id": "dec_large_no_sci", "type": "decimal", "input": "1E+9", "expected": "\"1000000000\""},
+    {"id": "dec_small_no_sci", "type": "decimal", "input": "1.5E-3", "expected": "\"0.0015\""},
+    {"id": "int_bare", "type": "int", "input": "5", "expected": "5"},
+    {"id": "bool_true", "type": "bool", "input": true, "expected": "true"},
+    {"id": "bool_false", "type": "bool", "input": false, "expected": "false"},
+    {"id": "null_value", "type": "null", "input": null, "expected": "null"},
+    {"id": "timestamp_utc", "type": "datetime_utc", "input": "2026-01-02T03:04:05.678901+00:00", "expected": "\"2026-01-02T03:04:05.678901Z\""},
+    {"id": "list_order_significant", "type": "int_list", "input": [1, 2, 3], "expected": "[1,2,3]"},
+    {"id": "set_order_normalized", "type": "int_set", "input": [3, 1, 2], "expected": "[1,2,3]"}
+  ]
+}

@@ -30,6 +30,7 @@ from src.services.canonical_mapping_relationship_policy import (
     OPERATIONAL_RELATIONSHIP_TYPES,
     normalize_relationship_type,
 )
+from src.services.strict_json import StrictJsonError, loads_strict_json
 
 DEFAULT_CREATED_BY = "calculation_contract_import"
 EXECUTABLE_STATUS = "executable"
@@ -429,9 +430,9 @@ def load_calculation_contract_payload(path: Path) -> tuple[dict[str, Any], str]:
         raise CalculationContractImportError(f"calculation contract not found: {path}")
     raw = path.read_bytes()
     try:
-        payload = json.loads(raw.decode("utf-8"))
-    except json.JSONDecodeError as exc:
-        raise CalculationContractImportError(f"invalid JSON: {exc}") from exc
+        payload = loads_strict_json(raw)
+    except StrictJsonError as exc:
+        raise CalculationContractImportError(str(exc)) from exc
     if not isinstance(payload, dict):
         raise CalculationContractImportError(
             "calculation contract JSON must be an object"
@@ -627,7 +628,18 @@ def package_hash_for_payload(payload: dict[str, Any], contract_sha256: str) -> s
 
     source_package = _object_or_empty(payload.get("source_package"))
     manifest_hash = _optional_str(source_package.get("manifest_hash"))
-    return manifest_hash or contract_sha256
+    if manifest_hash is None:
+        return contract_sha256
+    binding = json.dumps(
+        {
+            "contract": contract_sha256,
+            "manifest": manifest_hash,
+            "scheme": "sds-calculation-package-v1",
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(binding.encode("utf-8")).hexdigest()
 
 
 def _validation_counts(validation: CalculationContractValidation) -> dict[str, int]:

@@ -1,0 +1,462 @@
+{
+  "contract_version": "1.0",
+  "source_package": {
+    "producer": "atomizer",
+    "manifest_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "generated_at": "2026-05-19T00:00:00Z"
+  },
+  "register": {
+    "path": "sds_dataset_register.csv",
+    "sha256": "ba585a8565099456570dd68e9e34de14f828f074c12d39c2a80cdb4a34f7650b"
+  },
+  "values": {
+    "path": "sds_values.csv",
+    "sha256": "31b3dfd016fdb4e7a208f4b7e66d7858de0867927578e2638302f7a35e949bba"
+  },
+  "source": {
+    "project": "atomizer",
+    "generator": "tests/fixtures/atomizer_packages/calculation-contract-regression-v1",
+    "canonical_model_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "models": [
+    {
+      "model_id": "SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+      "standard_id": "SDS Fixture",
+      "requirement_id": "calculation-contract-regression-v1",
+      "source_model": "canonical"
+    }
+  ],
+  "nodes": [
+    {
+      "node_id": "fixture:scope1_total_emissions",
+      "model_id": "SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+      "indicator_identifier": "urn:sds:reg:test:scope1_total_emissions",
+      "canonical_datapoint_id": "fixture_scope1_total_emissions",
+      "label": "Fixture Scope 1 total emissions",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "calculation_contract_fixture",
+      "unit_name": "tCO2e",
+      "unit_type": "GHGEmissions",
+      "parent_id": null,
+      "relation_to_parent": "",
+      "formula": {
+        "kind": "sum",
+        "semantic_expression": "sum(fixture_scope1_stationary_tco2e, fixture_scope1_mobile_tco2e)",
+        "runtime_expression": "sum(stationary_tco2e, mobile_tco2e)",
+        "component_ids": [
+          "fixture_scope1_stationary_tco2e",
+          "fixture_scope1_mobile_tco2e"
+        ],
+        "component_refs": [
+          {
+            "component_id": "fixture_scope1_stationary_tco2e",
+            "node_id": "fixture:scope1_stationary_tco2e",
+            "indicator_identifier": null,
+            "component_scope": "internal_node"
+          },
+          {
+            "component_id": "fixture_scope1_mobile_tco2e",
+            "node_id": "fixture:scope1_mobile_tco2e",
+            "indicator_identifier": null,
+            "component_scope": "internal_node"
+          }
+        ],
+        "note": "Additive parent sum across internal runtime-support components."
+      },
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true,
+        "unit_normalization": {
+          "target_unit": "tCO2e",
+          "compatible_units": [
+            "tCO2e",
+            "kgCO2e"
+          ]
+        }
+      },
+      "dimensions": [
+        {
+          "dimension_id": "scenario",
+          "mode": "fixed",
+          "fixed_value": "additive_parent_sum",
+          "member_values": [],
+          "required": true
+        }
+      ],
+      "gate_ids": [
+        "gate_missing_is_not_zero"
+      ],
+      "support_rule_ids": [
+        "sr_zero_is_observed_value"
+      ],
+      "trace_labels": [
+        "contract:SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+        "temporal:SUM",
+        "perimeter:SUM",
+        "unit:tCO2e",
+        "completeness:BLOCK"
+      ],
+      "evidence": [
+        {
+          "source_id": "SDS calculation regression fixture",
+          "anchor": "additive_parent_sum",
+          "role": "test_contract"
+        }
+      ]
+    },
+    {
+      "node_id": "fixture:scope1_emissions_intensity",
+      "model_id": "SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+      "indicator_identifier": "urn:sds:reg:test:emissions_intensity",
+      "canonical_datapoint_id": "fixture_scope1_emissions_intensity",
+      "label": "Fixture Scope 1 emissions intensity",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "calculation_contract_fixture",
+      "unit_name": "tCO2e/EURm",
+      "unit_type": "GHGIntensity",
+      "parent_id": null,
+      "relation_to_parent": "",
+      "formula": {
+        "kind": "ratio",
+        "semantic_expression": "fixture_scope1_total_emissions / fixture_revenue_eur_m",
+        "runtime_expression": "scope1_total_emissions_tco2e / revenue_eur_m",
+        "component_ids": [
+          "fixture_scope1_total_emissions",
+          "fixture_revenue_eur_m"
+        ],
+        "numerator_component_id": "fixture_scope1_total_emissions",
+        "denominator_component_id": "fixture_revenue_eur_m",
+        "component_refs": [
+          {
+            "component_id": "fixture_scope1_total_emissions",
+            "node_id": "fixture:scope1_total_emissions",
+            "indicator_identifier": "urn:sds:reg:test:scope1_total_emissions",
+            "component_scope": "public_register"
+          },
+          {
+            "component_id": "fixture_revenue_eur_m",
+            "node_id": "fixture:revenue_eur_m",
+            "indicator_identifier": null,
+            "component_scope": "internal_node"
+          }
+        ],
+        "note": "Ratios must be recomputed from summed numerator and denominator components."
+      },
+      "aggregation": {
+        "temporal": "RATIO_RECOMPUTE",
+        "perimeter": "RATIO_RECOMPUTE",
+        "missing_data": "BLOCK",
+        "zero_is_value": true,
+        "ratio": {
+          "numerator_component_id": "fixture_scope1_total_emissions",
+          "denominator_component_id": "fixture_revenue_eur_m",
+          "recompute_from_components": true
+        }
+      },
+      "dimensions": [
+        {
+          "dimension_id": "scenario",
+          "mode": "fixed",
+          "fixed_value": "ratio_recompute",
+          "member_values": [],
+          "required": true
+        }
+      ],
+      "gate_ids": [
+        "gate_ratio_has_explicit_components"
+      ],
+      "support_rule_ids": [
+        "sr_do_not_sum_ratios"
+      ],
+      "trace_labels": [
+        "contract:SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+        "temporal:RATIO_RECOMPUTE",
+        "perimeter:RATIO_RECOMPUTE",
+        "ratio:recompute_from_components",
+        "completeness:BLOCK"
+      ],
+      "evidence": [
+        {
+          "source_id": "SDS calculation regression fixture",
+          "anchor": "ratio_recompute",
+          "role": "test_contract"
+        }
+      ]
+    },
+    {
+      "node_id": "fixture:average_headcount",
+      "model_id": "SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+      "indicator_identifier": "urn:sds:reg:test:average_headcount",
+      "canonical_datapoint_id": "fixture_average_headcount",
+      "label": "Fixture average headcount",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "calculation_contract_fixture",
+      "unit_name": "FTE",
+      "unit_type": "Workforce",
+      "parent_id": null,
+      "relation_to_parent": "",
+      "formula": {
+        "kind": "input",
+        "semantic_expression": "observed fixture_average_headcount",
+        "runtime_expression": "fixture_average_headcount",
+        "component_ids": [],
+        "component_refs": [],
+        "note": "Average-over-period values must not be summed."
+      },
+      "aggregation": {
+        "temporal": "AVERAGE_OVER_PERIOD",
+        "perimeter": "AVERAGE",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "dimensions": [
+        {
+          "dimension_id": "scenario",
+          "mode": "fixed",
+          "fixed_value": "average_over_period",
+          "member_values": [],
+          "required": true
+        }
+      ],
+      "gate_ids": [],
+      "support_rule_ids": [
+        "sr_average_not_sum"
+      ],
+      "trace_labels": [
+        "contract:SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+        "temporal:AVERAGE_OVER_PERIOD",
+        "perimeter:AVERAGE",
+        "completeness:BLOCK"
+      ],
+      "evidence": [
+        {
+          "source_id": "SDS calculation regression fixture",
+          "anchor": "average_over_period",
+          "role": "test_contract"
+        }
+      ]
+    },
+    {
+      "node_id": "fixture:year_end_employees",
+      "model_id": "SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+      "indicator_identifier": "urn:sds:reg:test:year_end_employees",
+      "canonical_datapoint_id": "fixture_year_end_employees",
+      "label": "Fixture year-end employees",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "calculation_contract_fixture",
+      "unit_name": "FTE",
+      "unit_type": "Workforce",
+      "parent_id": null,
+      "relation_to_parent": "",
+      "formula": {
+        "kind": "input",
+        "semantic_expression": "observed fixture_year_end_employees",
+        "runtime_expression": "fixture_year_end_employees",
+        "component_ids": [],
+        "component_refs": [],
+        "note": "Last-value period aggregation must use the latest observation."
+      },
+      "aggregation": {
+        "temporal": "LAST_VALUE",
+        "perimeter": "LAST_VALUE",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "dimensions": [
+        {
+          "dimension_id": "scenario",
+          "mode": "fixed",
+          "fixed_value": "last_value",
+          "member_values": [],
+          "required": true
+        }
+      ],
+      "gate_ids": [],
+      "support_rule_ids": [
+        "sr_stock_last_value"
+      ],
+      "trace_labels": [
+        "contract:SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+        "temporal:LAST_VALUE",
+        "perimeter:LAST_VALUE",
+        "completeness:BLOCK"
+      ],
+      "evidence": [
+        {
+          "source_id": "SDS calculation regression fixture",
+          "anchor": "last_value",
+          "role": "test_contract"
+        }
+      ]
+    },
+    {
+      "node_id": "fixture:scope1_stationary_tco2e",
+      "model_id": "SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+      "indicator_identifier": null,
+      "canonical_datapoint_id": "fixture_scope1_stationary_tco2e",
+      "label": "Fixture stationary combustion emissions",
+      "exposure": "runtime_support",
+      "runtime_status": "executable",
+      "role": "component",
+      "value_kind": "numeric",
+      "source_kind": "calculation_contract_fixture",
+      "unit_name": "tCO2e",
+      "unit_type": "GHGEmissions",
+      "parent_id": "fixture_scope1_total_emissions",
+      "relation_to_parent": "component",
+      "formula": {
+        "kind": "input",
+        "semantic_expression": "observed stationary emissions",
+        "runtime_expression": "stationary_tco2e",
+        "component_ids": [],
+        "component_refs": [],
+        "note": "Internal runtime component absent from public register."
+      },
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "dimensions": [],
+      "gate_ids": [],
+      "support_rule_ids": [],
+      "trace_labels": [
+        "temporal:SUM",
+        "perimeter:SUM",
+        "completeness:BLOCK"
+      ],
+      "evidence": []
+    },
+    {
+      "node_id": "fixture:scope1_mobile_tco2e",
+      "model_id": "SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+      "indicator_identifier": null,
+      "canonical_datapoint_id": "fixture_scope1_mobile_tco2e",
+      "label": "Fixture mobile combustion emissions",
+      "exposure": "runtime_support",
+      "runtime_status": "executable",
+      "role": "component",
+      "value_kind": "numeric",
+      "source_kind": "calculation_contract_fixture",
+      "unit_name": "tCO2e",
+      "unit_type": "GHGEmissions",
+      "parent_id": "fixture_scope1_total_emissions",
+      "relation_to_parent": "component",
+      "formula": {
+        "kind": "input",
+        "semantic_expression": "observed mobile emissions",
+        "runtime_expression": "mobile_tco2e",
+        "component_ids": [],
+        "component_refs": [],
+        "note": "Internal runtime component absent from public register."
+      },
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true,
+        "unit_normalization": {
+          "target_unit": "tCO2e",
+          "compatible_units": [
+            "tCO2e",
+            "kgCO2e"
+          ]
+        }
+      },
+      "dimensions": [],
+      "gate_ids": [],
+      "support_rule_ids": [],
+      "trace_labels": [
+        "temporal:SUM",
+        "perimeter:SUM",
+        "unit:tCO2e",
+        "completeness:BLOCK"
+      ],
+      "evidence": []
+    },
+    {
+      "node_id": "fixture:revenue_eur_m",
+      "model_id": "SDS_CALCULATION_CONTRACT_REGRESSION_V1",
+      "indicator_identifier": null,
+      "canonical_datapoint_id": "fixture_revenue_eur_m",
+      "label": "Fixture revenue in EUR millions",
+      "exposure": "runtime_support",
+      "runtime_status": "executable",
+      "role": "denominator",
+      "value_kind": "numeric",
+      "source_kind": "calculation_contract_fixture",
+      "unit_name": "EURm",
+      "unit_type": "Currency",
+      "parent_id": "fixture_scope1_emissions_intensity",
+      "relation_to_parent": "denominator",
+      "formula": {
+        "kind": "input",
+        "semantic_expression": "observed revenue",
+        "runtime_expression": "revenue_eur_m",
+        "component_ids": [],
+        "component_refs": [],
+        "note": "Internal denominator component absent from public register."
+      },
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "dimensions": [],
+      "gate_ids": [],
+      "support_rule_ids": [],
+      "trace_labels": [
+        "temporal:SUM",
+        "perimeter:SUM",
+        "completeness:BLOCK"
+      ],
+      "evidence": []
+    }
+  ],
+  "support_rules": [
+    {
+      "support_rule_id": "sr_zero_is_observed_value",
+      "text": "Observed zero values are valid observations and must not be treated as missing."
+    },
+    {
+      "support_rule_id": "sr_do_not_sum_ratios",
+      "text": "Ratio indicators must be recomputed from numerator and denominator components."
+    },
+    {
+      "support_rule_id": "sr_average_not_sum",
+      "text": "Average-over-period indicators aggregate with an average policy, not a sum."
+    },
+    {
+      "support_rule_id": "sr_stock_last_value",
+      "text": "Stock indicators use the last observation in the requested period."
+    }
+  ],
+  "gates": [
+    {
+      "gate_id": "gate_missing_is_not_zero",
+      "severity": "error",
+      "text": "Missing mandatory component observations block calculation."
+    },
+    {
+      "gate_id": "gate_ratio_has_explicit_components",
+      "severity": "error",
+      "text": "Ratio contracts require explicit numerator and denominator component ids."
+    }
+  ]
+}
