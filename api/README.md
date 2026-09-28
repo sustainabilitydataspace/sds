@@ -3,9 +3,9 @@
 API FastAPI para ontología ESG unificada, cálculo, mapeos interoperables y runtime DB-first validado en Windows.
 
 Las instrucciones siguientes son para evaluación técnica. Instalar SDS no
-autoriza el uso productivo propio ni prestar servicios a terceros; véase
-«Alcance de uso previsto» en el `README.md` de la raíz. Las condiciones
-definitivas de evaluación están pendientes de revisión jurídica.
+autoriza el uso productivo propio ni prestar servicios a terceros. La licencia
+aplicable al código SDS propio está en `../LICENSE`; la explicación pública está
+en `../docs/license-and-publication.md`.
 
 ---
 
@@ -498,19 +498,22 @@ curl -X POST "http://localhost:8090/api/v1/convert" \
 
 Se pueden comunicar incidencias por GitHub Issues. No se solicitan
 contribuciones de código ni pull requests hasta que exista una política
-publicada de derechos y aceptación de aportaciones. El permiso de GitHub para
-bifurcar el repositorio dentro de la plataforma no equivale a una licencia
-para usar SDS en producción ni redistribuirlo fuera de ella.
+publicada de derechos y aceptación de aportaciones. `../LICENSE` permite forks
+de GitHub para evaluación, con avisos intactos, pero no concede uso productivo,
+explotación comercial ni redistribución fuera del marco permitido. Las
+vulnerabilidades no deben abrirse como Issues públicas; véase `../SECURITY.md`.
 
 ---
 
 ## 📄 Licencia
 
-El alcance de uso previsto para el código SDS se explica en el `README.md` de
-la raíz. Las condiciones de licencia definitivas están pendientes de revisión
-de titularidad, condiciones particulares de la ayuda y asesoramiento jurídico;
-este documento no concede derechos de explotación productiva. Los componentes
-de terceros conservan sus licencias propias.
+El código SDS propio se publica bajo la `Sustainability Data Space Software
+Evaluation License v1.0` incluida en `../LICENSE`. Es una licencia de fuente
+disponible para evaluación, no una licencia open source. Permite revisar,
+instalar y probar SDS en entornos no productivos; no concede derechos de
+explotación productiva, comercial, SaaS, servicio gestionado, reventa ni
+prestación de servicios a terceros. Los componentes de terceros conservan sus
+licencias propias; véase `../docs/third-party-notices.md`.
 
 ---
 

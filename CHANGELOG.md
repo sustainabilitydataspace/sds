@@ -2,11 +2,9 @@
 
 ## 2026-09-28
 
-- Preparado un candidato local para incorporar el código completo de la API,
-  migraciones, CLI, contratos, pruebas y herramientas de importación a la
-  distribución pública, conservando las decisiones de cierre de entregables.
-  La publicación del código está pendiente de revisión de derechos y de las
-  condiciones particulares de la ayuda; esta entrada no acredita un envío.
+- Incorporado el código completo de la API, migraciones, CLI, contratos,
+  pruebas y herramientas de importación a la distribución pública, conservando
+  las decisiones de cierre de entregables.
 - El arranque local genera las cuatro claves necesarias para la API completa,
   y los avisos de terceros acompañan a los recursos Swagger UI y ReDoc.
 - Aclarado que `make public-env` crea credenciales propias sin mostrarlas ni
@@ -14,12 +12,16 @@
   producción con paquetes externos del operador.
 - Excluidos por defecto los archivos de instrucciones de agentes y las áreas
   locales de trabajo de futuras incorporaciones al repositorio público.
-- Delimitado el arranque como evaluación técnica: permite estudiar el producto,
-  pero no concede uso productivo propio ni servicios a terceros. La licencia
-  definitiva del código continúa pendiente de las comprobaciones de derechos y
-  de la ayuda.
-- Retirada de la descripción OpenAPI la etiqueta de licencia definitiva no
-  aprobada.
+- Publicada la licencia `Sustainability Data Space Software Evaluation License
+  v1.0` para el código SDS propio, junto con la guía de publicación, avisos de
+  terceros y reporte responsable de vulnerabilidades. La licencia permite
+  evaluación técnica no productiva y mantiene prohibidos el uso productivo,
+  explotación comercial, SaaS/servicios gestionados, reventa y servicios a
+  terceros sin acuerdo separado por escrito. No se presenta como licencia open
+  source ni como cierre jurídico de la ayuda; la resolución individual sigue
+  fuera del repositorio público.
+- Retirada de la descripción OpenAPI una etiqueta anterior incompatible con la
+  licencia de evaluación publicada.
 
 ### Current deliverable publication status (authoritative)
 

@@ -2,7 +2,10 @@
 
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
+pytestmark = pytest.mark.docs_only
 
 
 def test_root_quickstart_disclaims_productive_use_before_install_commands():
@@ -11,15 +14,33 @@ def test_root_quickstart_disclaims_productive_use_before_install_commands():
     quickstart = readme.index("## Arranque de evaluación")
     assert policy < quickstart
     for required in (
-        "descarga, instalación y ejecución de pruebas",
-        "evaluación técnica en un entorno de pruebas",
+        "código fuente disponible para evaluación",
+        "código abierto",
+        "LICENSE",
+        "evaluación técnica",
         "actividad ordinaria propia",
         "prestar servicios",
+        "SaaS",
         "acuerdo separado y por escrito",
         "componentes de terceros",
-        "No se presenta esta nota\ncomo una licencia definitiva",
+        "docs/license-and-publication.md",
+        "docs/third-party-notices.md",
     ):
         assert required in readme
+
+
+def test_evaluation_license_and_reporting_surfaces_exist():
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    assert "not an open-source license" in license_text
+    assert "Production Use" in license_text
+    assert "Commercial Use" in license_text
+    assert "GitHub evaluation forks" in license_text
+    assert "docs/third-party-notices.md" in license_text
+    assert "SECURITY.md" in (ROOT / "README.md").read_text(encoding="utf-8")
+    assert (ROOT / "SECURITY.md").exists()
+    assert (ROOT / "docs" / "license-and-publication.md").exists()
+    assert (ROOT / "docs" / "third-party-notices.md").exists()
+    assert (ROOT / "docs" / "security-reporting.md").exists()
 
 
 def test_operator_guides_do_not_present_installation_as_use_permission():
@@ -37,7 +58,7 @@ def test_operator_guides_do_not_present_installation_as_use_permission():
         assert (
             "evaluación" in guide.lower() or "evaluation" in guide.lower()
         ), relative_path
-        assert "README.md" in guide, relative_path
+        assert "README.md" in guide or "LICENSE" in guide, relative_path
         assert "terceros" in guide or "others" in guide, relative_path
         assert (
             "productiv" in guide.lower()

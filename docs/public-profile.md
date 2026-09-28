@@ -1,11 +1,13 @@
 # Perfil público de SDS
 
 La distribución pública SDS contiene el código completo de la API, sus
-migraciones, pruebas, contratos y herramientas de importación. Las
-instrucciones de instalación describen una evaluación técnica, no una licencia
-para explotación propia o prestación de servicios a terceros. Véase el
-apartado «Alcance de uso previsto» del `README.md` antes de instalar. Distingue
-dos tipos de datos para quienes la evalúen:
+migraciones, pruebas, contratos y herramientas de importación. Se publica bajo
+una licencia de código fuente disponible para evaluación, no como software de
+código abierto. Véanse `../LICENSE` y `license-and-publication.md` antes de
+instalar. Las instrucciones de instalación describen una evaluación técnica; no
+conceden explotación propia, uso productivo, SaaS, servicio gestionado, reventa
+ni prestación de servicios a terceros. Distingue dos tipos de datos para quienes
+la evalúen:
 
 1. Un paquete de demostración sintético incluido para probar la API completa
    sobre PostgreSQL sin datos operativos de terceros.
@@ -35,4 +37,7 @@ mantenimiento web se documentan separadamente y no reabren ese cierre.
 Los identificadores oficiales que aparezcan en documentos o paquetes
 autorizados se conservan literalmente. Un derecho o certificación de otro
 producto no cubre automáticamente SDS, y el repositorio no presenta SDS como
-herramienta certificada por GRI sin autorización específica y escrita.
+herramienta certificada por GRI sin autorización específica y escrita. Las
+licencias y avisos de terceros se explican en `third-party-notices.md`, y las
+vulnerabilidades deben reportarse según `security-reporting.md`, no mediante
+Issues públicas.

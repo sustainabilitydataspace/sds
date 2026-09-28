@@ -12,7 +12,13 @@ Use this reference when publishing the E1 dataset register under SDS connectors.
 - Contact: SDS Governance Board contact channel (published by the operating body)
 
 ## 3. Licensing & Access
-- License: https://creativecommons.org/licenses/by/4.0/
+- License field: `https://creativecommons.org/licenses/by/4.0/` is an
+  illustrative product-policy value for an operator-published data product. It
+  is not a license grant by this repository over SDS software, formal
+  deliverables, third-party standards content, or operator data. Any actual data
+  product may use this field only when the publisher has rights sufficient for
+  the chosen license. See `../license-and-publication.md` and
+  `../third-party-notices.md`.
 - Access rights: restricted under the implemented SDS authentication,
   authorization and product-policy controls; VC issuer verification is not an
   active access path while trust enforcement is held.

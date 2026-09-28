@@ -1,0 +1,188 @@
+Sustainability Data Space Software Evaluation License v1.0
+
+Licensor: Cambridge Business Initiatives S.L. for the original SDS Software
+materials it owns or controls. Third-party materials remain under their own
+terms.
+
+This license is not an open-source license and is not a free-software license.
+It is a limited source-available evaluation license.
+
+1. Scope
+
+This license applies to original SDS Software materials in this repository,
+including source code, scripts, tests, migrations, schemas, configuration
+templates, API/software documentation, examples, and synthetic demo materials,
+unless a file or third-party notice states different terms.
+
+This license does not replace or expand any third-party license or term.
+Third-party components, bundled assets, package dependencies, standards content,
+data, fonts, schemas, documentation, or identifiers remain governed by their own
+terms. See docs/third-party-notices.md for notice locations and inventory
+guidance. Where third-party terms apply, they prevail for those materials.
+
+Formal project deliverables under deliverables/ are public project evidence and
+dissemination materials. They may be read, downloaded, cited, and shared
+unchanged with attribution and intact notices for evaluation, audit,
+public-dissemination, or funding-verification purposes. This permission does not
+cover third-party content embedded in a deliverable beyond the rights granted by
+that third party. It also does not grant permission to modify the deliverables,
+remove notices, sell them, repackage them commercially, or use them to imply
+production/commercial SDS rights.
+
+2. Definitions
+
+"SDS Software" means the Sustainability Data Space software materials covered by
+section 1.
+
+"Evaluation" means non-production technical review, installation, execution,
+testing, security review, audit support, compatibility checks, demonstrations,
+benchmarks, and proofs of concept performed only to understand or assess SDS
+Software. Evaluation must not deliver a service to third parties or support
+ordinary business operations. Evaluation may use the included synthetic data or
+other data the evaluator is lawfully entitled to use.
+
+"Production Use" means use in ordinary business operations, delivery of a
+service to internal or external users, processing operational customer or
+third-party data as part of a service, making business/compliance/financial
+decisions, operating a hosted or managed service, or otherwise using SDS
+Software to obtain commercial, operational, or institutional benefit beyond
+Evaluation.
+
+"Commercial Use" includes selling, sublicensing, renting, leasing, providing
+managed services, consulting or outsourcing services, SaaS, bureau services,
+paid support based on SDS Software, or using SDS Software to provide products or
+services to third parties.
+
+3. Permission granted
+
+Subject to this license, you may:
+
+- view, download, clone, and fork this repository on GitHub;
+- install and execute SDS Software in a non-production environment for
+  Evaluation;
+- create local copies, local builds, local virtual environments, local container
+  images, and local test databases needed for Evaluation;
+- run the included tests, examples, synthetic demo data, and documentation
+  checks;
+- make modifications only for Evaluation;
+- maintain a public or private GitHub fork for Evaluation, provided the fork is
+  marked as a fork or modified version, keeps this license, and keeps all
+  copyright, attribution, funding, and third-party notices intact. A GitHub
+  evaluation fork meeting these conditions is not by itself treated as a
+  prohibited product or service offering;
+- publish non-confidential evaluation findings, benchmarks, and review notes
+  with truthful attribution, provided you do not disclose vulnerabilities
+  publicly before responsible reporting and do not imply endorsement,
+  certification, or production authorization;
+- share issues and non-confidential evaluation feedback through GitHub Issues or
+  another agreed channel;
+- retain reasonable internal copies required for Evaluation auditability.
+
+4. Restrictions
+
+You may not, without a separate written agreement with the Licensor:
+
+- use SDS Software for Production Use;
+- use SDS Software for Commercial Use;
+- offer SDS Software, a modified SDS version, or a service substantially based on
+  SDS Software to third parties;
+- operate SDS Software as SaaS, a hosted service, a managed service, or an
+  internal production platform;
+- distribute, publish, or make available to third parties SDS Software or
+  modified versions outside the GitHub evaluation forks permitted by section 3,
+  including through other forges, package indexes, container registries,
+  customer deliverables, or commercial bundles;
+- remove or obscure copyright, attribution, license, third-party notice, or
+  funding/publicity notices;
+- present SDS Software as certified, approved, endorsed, or licensed by any
+  standards body, third-party data provider, public authority, or funder unless
+  that approval is separately granted in writing;
+- use SDS Software with third-party standards packages, data products, customer
+  data, or operational datasets unless you independently hold the rights and
+  permissions for those materials and have a separate SDS production/commercial
+  agreement if the use is productive;
+- use project names, trademarks, logos, domain names, or confusingly similar
+  marks except for truthful nominative reference.
+
+5. Production or commercial rights
+
+Production Use, Commercial Use, redistribution beyond Evaluation, hosted
+services, third-party service delivery, support, warranty, professional services,
+or broader rights require a separate written agreement with the Licensor.
+
+To request such rights, open a GitHub Issue in this repository without
+confidential information or contact Cambridge Business Initiatives S.L. through
+info@sustainabilitydataspace.com or another private channel separately agreed
+with the Licensor. Do not put secrets, customer data, credentials,
+security-sensitive details, or confidential contract terms in public Issues.
+
+6. Contributions
+
+The project does not currently solicit code contributions or pull requests.
+Issues may be submitted for Evaluation feedback. Any contribution policy,
+copyright assignment, developer certificate of origin, or inbound license will
+be published separately if contributions are opened.
+
+7. Third-party materials
+
+Third-party components, bundled static assets, package dependencies, fonts,
+standards content, data, schemas, or documentation may be governed by their own
+licenses or terms. Those terms remain in force and are not modified by this
+license. Where third-party terms apply, they prevail for those materials. This
+license does not grant rights to GRI, ESRS/EFRAG, GHG Protocol, ISSB, FIWARE,
+Swagger UI, ReDoc, or any other third-party material except to the extent
+already permitted by the applicable third-party terms.
+
+8. Data products and operator packages
+
+The SDS Software license does not license any operator dataset, production
+package, standards export, mapping package, evidence pack, customer information,
+personal data, trade secret, or data product. Anyone evaluating SDS must use only
+synthetic data supplied in this repository or other data they are lawfully
+entitled to use.
+
+9. Security reporting
+
+Do not report suspected vulnerabilities through public Issues. Follow
+SECURITY.md and docs/security-reporting.md, and use a private responsible
+disclosure channel.
+
+10. Public-funding and dissemination notice
+
+SDS Software is published as a source-available evaluation release to support
+technical review, verification, and dissemination of project results. Public
+official sources for the relevant PYSED call describe dissemination and
+publicity obligations and state that individual beneficiary conditions may
+apply. This license does not certify legal compliance with those conditions and
+does not replace the beneficiary's individual resolution, grant obligations, or
+legal advice.
+
+11. No warranty
+
+SDS Software is provided "as is" and "as available", without warranties or
+conditions of any kind, express or implied, including warranties of
+merchantability, fitness for a particular purpose, non-infringement, accuracy,
+availability, security, regulatory compliance, or suitability for production use.
+
+12. Limitation of liability
+
+To the maximum extent permitted by law, the Licensor will not be liable for any
+indirect, incidental, special, consequential, exemplary, punitive, or
+business-interruption damages, or for loss of profits, revenue, data, goodwill,
+or anticipated savings, arising from or related to SDS Software or this license.
+Sections 7, 8, 11, 12, 13, and 14 survive termination to the extent permitted by
+law.
+
+13. Termination
+
+Any rights granted by this license terminate automatically if you breach its
+terms. On termination, you must stop using SDS Software and delete or destroy
+copies that are not required to be retained by law or by an agreed written
+contract.
+
+14. Language, summaries, and governing law
+
+This LICENSE text controls over README summaries, documentation summaries, UI
+labels, package metadata, or translations. Unless mandatory law requires
+otherwise, this license is governed by the laws of Spain, and disputes are
+subject to the competent courts of Madrid, Spain.

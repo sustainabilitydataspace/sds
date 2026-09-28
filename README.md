@@ -11,18 +11,35 @@ operador; no se incluyen datos de producción ni claves de otras instalaciones.
 
 ## Alcance de uso previsto
 
-La descarga, instalación y ejecución de pruebas con SDS están previstas solo
-para evaluación técnica en un entorno de pruebas. Estas instrucciones no
-constituyen permiso para usar SDS en la actividad ordinaria propia, ponerlo en
-producción, prestar servicios a terceros, venderlo ni redistribuirlo. Para
-cualquiera de esos usos hace falta un acuerdo separado y por escrito con el
-titular de los derechos. Las licencias de componentes de terceros se rigen por
-sus propios textos; esta nota no los restringe ni amplía. Las condiciones de
-GitHub permiten ver y bifurcar el repositorio dentro de la plataforma; esto no
-concede explotación productiva. Las condiciones definitivas de evaluación y
-publicación del código SDS están pendientes de revisión de titularidad,
-condiciones particulares de la ayuda y asesoramiento jurídico. No se presenta esta nota
-como una licencia definitiva.
+SDS se publica como código fuente disponible para evaluación. No es software de
+código abierto en sentido OSI/FSF porque la licencia restringe el uso
+productivo y comercial.
+
+La licencia aplicable al código SDS propio es `LICENSE`. En resumen, permite
+ver, descargar, bifurcar en GitHub, instalar y ejecutar SDS en entornos no
+productivos para evaluación técnica, revisión de seguridad, auditoría, pruebas y
+demostraciones. No permite usar SDS en la actividad ordinaria propia, ponerlo en
+producción, prestar servicios a terceros, ofrecerlo como SaaS o servicio
+gestionado, venderlo, relicenciarlo ni redistribuirlo fuera de los forks de
+evaluación permitidos en GitHub sin acuerdo separado y por escrito con el
+titular de los derechos.
+
+Las instrucciones de instalación de este repositorio son instrucciones de
+evaluación. Que el código arranque localmente no concede derechos de
+explotación productiva. Las licencias de componentes de terceros, los derechos
+sobre paquetes de estándares, los datos de operador, los productos de datos y
+los entregables formales conservan sus términos propios y no quedan ampliados
+por la licencia SDS. Consulte `docs/third-party-notices.md` para los avisos de
+terceros y `docs/license-and-publication.md` para la explicación pública de la
+licencia y de la publicación.
+
+La publicación de esta fuente sirve para revisión técnica, verificabilidad y
+difusión del proyecto. Las fuentes oficiales públicas de la convocatoria PYSED
+no fijan una licencia concreta del código; sí contemplan la difusión amplia de
+resultados y la posible colaboración en difusión. La resolución global de
+concesión remite además a condiciones particulares de cada beneficiario, por lo
+que esta publicación no debe leerse como cierre jurídico de subvención sin
+revisar la resolución individual correspondiente.
 
 ## Arranque de evaluación desde un clon limpio
 
@@ -89,4 +106,6 @@ distribución no reclama certificación, aprobación o licencia de GRI ni de
 ninguna otra entidad por sí misma.
 
 Consulte `docs/public-profile.md`, `api/docs/import-packages.md` y
-`docs/quality/acceptance_gates.md`.
+`docs/quality/acceptance_gates.md`. Para uso, licencia, avisos de terceros y
+seguridad, consulte `LICENSE`, `docs/license-and-publication.md`,
+`docs/third-party-notices.md` y `SECURITY.md`.
