@@ -475,7 +475,18 @@ runtime_env_exec() {
 }
 cd "$RELEASE"
 
-runtime_env_exec .venv/bin/python -m alembic current --check-heads
+current_revisions="$(runtime_env_exec .venv/bin/python -m alembic current \
+  | "$PYTHON_BIN" -c 'import sys; print("\n".join(sorted(line.split()[0] for line in sys.stdin if line.strip())))')"
+head_revisions="$(runtime_env_exec .venv/bin/python -m alembic heads \
+  | "$PYTHON_BIN" -c 'import sys; print("\n".join(sorted(line.split()[0] for line in sys.stdin if line.strip())))')"
+if [ "$current_revisions" != "$head_revisions" ]; then
+  echo "Refusing deployment: database is not at Alembic heads." >&2
+  echo "Current revisions:" >&2
+  printf '%s\n' "${current_revisions:-<none>}" >&2
+  echo "Head revisions:" >&2
+  printf '%s\n' "${head_revisions:-<none>}" >&2
+  exit 1
+fi
 
 if [ "$RUN_SEMANTIC_PROJECTOR" -eq 1 ]; then
   GATE_REPORT="$BACKUP_DIR/semantic-projector-${COMMIT}-gate.json"

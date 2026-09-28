@@ -96,7 +96,10 @@ service_exec_port
 def test_native_release_preparation_is_db_read_only_and_dependency_locked():
     script = DEPLOY_SCRIPT.read_text(encoding="utf-8")
 
-    assert "alembic current --check-heads" in script
+    assert "alembic current" in script
+    assert "alembic heads" in script
+    assert "database is not at Alembic heads" in script
+    assert "--check-heads" not in script
     assert "alembic upgrade" not in script
     assert "bootstrap_semantic_model_if_empty" not in script
     assert "scripts/project_semantic_catalog.py --dry-run" not in script

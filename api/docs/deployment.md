@@ -442,10 +442,10 @@ fencing of non-cooperating writers: a writer can still change the link after
 verification and before restart. Keep external link writers serialized; this
 does not make filesystem switching and service restart atomic.
 
-The helper never migrates or repairs the live database. It requires Alembic to
-already be at every current head (`alembic current --check-heads`) and requires
-the persisted projection gate to pass. It does not run the projector, including
-its nominal dry-run, because project initialisation can mutate schema state.
+The helper never migrates or repairs the live database. It requires the Alembic
+`current` revision set to match the `heads` revision set and requires the
+persisted projection gate to pass. It does not run the projector, including its
+nominal dry-run, because project initialisation can mutate schema state.
 `--bootstrap-semantic-model` is deliberately rejected. Perform schema
 migration or projection changes only in a separate authorised maintenance lane:
 quiesce the old service, take and verify a database backup, apply the change,
