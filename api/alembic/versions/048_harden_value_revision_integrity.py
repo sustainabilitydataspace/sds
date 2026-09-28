@@ -353,7 +353,7 @@ def _preflight(bind: sa.Connection) -> None:
             UNION ALL
             SELECT parent_walk.start_id,
                    parent.parent_revision_id,
-                   parent_walk.path || parent.id,
+                   parent_walk.path || parent.id::text,
                    parent.id = ANY(parent_walk.path)
             FROM parent_walk
             JOIN public.value_revisions AS parent
@@ -1153,7 +1153,7 @@ def upgrade() -> None:
                     UNION ALL
                     SELECT parent_walk.start_id,
                            parent.parent_revision_id,
-                           parent_walk.path || parent.id,
+                           parent_walk.path || parent.id::text,
                            parent.id = ANY(parent_walk.path)
                     FROM parent_walk
                     JOIN public.value_revisions AS parent

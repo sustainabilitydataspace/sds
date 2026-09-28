@@ -25,6 +25,7 @@ API_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS_DIR = API_ROOT / "alembic" / "versions"
 BASELINE_MIGRATION = VERSIONS_DIR / "001_baseline_schema.py"
 TYPED_VALUES_MIGRATION = VERSIONS_DIR / "011_allow_typed_esg_values.py"
+REVISION_INTEGRITY_MIGRATION = VERSIONS_DIR / "048_harden_value_revision_integrity.py"
 ALEMBIC_ENV = API_ROOT / "alembic" / "env.py"
 
 
@@ -473,3 +474,10 @@ def test_alembic_migration_graph_keeps_demo_cleanup_evs_merge_linear():
         successor_fk_revision.down_revision
         == "039_seed_varch0_profiles_and_waste_plastic"
     )
+
+
+def test_revision_integrity_parent_walk_casts_ids_before_array_append() -> None:
+    migration_text = REVISION_INTEGRITY_MIGRATION.read_text(encoding="utf-8")
+
+    assert "parent_walk.path || parent.id::text" in migration_text
+    assert "parent_walk.path || parent.id," not in migration_text
