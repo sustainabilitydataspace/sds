@@ -226,6 +226,9 @@ def test_public_docs_point_to_hosted_production_gate_without_secrets():
     combined = "\n".join([readme, deployment, acceptance])
 
     assert "2026-06-04-hosted-production-readiness-gate.md" in combined
+    assert "https://api.sustainabilitydataspace.com/" in combined
+    assert "development/test" in combined
+    assert "The current hosted SDS API surface is `https://sds.ueporreres.com/`" not in combined
     assert "sds.ueporreres.com" in combined
     assert "SDS_HOSTED_BASIC_PASSWORD" not in hosted_gate
     assert "BOOTSTRAP_ADMIN_PASSWORD=" not in hosted_gate

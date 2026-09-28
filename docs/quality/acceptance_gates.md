@@ -70,18 +70,14 @@ This document fixes acceptance thresholds and evaluation checklists for each del
   while the persistent `sds-api-prod` stack and volume stayed present. Prior
   release-gate evidence:
   `docs/quality/2026-05-23-production-release-gate.md`.
-- Hosted native production gate: the current protected public API surface at
-  `https://sds.ueporreres.com/` is documented in
-  `docs/quality/2026-06-04-hosted-production-readiness-gate.md`. This gate
-  covers the native `sds-api.service`, Apache/Virtualmin HTTPS reverse proxy,
-  Basic Auth challenge, loopback-only API/PostgreSQL listeners, loopback
-  `/healthz` and `/ready`, migration head, Nordhaven value counts, and absence
-  of legacy sample users/FX rows. The 2026-06-06 operator credential reset
-  updated both Apache Basic Auth and FastAPI admin access from the private host
-  environment, then reverified the no-secret public challenge, credentialed
-  app reachability, API login, service state, and loopback health/readiness
-  without recording secrets in the repo. It is an API production gate, not E11
-  website availability and not full subsidy/dossier closure.
+- Current public production API: `https://api.sustainabilitydataspace.com/`.
+  Its public documentation, OpenAPI, health and readiness routes must be
+  rechecked after each deployment; application business routes require an
+  authenticated API session. The historical development/test-host readiness
+  baseline at `docs/quality/2026-06-04-hosted-production-readiness-gate.md`
+  applies to `https://sds.ueporreres.com/`, not to the current public production
+  URL. Neither API surface proves E11 website availability or full
+  subsidy/dossier closure.
 - Operator proof: the README "Tarjeta de aceptacion operativa" is the
   public 30-minute reviewer path linking the DB-backed quickstart,
   health/readiness, manual Swagger checks with Nordhaven values, package

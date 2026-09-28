@@ -348,53 +348,34 @@ No guardes claves privadas ni secretos en el repo. Si aparece `403` tras subir
 archivos a un sub-server Virtualmin, verifica primero ownership/SELinux del
 document root y reetiqueta con `restorecon` antes de cambiar Apache.
 
-### Hosted SDS API production evidence
+### Current public production API
 
-The current hosted SDS API surface is `https://sds.ueporreres.com/`. Its public
-production-readiness baseline is recorded in
-`../../docs/quality/2026-06-04-hosted-production-readiness-gate.md`. Treat that
-document as historical evidence for the release it records; after later runtime,
-OpenAPI, calculation, mapping, or data-package changes, capture a fresh hosted
-smoke before claiming the hosted surface is current.
+The public production API surface is
+`https://api.sustainabilitydataspace.com/`. It is distinct from the official
+E11 communications website at `https://sustainabilitydataspace.com/`: API
+availability does not close website content/impact acceptance or
+subsidy/dossier residuals.
 
-That hosted API is distinct from the official E11 communications website at
-`https://sustainabilitydataspace.com/`. The hosted API gate proves protected
-API operation for the checked release; it does not close E11 website
-content/impact acceptance or subsidy/dossier residuals.
+The development/test surface `https://sds.ueporreres.com/` and its historical
+readiness record at
+`../../docs/quality/2026-06-04-hosted-production-readiness-gate.md` are not the
+current public production endpoint. Treat that dated record only as historical
+evidence for the release and host it describes.
 
-Minimum public no-secret probe:
+Minimum public no-secret production probes:
 
 ```powershell
-curl.exe -I -L --max-time 20 https://sds.ueporreres.com/
+curl.exe -I -L --max-time 20 https://api.sustainabilitydataspace.com/docs
+curl.exe -I -L --max-time 20 https://api.sustainabilitydataspace.com/openapi.json
+curl.exe -I -L --max-time 20 https://api.sustainabilitydataspace.com/healthz
+curl.exe -I -L --max-time 20 https://api.sustainabilitydataspace.com/ready
 ```
 
-Expected result: `401 Unauthorized` with
-`WWW-Authenticate: Basic realm="SDS API"` and the configured security headers.
-Credentialed smoke checks can be run by the operator from a private environment;
-do not write passwords, tokens, `.htpasswd` hashes, or production `.env` values
-into this repository.
-
-Credential reset and rotation for the hosted surface is a two-layer operation:
-
-- Apache Basic Auth lives in the host-side `.htpasswd` file and protects `/`,
-  `/docs`, `/openapi.json`, `/healthz`, `/ready`, and `/auth/login` before the
-  request reaches FastAPI.
-- FastAPI bearer auth lives in the SDS database user table and protects API
-  behavior after `/auth/login`.
-
-When an operator resets access, update both layers deliberately from the private
-host environment, keep a timestamped copy of the previous `.htpasswd`, then
-verify without printing secrets:
-
-1. public unauthenticated probe still returns the Basic Auth `401` challenge;
-2. credentialed public probe reaches the proxied FastAPI app;
-3. `/auth/login` returns an access token for the intended API admin;
-4. host loopback `/healthz` returns `200` and `/ready` returns `200` only with
-   an API bearer token carrying `VIEW_SYSTEM_HEALTH`.
-
-Do not commit the reset value, token output, `.htpasswd` hash, or production
-environment file. If a temporary weak credential is used for emergency access,
-rotate it to a strong private value before broader operation.
+The documentation, OpenAPI, health and readiness routes are public. API
+business routes under `/api/v1/*` require application authentication. Run
+credentialed API smoke checks only from a private operator environment; never
+write passwords, tokens, authentication headers, or production environment
+values into this repository.
 
 ### Native hosted release helper
 
@@ -470,9 +451,11 @@ scp -i $HOME\.ssh\<key-name> -P 2227 <operator-work-dir>\deploy\sds-api-<commit>
 scp -i $HOME\.ssh\<key-name> -P 2227 api\scripts\deploy_native_release.sh <user>@<host>:/tmp/deploy_native_release.sh
 ```
 
-The current hosted `sds.ueporreres.com` service binds the API on loopback port
-`18090`, so its helper smoke must use the host-specific health port. For this
-hosted target, use this command; do not use a generic `8090` invocation:
+The development/test `sds.ueporreres.com` service binds the API on loopback
+port `18090`, so its helper smoke must use the host-specific health port. For
+this hosted target, use this command; do not use a generic `8090` invocation.
+Do not reuse these host-specific values for
+`https://api.sustainabilitydataspace.com` production:
 
 ```powershell
 ssh -i $HOME\.ssh\<key-name> -p 2227 <user>@<host> "sudo -n env HEALTH_PORT=18090 bash /tmp/deploy_native_release.sh --tarball /tmp/sds-api-<commit>.tar --tarball-sha256 $digest --release /opt/sds-api/releases/<release-name> --commit <commit>"
