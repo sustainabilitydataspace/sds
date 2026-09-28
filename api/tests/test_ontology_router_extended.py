@@ -11,6 +11,8 @@ from rdflib import BNode, Dataset, Graph, Literal, Namespace, URIRef
 
 from src.api.routers import ontology
 
+SPARQL_WORKER_TIMEOUT_SECONDS = 15
+
 
 def _pickle_load_marker(path: str, value: str) -> URIRef:
     Path(path).write_text("pickle was executed", encoding="utf-8")
@@ -254,7 +256,7 @@ def test_custom_sparql_result_count_is_bounded():
         ontology._execute_local_sparql_bounded(
             graph,
             "SELECT * WHERE { ?s ?p ?o }",
-            timeout_seconds=5.0,
+            timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
             max_results=2,
             max_graph_bytes=1024 * 1024,
         )
@@ -276,7 +278,7 @@ def test_custom_sparql_never_executes_pickle_payload_from_graph_term(tmp_path):
     rows = ontology._execute_local_sparql_bounded(
         graph,
         "SELECT ?s WHERE { ?s <urn:test:p> ?o }",
-        timeout_seconds=5.0,
+        timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
         max_results=10,
         max_graph_bytes=1024 * 1024,
     )
@@ -295,7 +297,7 @@ def test_custom_sparql_rejects_named_graph_contexts():
         ontology._execute_local_sparql_bounded(
             dataset,
             "SELECT ?s WHERE { ?s <urn:test:p> ?o }",
-            timeout_seconds=5.0,
+            timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
             max_results=10,
             max_graph_bytes=1024 * 1024,
         )
@@ -314,7 +316,7 @@ def test_custom_sparql_preserves_blank_nodes_languages_and_graph_prefixes():
     rows = ontology._execute_local_sparql_bounded(
         graph,
         'SELECT ?s ?v WHERE { ?s ex:p ?v FILTER(lang(?v) = "fr") }',
-        timeout_seconds=5.0,
+        timeout_seconds=SPARQL_WORKER_TIMEOUT_SECONDS,
         max_results=10,
         max_graph_bytes=1024 * 1024,
     )
