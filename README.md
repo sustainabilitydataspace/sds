@@ -8,7 +8,22 @@ superficie de entregables E01–E13, la trazabilidad de subvención y un perfil 
 demostración sintético. No contiene secretos, datos operativos, historiales
 privados ni catálogos textuales de estándares de terceros.
 
-## Arranque reproducible desde un clon limpio
+## Alcance de uso previsto
+
+La descarga, instalación y ejecución de pruebas con SDS están previstas solo
+para evaluación técnica en un entorno de pruebas. Estas instrucciones no
+constituyen permiso para usar SDS en la actividad ordinaria propia, ponerlo en
+producción, prestar servicios a terceros, venderlo ni redistribuirlo. Para
+cualquiera de esos usos hace falta un acuerdo separado y por escrito con el
+titular de los derechos. Las licencias de componentes de terceros se rigen por
+sus propios textos. Las condiciones de GitHub permiten ver y bifurcar el
+repositorio dentro de la plataforma; esto no concede explotación productiva.
+Las condiciones definitivas de evaluación y publicación
+del código SDS están pendientes de revisión de titularidad, condiciones
+particulares de la ayuda y asesoramiento jurídico. Esta nota no es una licencia
+definitiva.
+
+## Arranque de evaluación desde un clon limpio
 
 Requisitos: Git, un motor Compose compatible con Docker Compose y CPython 3.10
 para los tests/gates de host. En sistemas con Podman se puede sustituir el
@@ -57,8 +72,9 @@ fechada el 2026-09-18.
 
 ## Paquetes de operador
 
-El arranque anterior verifica el perfil público de demostración; no acredita
-por sí solo una instalación de producción con todos los paquetes operativos.
+El arranque anterior verifica el perfil público de demostración; no autoriza
+el uso productivo ni acredita por sí solo una instalación de producción con
+todos los paquetes operativos.
 El ejemplo instalado es suficiente para una demostración técnica. Los paquetes
 operativos o de estándares que un operador quiera procesar se importan por los
 contratos SDS y deben contar con sus derechos de uso aplicables. Los códigos

@@ -7,6 +7,9 @@
   demostración, no una instalación de producción con paquetes del operador.
 - Excluidos por defecto los archivos de instrucciones de agentes y las áreas
   locales de trabajo de futuras incorporaciones al repositorio público.
+- Delimitado el arranque como evaluación técnica; la guía no concede uso
+  productivo propio ni servicios a terceros. La licencia definitiva del código
+  continúa pendiente de las comprobaciones de derechos y de la ayuda.
 
 ## 2026-09-18
 
