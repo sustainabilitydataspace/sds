@@ -463,7 +463,7 @@ STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 if [ "$CREATE_DB_BACKUP" -eq 1 ]; then
   DB_BACKUP="$BACKUP_DIR/pre-native-release-${COMMIT}-${STAMP}.dump"
   sudo -u postgres pg_dump -Fc --dbname="$DB_NAME" \
-    | python "$SECURE_IO_HELPER" capture-file --path "$DB_BACKUP" >/dev/null
+    | "$PYTHON_BIN" "$SECURE_IO_HELPER" capture-file --path "$DB_BACKUP" >/dev/null
   echo "DB backup: $DB_BACKUP"
 fi
 

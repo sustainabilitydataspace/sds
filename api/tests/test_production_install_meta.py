@@ -149,6 +149,8 @@ def test_native_release_deploy_helper_pins_service_python_before_pip_install():
     assert "pip install \\" in script
     assert '--no-index --find-links "$RELEASE/wheelhouse" --require-hashes' in script
     assert '-r "$RELEASE/requirements.lock"' in script
+    assert '| "$PYTHON_BIN" "$SECURE_IO_HELPER" capture-file' in script
+    assert '| python "$SECURE_IO_HELPER"' not in script
     assert script.index('validate_python "$PYTHON_BIN"') < script.index(
         "pip install \\"
     )
