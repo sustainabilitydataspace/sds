@@ -7,6 +7,12 @@ La distribución pública SDS tiene dos carriles deliberadamente separados:
 2. Un perfil de operador: paquetes externos de indicadores, mapeos, unidades,
    divisas y semántica que el operador tenga derecho a usar.
 
+El primer carril puede instalarse con claves generadas localmente por
+`make public-env` y no depende de cuentas ni contraseñas de la organización.
+Para procesar paquetes propios en el segundo, cada operador aporta su
+infraestructura, configuración y derechos de uso; la demostración sintética
+no prueba por sí sola ese despliegue operativo.
+
 El perfil de demostración no contiene valores operativos, datos personales,
 secretos, mapeos completos de estándares ni descripciones o etiquetas de
 catálogos de terceros. Sus tres métricas son identificadores SDS propios bajo

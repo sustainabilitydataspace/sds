@@ -25,7 +25,10 @@ make gate-e4-r10
 ```
 
 `make public-env` genera `api/.env` con secretos locales que no se muestran ni
-se versionan. El perfil incluido carga tres métricas SDS propias y sintéticas:
+se versionan. No hacen falta credenciales del equipo que desarrolló SDS:
+cada instalación utiliza las suyas. No subas `api/.env` al repositorio ni
+reutilices sus claves en otro entorno. El perfil incluido carga tres métricas
+SDS propias y sintéticas:
 volumen de agua, uso de energía y masa de emisiones. Los gates generan y purgan
 1.000 filas por ejecución. R8 exige transformaciones correctas para `L → m3`,
 `kWh → MWh` y `kgCO2e → tCO2e`; R10 exige importación, cinco superficies de
@@ -54,6 +57,8 @@ fechada el 2026-09-18.
 
 ## Paquetes de operador
 
+El arranque anterior verifica el perfil público de demostración; no acredita
+por sí solo una instalación de producción con todos los paquetes operativos.
 El ejemplo instalado es suficiente para una demostración técnica. Los paquetes
 operativos o de estándares que un operador quiera procesar se importan por los
 contratos SDS y deben contar con sus derechos de uso aplicables. Los códigos

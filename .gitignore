@@ -1,4 +1,8 @@
 # Local environments and generated Python files
+AGENTS.md
+runbook/
+workspace/
+.local_artifacts/
 api/.venv/
 **/__pycache__/
 **/*.py[cod]
