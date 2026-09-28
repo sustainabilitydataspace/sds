@@ -99,11 +99,12 @@ Each numbered effect is a separate approval and evidence boundary:
 
 Image provenance: `api/Dockerfile` pins the upstream Python 3.10 slim
 Linux/amd64 manifest digest verified from Docker Hub; `api/requirements.lock`
-pins each selected Python 3.10 Linux/amd64 wheel by version and SHA-256. A
-local hashed image build and `pip check` qualify installation mechanics, not
-the release or AWS runtime. Public builds may fetch only hash-verified wheels
-from the configured package index. The controlled release build must instead
-use an externally reviewed wheelhouse with `pip --no-index --require-hashes`,
+pins selected Linux/amd64 wheels for the Python 3.10 Docker image and Python
+3.12 hosted native runtime by version and SHA-256. A local hashed image build
+and `pip check` qualify installation mechanics, not the release or AWS runtime.
+Public builds may fetch only hash-verified wheels from the configured package
+index. The controlled release build must instead use an externally reviewed
+wheelhouse with `pip --no-index --require-hashes`,
 record the clean source commit, Dockerfile and base digest, lock and wheelhouse
 digests, SBOM and scans, built OCI digest and ECR readback in an independently
 verified receipt. Re-review the base and lock for security updates before

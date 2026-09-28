@@ -419,14 +419,16 @@ all remaining database operations are read-only qualification checks.
 
 The archive is an authenticated release input. Supply its complete lowercase
 SHA-256 using `--tarball-sha256`. The public `api/requirements.lock` binds
-Python 3.10 / Linux amd64 wheels by exact version and SHA-256. The archive must
+the reviewed Linux amd64 wheels used by the Python 3.10 Docker image and the
+Python 3.12 hosted native runtime by exact version and SHA-256. The archive must
 include those reviewed lock bytes and an externally assembled `api/wheelhouse/`
-with every required distribution. Installation uses `pip --no-index
---require-hashes`; the deployment host does not upgrade tools or access an
-index. Generate/verify the wheelhouse for the same Python/platform target in
-the controlled release-build lane; keep wheels out of Git and never hand-edit
-the lock. The public Dockerfile currently downloads hashed wheels during
-build, so its successful build alone is not evidence of an offline AWS release.
+with every required distribution for the target interpreter. Installation uses
+`pip --no-index --require-hashes`; the deployment host does not upgrade tools or
+access an index. Generate/verify the wheelhouse for the same Python/platform
+target in the controlled release-build lane; keep wheels out of Git and never
+hand-edit the lock. The public Dockerfile currently downloads hashed wheels
+during build, so its successful build alone is not evidence of an offline AWS
+release.
 
 Both forward and rollback current-link swaps require GNU `ln -sfnT`, followed
 immediately by `readlink -f` verification against the exact expected canonical
