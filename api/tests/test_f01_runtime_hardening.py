@@ -620,6 +620,9 @@ fi
         "python",
         "python",
         "python",
+        "python",
+        "python",
+        "python",
     ]
     assert release.is_dir()
     assert current.resolve() == active
@@ -743,7 +746,7 @@ fi
         args.append("--skip-restart")
     result = subprocess.run(args, env=env, capture_output=True, text=True, timeout=30)
 
-    expected = ["backup", "migrate", f"gate:{projection}"]
+    expected = ["backup", "migrate", "migrate", f"gate:{projection}"]
     if projection == "ready" and failure != "gate":
         expected += [f"report:{backups}/semantic-projector-test-commit-gate.json"]
         if not skip_restart:
