@@ -123,7 +123,6 @@ jobs:
           export DEMO_CI_BOOTSTRAP_ADMIN_PASSWORD="$(sed -n 's/^BOOTSTRAP_ADMIN_PASSWORD=//p' .env)"
           make demo-verify DEMO_VERIFY_ARGS="--ci-api-principal --api-url http://127.0.0.1:8090"
           DATABASE_URL="${SDS_VALUE_IMPORT_DISPOSABLE_DATABASE_URL}" make demo-benchmark
-          make demo-reset
 
       - name: Show quickstart diagnostics on failure
         if: failure()
