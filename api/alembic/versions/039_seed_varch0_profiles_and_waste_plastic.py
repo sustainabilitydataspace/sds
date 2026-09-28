@@ -30,9 +30,8 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import text
-
 from alembic import op
+from sqlalchemy import text
 
 revision = "039_seed_varch0_profiles_and_waste_plastic"
 down_revision = "038_add_closed_enum_exemptions"
@@ -61,8 +60,6 @@ _WASTE_PLASTIC_URI = "syg:WastePlastic"
 
 
 def _seed_profiles(bind) -> None:
-    # Separate lookup binds avoid PostgreSQL type-inference collisions between
-    # INSERT ... SELECT targets and WHERE equality comparisons for VARCHARs.
     for pid, p in sorted(_PROFILE_PAYLOADS.items()):
         version = p["version"]
         frozen_hash = p["hash"]
@@ -78,14 +75,12 @@ def _seed_profiles(bind) -> None:
                     "SELECT :id, :pid, :ver, 'implemented', CAST(:descriptor AS JSONB), "
                     ":h, :corpus "
                     f"WHERE NOT EXISTS (SELECT 1 FROM {table} "
-                    "WHERE profile_id = :existing_pid AND version = :existing_ver)"
+                    "WHERE profile_id = :pid AND version = :ver)"
                 ),
                 {
                     "id": pid,
                     "pid": pid,
                     "ver": version,
-                    "existing_pid": pid,
-                    "existing_ver": version,
                     "descriptor": descriptor,
                     "h": frozen_hash,
                     "corpus": corpus,
@@ -106,14 +101,12 @@ def _seed_profiles(bind) -> None:
                     "(id, schema_id, version, schema, schema_hash) "
                     "SELECT :id, :pid, :ver, CAST(:schema AS JSONB), :h "
                     "WHERE NOT EXISTS (SELECT 1 FROM contract_schema_versions "
-                    "WHERE schema_id = :existing_pid AND version = :existing_ver)"
+                    "WHERE schema_id = :pid AND version = :ver)"
                 ),
                 {
                     "id": pid,
                     "pid": pid,
                     "ver": version,
-                    "existing_pid": pid,
-                    "existing_ver": version,
                     "schema": schema,
                     "h": frozen_hash,
                 },
@@ -134,8 +127,6 @@ def _seed_profiles(bind) -> None:
 
 
 def _seed_commit(bind) -> int:
-    # VARCHAR lookups need separate binds, as in the profile and fixture seeds.
-    # epoch_number can share :ep because both contexts infer BIGINT.
     bind.execute(
         text(
             "INSERT INTO decision_commit_epochs "
@@ -152,18 +143,18 @@ def _seed_commit(bind) -> int:
             "(id, fence_token, epoch_number, status) "
             "SELECT 'sds:seed:varch3:fence', :fence, :ep, 'released' "
             "WHERE NOT EXISTS "
-            "(SELECT 1 FROM decision_commit_fences WHERE fence_token = :existing_fence)"
+            "(SELECT 1 FROM decision_commit_fences WHERE fence_token = :fence)"
         ),
-        {"ep": _SEED_EPOCH, "fence": _SEED_FENCE, "existing_fence": _SEED_FENCE},
+        {"ep": _SEED_EPOCH, "fence": _SEED_FENCE},
     )
     bind.execute(
         text(
             "INSERT INTO decision_commit_sequence (epoch_number, fence_token) "
             "SELECT :ep, :fence "
             "WHERE NOT EXISTS "
-            "(SELECT 1 FROM decision_commit_sequence WHERE fence_token = :existing_fence)"
+            "(SELECT 1 FROM decision_commit_sequence WHERE fence_token = :fence)"
         ),
-        {"ep": _SEED_EPOCH, "fence": _SEED_FENCE, "existing_fence": _SEED_FENCE},
+        {"ep": _SEED_EPOCH, "fence": _SEED_FENCE},
     )
     return bind.execute(
         text(
@@ -188,9 +179,9 @@ def _seed_waste_plastic(bind, commit_id: int) -> None:
             "effective_from) "
             "SELECT :uri, 1, 'Plastic Waste', 'ESRS', 'metric', 'catalogued', :vf "
             "WHERE NOT EXISTS (SELECT 1 FROM canonical_concepts "
-            "WHERE canonical_uri = :existing_uri AND revision = 1)"
+            "WHERE canonical_uri = :uri AND revision = 1)"
         ),
-        {"uri": _WASTE_PLASTIC_URI, "existing_uri": _WASTE_PLASTIC_URI, "vf": vf},
+        {"uri": _WASTE_PLASTIC_URI, "vf": vf},
     )
 
     axes = [
@@ -204,16 +195,9 @@ def _seed_waste_plastic(bind, commit_id: int) -> None:
                 "(id, axis_key, axis_version, decision_commit_id, valid_from) "
                 "SELECT :id, :key, 1, :cid, :vf "
                 "WHERE NOT EXISTS "
-                "(SELECT 1 FROM semantic_axes "
-                "WHERE axis_key = :existing_key AND axis_version = 1)"
+                "(SELECT 1 FROM semantic_axes WHERE axis_key = :key AND axis_version = 1)"
             ),
-            {
-                "id": axis_id,
-                "key": axis_key,
-                "existing_key": axis_key,
-                "cid": commit_id,
-                "vf": vf,
-            },
+            {"id": axis_id, "key": axis_key, "cid": commit_id, "vf": vf},
         )
 
     terms = [
@@ -233,15 +217,12 @@ def _seed_waste_plastic(bind, commit_id: int) -> None:
                 "(id, axis_id, term_key, term_version, decision_commit_id, valid_from) "
                 "SELECT :id, :axis, :key, 1, :cid, :vf "
                 "WHERE NOT EXISTS (SELECT 1 FROM semantic_terms "
-                "WHERE axis_id = :existing_axis AND term_key = :existing_key "
-                "AND term_version = 1)"
+                "WHERE axis_id = :axis AND term_key = :key AND term_version = 1)"
             ),
             {
                 "id": term_id,
                 "axis": axis_id,
                 "key": term_key,
-                "existing_axis": axis_id,
-                "existing_key": term_key,
                 "cid": commit_id,
                 "vf": vf,
             },
@@ -256,12 +237,11 @@ def _seed_waste_plastic(bind, commit_id: int) -> None:
             "decision_commit_id, valid_from) "
             "SELECT :id, :key, :axis, 1, true, :cid, :vf "
             "WHERE NOT EXISTS (SELECT 1 FROM partition_sets "
-            "WHERE partition_key = :existing_key AND partition_version = 1)"
+            "WHERE partition_key = :key AND partition_version = 1)"
         ),
         {
             "id": pset_id,
             "key": "waste_hazard_status_mece",
-            "existing_key": "waste_hazard_status_mece",
             "axis": "sds:seed:axis:waste_hazard_status",
             "cid": commit_id,
             "vf": vf,
@@ -278,15 +258,13 @@ def _seed_waste_plastic(bind, commit_id: int) -> None:
                 "(id, partition_set_id, axis_id, term_id, member_order) "
                 "SELECT :id, :pset, :axis, :term, :ord "
                 "WHERE NOT EXISTS (SELECT 1 FROM partition_set_members "
-                "WHERE partition_set_id = :existing_pset AND term_id = :existing_term)"
+                "WHERE partition_set_id = :pset AND term_id = :term)"
             ),
             {
                 "id": member_id,
                 "pset": pset_id,
                 "axis": "sds:seed:axis:waste_hazard_status",
                 "term": term_id,
-                "existing_pset": pset_id,
-                "existing_term": term_id,
                 "ord": order,
             },
         )
@@ -302,13 +280,12 @@ def _seed_waste_plastic(bind, commit_id: int) -> None:
             "SELECT :id, 'canonical_concept', :ref, :key, 1, 'dimensional_input', 'sum', "
             ":pset, :cid, :vf "
             "WHERE NOT EXISTS (SELECT 1 FROM concept_atomization_contracts "
-            "WHERE contract_key = :existing_key AND contract_version = 1)"
+            "WHERE contract_key = :key AND contract_version = 1)"
         ),
         {
             "id": contract_id,
             "ref": _WASTE_PLASTIC_URI,
             "key": "waste_plastic_atomization",
-            "existing_key": "waste_plastic_atomization",
             "pset": pset_id,
             "cid": commit_id,
             "vf": vf,
@@ -322,15 +299,9 @@ def _seed_waste_plastic(bind, commit_id: int) -> None:
                 "(id, contract_id, axis_id, required) "
                 "SELECT :id, :contract, :axis, true "
                 "WHERE NOT EXISTS (SELECT 1 FROM contract_required_axes "
-                "WHERE contract_id = :existing_contract AND axis_id = :existing_axis)"
+                "WHERE contract_id = :contract AND axis_id = :axis)"
             ),
-            {
-                "id": req_id,
-                "contract": contract_id,
-                "axis": axis_id,
-                "existing_contract": contract_id,
-                "existing_axis": axis_id,
-            },
+            {"id": req_id, "contract": contract_id, "axis": axis_id},
         )
 
 

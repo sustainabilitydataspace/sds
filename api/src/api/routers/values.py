@@ -7,7 +7,8 @@ import io
 import json
 import uuid
 from datetime import date, datetime
-from typing import Iterable, Optional
+from itertools import islice
+from typing import Any, Iterable, Optional
 
 from fastapi import (
     APIRouter,
@@ -20,12 +21,14 @@ from fastapi import (
     Query,
     Request,
     UploadFile,
+    status,
 )
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from rdflib import Graph
 from sqlalchemy.orm import Session
 
 import structlog
+from src.api.csv_security import spreadsheet_safe_cell
 from src.api.models import (
     ChangeFeedDataset,
     ChangeFeedEventResponse,
@@ -47,12 +50,13 @@ from src.api.models import (
     ValueRevisionLineageResponse,
     ValueRevisionResponse,
 )
+from src.auth.authorization import has_cross_tenant_admin_access
 from src.auth.dependencies import (
     get_current_active_user,
     require_permission,
     require_permissions,
 )
-from src.auth.models import Permission, User, UserRole
+from src.auth.models import Permission, User
 from src.calculation.unit_converter import UnitConversionError, UnitConverter
 from src.config.settings import settings
 from src.database.session import get_db_optional
@@ -79,7 +83,11 @@ from src.services.value_idempotency_store import (
 from src.services.value_import_job_runner import run_value_import_job
 from src.services.value_import_job_store import get_value_import_job_store
 from src.services.value_ingest import ValueIngestError, as_http_exception, ingest_value
-from src.services.value_pagination import encode_value_cursor
+from src.services.value_pagination import (
+    decode_scoped_value_cursor,
+    encode_scoped_value_cursor,
+    encode_value_cursor,
+)
 from src.services.value_resolution import resolve_value_request
 from src.services.value_revision_store import (
     ValueRevisionStore,
@@ -87,6 +95,7 @@ from src.services.value_revision_store import (
     revision_to_payload,
 )
 from src.services.value_store import (
+    DatabaseValueStore,
     get_value_store,
     resolve_value_store_tenant_id,
     revision_value_store_needs_tenant,
@@ -95,6 +104,24 @@ from src.services.value_store import (
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
+
+_DB_ASYNC_VALUE_JOB_UNAVAILABLE = {
+    "description": "DB async value jobs are unsupported pending H15",
+    "content": {
+        "application/json": {
+            "schema": {
+                "type": "object",
+                "properties": {"detail": {"type": "string"}},
+                "required": ["detail"],
+            },
+            "example": {
+                "detail": (
+                    "Database-backed async value import jobs are unsupported pending H15"
+                )
+            },
+        }
+    },
+}
 
 
 def _canonical_concept_store_for(db: Optional[Session], store):
@@ -150,6 +177,19 @@ def _value_last_modified(values: Iterable[ValueResponse]) -> Optional[datetime]:
     return max(timestamps) if timestamps else None
 
 
+def _value_read_cursor_id(value: ValueResponse, store) -> str:
+    if not isinstance(store, DatabaseValueStore):
+        return value.id
+    revision_meta = (value.metadata or {}).get("value_revision")
+    if (
+        not isinstance(revision_meta, dict)
+        or not isinstance(revision_meta.get("revision_id"), str)
+        or not revision_meta["revision_id"]
+    ):
+        raise ValueError("Invalid values cursor")
+    return revision_meta["revision_id"]
+
+
 def _decode_value_changes_cursor(cursor: Optional[str]):
     if not cursor:
         return None
@@ -184,7 +224,7 @@ def _authorized_revision_tenant_id(
     *,
     required: bool = False,
 ) -> Optional[str]:
-    if _is_admin_user(current_user):
+    if has_cross_tenant_admin_access(current_user):
         if required and not tenant_id:
             raise HTTPException(status_code=400, detail="tenant_id is required")
         return tenant_id
@@ -207,16 +247,10 @@ def _assert_revision_tenant_access(tenant_id: str, current_user: User) -> None:
     _authorized_revision_tenant_id(tenant_id, current_user, required=True)
 
 
-def _is_admin_user(current_user: User) -> bool:
-    role = getattr(current_user, "role", None)
-    role_value = getattr(role, "value", role)
-    return role_value == UserRole.ADMIN.value
-
-
 def _value_store_tenant_id(current_user: User) -> Optional[str]:
     if revision_value_store_needs_tenant():
         return resolve_value_store_tenant_id(current_user)
-    if not settings.require_database or _is_admin_user(current_user):
+    if not settings.require_database or has_cross_tenant_admin_access(current_user):
         return None
     return resolve_value_store_tenant_id(current_user)
 
@@ -236,6 +270,22 @@ def get_authenticated_value_store(
 ):
     tenant_id = _value_store_tenant_id(current_user)
     return get_value_store(request=request, db=db, tenant_id=tenant_id)
+
+
+def _bounded_export_values(
+    store, *, concept, entity, period_start, period_end, unit, changed_since, limit
+):
+    filters = dict(
+        concept=concept,
+        entity=entity,
+        period_start=period_start,
+        period_end=period_end,
+        unit=unit,
+        changed_since=changed_since,
+    )
+    if isinstance(store, DatabaseValueStore):
+        return store.iterate_export_snapshot(**filters, limit=limit)
+    return list(islice(store.iterate(**filters), limit))
 
 
 @router.post(
@@ -281,7 +331,6 @@ async def create_value(
             concept=value_data.concept,
             entity=value_data.entity,
             period=str(value_data.period),
-            value=value_data.value,
             unit=value_data.unit,
         )
 
@@ -645,7 +694,8 @@ async def import_values_csv(
     response_model=ValueImportJobResponse,
     status_code=202,
     summary="Submit an async values import job",
-    description="Persist a values import job and execute it asynchronously in the API runtime",
+    description="Submit an in-memory values import job; DB mode is unsupported pending H15",
+    responses={503: _DB_ASYNC_VALUE_JOB_UNAVAILABLE},
     dependencies=[Depends(require_permission(Permission.CREATE_VALUES))],
 )
 async def import_values_job(
@@ -699,7 +749,8 @@ async def import_values_job(
     response_model=ValueImportJobResponse,
     status_code=202,
     summary="Submit an async CSV values import job",
-    description="Persist a CSV values import job and execute it asynchronously in the API runtime",
+    description="Submit an in-memory CSV values import job; DB mode is unsupported pending H15",
+    responses={503: _DB_ASYNC_VALUE_JOB_UNAVAILABLE},
     dependencies=[Depends(require_permission(Permission.CREATE_VALUES))],
 )
 async def import_values_csv_job(
@@ -794,10 +845,9 @@ async def get_value_import_job(
         raise HTTPException(
             status_code=404, detail=f"Value import job not found: {job_id}"
         )
-    if (
-        job.submitted_by != getattr(current_user, "username", None)
-        and getattr(current_user, "role", None) != "admin"
-    ):
+    if job.submitted_by != getattr(
+        current_user, "username", None
+    ) and not has_cross_tenant_admin_access(current_user):
         raise HTTPException(
             status_code=403, detail="Not authorized to inspect this value import job"
         )
@@ -847,6 +897,27 @@ async def get_values(
     - **offset**: Results to skip for pagination
     - **cursor**: Opaque cursor returned as `next_cursor`; leave blank on the first page
     """
+    cursor_scope = {
+        "tenant_id": _value_store_tenant_id(current_user),
+        "principal_id": current_user.id,
+        "company_id": current_user.company_id,
+        "role": current_user.role.value,
+        "auth_method": current_user.auth_method,
+    }
+    cursor_filters = {
+        "concept": concept or None,
+        "entity": entity or None,
+        "period_start": period_start.isoformat() if period_start else None,
+        "period_end": period_end.isoformat() if period_end else None,
+        "unit": unit or None,
+        "changed_since": changed_since.isoformat() if changed_since else None,
+        "ordering": (
+            "period-effective,created_at,revision-id:desc:v2"
+            if isinstance(store, DatabaseValueStore)
+            else "period,created_at,id:desc:v1"
+        ),
+    }
+    cursor_secret = settings.jwt_secret_key.get_secret_value()
     try:
         logger.info(
             "Retrieving values",
@@ -858,10 +929,15 @@ async def get_values(
             changed_since=changed_since.isoformat() if changed_since else None,
             limit=limit,
             offset=offset,
-            cursor=cursor,
+            cursor_supplied=bool(cursor),
         )
 
         if cursor:
+            if offset:
+                raise ValueError("Invalid values cursor")
+            position = decode_scoped_value_cursor(
+                cursor, scope=cursor_scope, filters=cursor_filters, secret=cursor_secret
+            )
             paginated_values, total, next_cursor, has_more = store.list_cursor(
                 concept=concept,
                 entity=entity,
@@ -870,7 +946,7 @@ async def get_values(
                 unit=unit,
                 changed_since=changed_since,
                 limit=limit,
-                cursor=cursor,
+                cursor=position,
             )
             page = 1
             pages = (total + limit - 1) // limit if total else 0
@@ -889,14 +965,24 @@ async def get_values(
             next_cursor = None
             if has_more and paginated_values:
                 last = paginated_values[-1]
+                position_id = _value_read_cursor_id(last, store)
+                if isinstance(store, DatabaseValueStore):
+                    position_id = f"revision:{position_id}"
                 next_cursor = encode_value_cursor(
                     period=last.period,
                     created_at=last.created_at,
-                    value_id=last.id,
+                    value_id=position_id,
                 )
             page = (offset // limit) + 1
             pages = (total + limit - 1) // limit if total else 0
 
+        if next_cursor is not None:
+            next_cursor = encode_scoped_value_cursor(
+                next_cursor,
+                scope=cursor_scope,
+                filters=cursor_filters,
+                secret=cursor_secret,
+            )
         response = PaginatedResponse(
             items=paginated_values,
             total=total,
@@ -1034,10 +1120,11 @@ async def get_value_changes(
 
     items = []
     for value in changed_values:
+        event_id = _value_read_cursor_id(value, store)
         cursor_value = encode_change_feed_cursor(
             occurred_at=value.updated_at,
             dataset=ChangeFeedDataset.VALUES.value,
-            event_id=value.id,
+            event_id=event_id,
         )
         items.append(
             ChangeFeedEventResponse(
@@ -1045,7 +1132,7 @@ async def get_value_changes(
                 dataset=ChangeFeedDataset.VALUES,
                 event_type="row_changed",
                 occurred_at=value.updated_at,
-                event_id=value.id,
+                event_id=event_id,
                 record_count=1,
                 operation=(
                     "created" if value.created_at == value.updated_at else "updated"
@@ -1090,6 +1177,7 @@ async def export_values(
         None,
         description="Export only values created or updated on/after this timestamp",
     ),
+    limit: int = Query(10000, ge=1, le=50000, description="Maximum values to export"),
     format: ValueExportFormat = Query(
         ValueExportFormat.CSV, description="Export format"
     ),
@@ -1097,15 +1185,15 @@ async def export_values(
     current_user: User = Depends(get_current_active_user),
 ):
     """Export values using the operational values contract."""
-    values = list(
-        store.iterate(
-            concept=concept,
-            entity=entity,
-            period_start=period_start,
-            period_end=period_end,
-            unit=unit,
-            changed_since=changed_since,
-        )
+    values = _bounded_export_values(
+        store,
+        concept=concept,
+        entity=entity,
+        period_start=period_start,
+        period_end=period_end,
+        unit=unit,
+        changed_since=changed_since,
+        limit=limit,
     )
     payload = [value.model_dump(mode="json") for value in values]
     manifest = build_dataset_manifest(
@@ -1113,16 +1201,19 @@ async def export_values(
         items=payload,
         last_modified=_value_last_modified(values),
     )
+    export_etag = manifest.export_etag(format.value)
     if manifest.is_not_modified(
         if_none_match=request.headers.get("if-none-match"),
         if_modified_since=request.headers.get("if-modified-since"),
+        etag=export_etag,
     ):
         return Response(
-            status_code=304, headers=manifest.response_headers(include_filename=False)
+            status_code=304,
+            headers=manifest.response_headers(include_filename=False, etag=export_etag),
         )
 
     filename = f"values_export.{format.value}"
-    headers = manifest.response_headers(filename=filename)
+    headers = manifest.response_headers(filename=filename, etag=export_etag)
     if format == ValueExportFormat.JSON:
         return StreamingResponse(
             _stream_values_json(values),
@@ -1161,18 +1252,19 @@ async def values_manifest(
     changed_since: Optional[datetime] = Query(
         None, description="Slice only values created or updated on/after this timestamp"
     ),
+    limit: int = Query(10000, ge=1, le=50000, description="Maximum values to hash"),
     store=Depends(get_authenticated_value_store),
     current_user: User = Depends(get_current_active_user),
 ) -> DatasetManifestResponse:
-    values = list(
-        store.iterate(
-            concept=concept,
-            entity=entity,
-            period_start=period_start,
-            period_end=period_end,
-            unit=unit,
-            changed_since=changed_since,
-        )
+    values = _bounded_export_values(
+        store,
+        concept=concept,
+        entity=entity,
+        period_start=period_start,
+        period_end=period_end,
+        unit=unit,
+        changed_since=changed_since,
+        limit=limit,
     )
     manifest = build_dataset_manifest(
         dataset="values",
@@ -1282,10 +1374,15 @@ async def get_value_revision_lineage(
     current_user: User = Depends(get_current_active_user),
 ) -> ValueRevisionLineageResponse:
     revision_store = ValueRevisionStore(_require_revision_db(db))
+    tenant_id = (
+        None
+        if has_cross_tenant_admin_access(current_user)
+        else _authorized_revision_tenant_id(None, current_user, required=True)
+    )
     try:
-        lineage = revision_store.get_revision_lineage(revision_id)
+        lineage = revision_store.get_revision_lineage(revision_id, tenant_id=tenant_id)
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=404, detail="Value lineage not found") from exc
     _assert_revision_tenant_access(lineage["context"]["tenant_id"], current_user)
     return ValueRevisionLineageResponse(**lineage)
 
@@ -1303,10 +1400,15 @@ async def get_value_context_lineage(
     current_user: User = Depends(get_current_active_user),
 ) -> ValueContextLineageResponse:
     revision_store = ValueRevisionStore(_require_revision_db(db))
+    tenant_id = (
+        None
+        if has_cross_tenant_admin_access(current_user)
+        else _authorized_revision_tenant_id(None, current_user, required=True)
+    )
     try:
-        lineage = revision_store.get_context_lineage(context_id)
+        lineage = revision_store.get_context_lineage(context_id, tenant_id=tenant_id)
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(status_code=404, detail="Value lineage not found") from exc
     _assert_revision_tenant_access(lineage["context"]["tenant_id"], current_user)
     return ValueContextLineageResponse(**lineage)
 
@@ -1437,19 +1539,22 @@ def _stream_values_csv(values: Iterable[ValueResponse]):
     for value in values:
         writer.writerow(
             [
-                value.id,
-                value.concept,
-                value.entity,
-                value.period.isoformat(),
-                value.external_key or "",
-                value.value,
-                value.value_type,
-                value.unit,
-                value.original_unit or "",
-                str(bool(value.conversion_applied)).lower(),
-                json.dumps(value.metadata or {}, ensure_ascii=False),
-                value.created_at.isoformat(),
-                value.updated_at.isoformat(),
+                spreadsheet_safe_cell(cell)
+                for cell in [
+                    value.id,
+                    value.concept,
+                    value.entity,
+                    value.period.isoformat(),
+                    value.external_key or "",
+                    value.value,
+                    value.value_type,
+                    value.unit,
+                    value.original_unit or "",
+                    str(bool(value.conversion_applied)).lower(),
+                    json.dumps(value.metadata or {}, ensure_ascii=False),
+                    value.created_at.isoformat(),
+                    value.updated_at.isoformat(),
+                ]
             ]
         )
         yield buffer.getvalue()
@@ -1469,10 +1574,10 @@ def _claim_idempotency(
     if not idempotency_key:
         return None
 
-    claim_kwargs = dict(
-        user_id=getattr(
-            current_user, "id", getattr(current_user, "username", "anonymous")
-        ),
+    tenant_id, user_id = _idempotency_authority(current_user)
+    claim_kwargs: dict[str, Any] = dict(
+        tenant_id=tenant_id,
+        user_id=user_id,
         scope=scope,
         idempotency_key=idempotency_key,
         request_hash=build_request_hash(payload),
@@ -1498,10 +1603,10 @@ def _complete_idempotency(
 ) -> None:
     if not idempotency_key or claim is None:
         return
-    complete_kwargs = dict(
-        user_id=getattr(
-            current_user, "id", getattr(current_user, "username", "anonymous")
-        ),
+    tenant_id, user_id = _idempotency_authority(current_user)
+    complete_kwargs: dict[str, Any] = dict(
+        tenant_id=tenant_id,
+        user_id=user_id,
         scope=scope,
         idempotency_key=idempotency_key,
         record_id=claim.record_id,
@@ -1561,11 +1666,27 @@ def _abandon_idempotency(
 ) -> None:
     if not idempotency_key or claim is None:
         return
+    tenant_id, user_id = _idempotency_authority(current_user)
     store.abandon(
-        user_id=getattr(
-            current_user, "id", getattr(current_user, "username", "anonymous")
-        ),
+        tenant_id=tenant_id,
+        user_id=user_id,
         scope=scope,
         idempotency_key=idempotency_key,
         record_id=claim.record_id,
     )
+
+
+def _idempotency_authority(current_user: User) -> tuple[str, str]:
+    tenant_id = current_user.company_id
+    user_id = current_user.id
+    if not isinstance(tenant_id, str) or not tenant_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant-bound value writes require an active tenant membership",
+        )
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant-bound value writes require an immutable user identity",
+        )
+    return tenant_id, user_id

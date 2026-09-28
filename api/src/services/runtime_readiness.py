@@ -171,11 +171,22 @@ def _emission_factor_refusal_check(unit_converter: Any) -> RuntimeReadinessCheck
 
 
 def _mapping_check(mapping_store: Any) -> RuntimeReadinessCheck:
-    routes = find_mapping_routes(
-        mapping_store,
-        source_concept="csrd:E3-4_05",
-        target_concept="gri:303-5.c",
-    )
+    try:
+        routes = find_mapping_routes(
+            mapping_store,
+            source_concept="csrd:E3-4_05",
+            target_concept="gri:303-5.c",
+        )
+    except Exception as exc:
+        return RuntimeReadinessCheck(
+            name="csrd_gri_exact_mapping_loaded",
+            ready=False,
+            detail=(
+                "csrd:E3-4_05 -> gri:303-5.c exact/equivalent mapping "
+                "availability could not be checked."
+            ),
+            evidence={"error": str(exc)},
+        )
     equivalent = [route for route in routes if route.is_equivalent]
     return RuntimeReadinessCheck(
         name="csrd_gri_exact_mapping_loaded",

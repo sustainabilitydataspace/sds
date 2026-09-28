@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "captured_at_utc": "2026-09-24T08:08:21.918932+00:00",
+  "scope": "Read-only public GET capture of the E11 documentation page and every same-origin PDF linked from that page. Digests bind the observed bytes; they do not establish stakeholder acceptance or analytics impact.",
+  "capture_method": {
+    "script": "scripts/capture_e11_public_evidence.py",
+    "http_method": "GET",
+    "user_agent": "SDS-E11-Evidence-Capture/1.0 (+https://sustainabilitydataspace.com/)",
+    "timeout_seconds": 30.0,
+    "max_response_bytes": 104857600,
+    "replay_command": "python scripts/capture_e11_public_evidence.py --output <new-evidence-path.json>"
+  },
+  "documentation_page": {
+    "url": "https://sustainabilitydataspace.com/documentacion/",
+    "final_url": "https://sustainabilitydataspace.com/documentacion/",
+    "status": 200,
+    "content_type": "text/html",
+    "etag": "\"264-1790237143;;;\"",
+    "last_modified": null,
+    "bytes": 182296,
+    "sha256": "e2ac8e06b477f2e06daa42e8eb2d9e15ae52c5c5481d033f8af50d0b5fffb73e"
+  },
+  "discovered_same_origin_pdf_count": 19,
+  "deliverables": {
+    "E01": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/01.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/01.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"78421a-6a706f70-68a74b253a2afe36;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:37:36 GMT",
+      "bytes": 7881242,
+      "sha256": "f805c45d916ef8e37651175d334cb62f721650a590a2b43860179d44ca7016c5"
+    },
+    "E02": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/02.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/02.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"46dc43-6a706fa4-d8e5400511d7842b;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:38:28 GMT",
+      "bytes": 4643907,
+      "sha256": "15903a81a6ed53947024922fea872c8ea81bd9ffe253d3b71f091b8a8bfaf462"
+    },
+    "E03": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/03.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/03.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"3041cd-6a706fba-aaec5cbb94926a4e;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:38:50 GMT",
+      "bytes": 3162573,
+      "sha256": "df2b16d6812cd864326945e7539d05a28329f0e8b2f18f5a85a1e8748bcc8a77"
+    },
+    "E04": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/04.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/04.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"2e0a3b-6a706fd5-7f65d83a159a3086;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:39:17 GMT",
+      "bytes": 3017275,
+      "sha256": "0fed94d158c150cfe969011fa2d009f1011c2add9b2c6a3754928112897c5f3e"
+    },
+    "E05": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/05.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/05.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"37c91f-6a706fed-f94b1190e3bc7572;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:39:41 GMT",
+      "bytes": 3655967,
+      "sha256": "e1c6746c2ed800f3dcb33407125727cca996e3eddb0cedd5cf318159bda2fc67"
+    },
+    "E06": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/06.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/06.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"ea2021-6a70700a-d2cb6e23b2dfef63;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:40:10 GMT",
+      "bytes": 15343649,
+      "sha256": "c9f210d93c595a9343284131974fecdb0b84703b424f8e5614dee8eef4060edd"
+    },
+    "E07": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/07.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/07.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"3a75fa-6a70701c-b0dc7011e3a6e011;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:40:28 GMT",
+      "bytes": 3831290,
+      "sha256": "e9cd60dbc2a8d3f5a706647c408fe889ad7e9b6d612e84e5d6299fb01f3b1d08"
+    },
+    "E08": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/08.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/08.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"ae3b77-6a707031-7788db7665fdd57b;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:40:49 GMT",
+      "bytes": 11418487,
+      "sha256": "6dee91e155612ac0074ba94379c582df01eccbb480c09245478c304be8193a11"
+    },
+    "E09": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/09.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/09.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"46e9e5-6a707042-cb4795e88395f5bc;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:41:06 GMT",
+      "bytes": 4647397,
+      "sha256": "3fd820310a35fe97a6e71949ac8c9815df0c26c7b7ad4ada0ff3777273b515a2"
+    },
+    "E10": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/10.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/10.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"3b4851-6a707054-230c7d6c433b72dc;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:41:24 GMT",
+      "bytes": 3885137,
+      "sha256": "c8c165c1119b69fc8c9e08d8291fbfd8dc6fb2ed10efa9cd463143464aac718e"
+    },
+    "E11": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/11.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/11.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"14a192-6a707064-323f5777979fe968;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:41:40 GMT",
+      "bytes": 1352082,
+      "sha256": "55ebb12a32ba4aac237e5257b38248255ef17e5f2be327f0a4b0abc2356c0980"
+    },
+    "E12": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/12.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/12.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"3e138f-6a707075-b29c94e788ba0008;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:41:57 GMT",
+      "bytes": 4068239,
+      "sha256": "dabc6b8bc93a67b182fad8f01735fd0c0b5fc1f3a75de77996ea735272aeeaf8"
+    },
+    "E13": {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/13.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/07/13.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"c99a24-6a707086-af4b19a13c2884a9;;;\"",
+      "last_modified": "Mon, 03 Aug 2026 10:42:14 GMT",
+      "bytes": 13212196,
+      "sha256": "74e613ac24fd0f3d51a677168e0989ac33b65ee418f9185482f4bbcb9e77533b"
+    }
+  },
+  "additional_pdf_resources": [
+    {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/03/SustainabilityDataSpaces_-MD1.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/03/SustainabilityDataSpaces_-MD1.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"1ba6e7-69c26089-754d935e2cb766c2;;;\"",
+      "last_modified": "Tue, 24 Mar 2026 09:59:37 GMT",
+      "bytes": 1812199,
+      "sha256": "3fdfb64d33988c5d4a431a8001ca9c19a0ffaf0abffde44dbc6468ecffa35352"
+    },
+    {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/03/SustainabilityDataSpaces_-MD2.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/03/SustainabilityDataSpaces_-MD2.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"19456c-69c2607f-b36066fc6a41f41a;;;\"",
+      "last_modified": "Tue, 24 Mar 2026 09:59:27 GMT",
+      "bytes": 1656172,
+      "sha256": "3914f16405f282dcbf72f5c5f6d5aabd6ba6585c6f47b25a90742fab16c704ef"
+    },
+    {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/03/SustainabilityDataSpaces_-MD3.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/03/SustainabilityDataSpaces_-MD3.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"14d989-69c26083-9a0306cb806fcaa1;;;\"",
+      "last_modified": "Tue, 24 Mar 2026 09:59:31 GMT",
+      "bytes": 1366409,
+      "sha256": "6221d8c4170cc096b336ac14bdf2faae756103061b69a6e89f3182fd93182d7d"
+    },
+    {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/05/SustainabilityDataSpaces_-MD4.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/05/SustainabilityDataSpaces_-MD4.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"12b765-6a0eddc7-69e3850973508624;;;\"",
+      "last_modified": "Thu, 21 May 2026 10:26:15 GMT",
+      "bytes": 1226597,
+      "sha256": "3c4a44b121e9506cdda4ca0315c06bffd4306eb922a9a143cd9107d5f7576ea0"
+    },
+    {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/05/SustainabilityDataSpaces_-MD5.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/05/SustainabilityDataSpaces_-MD5.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"110b33-6a0eddc3-df772078df6c6f55;;;\"",
+      "last_modified": "Thu, 21 May 2026 10:26:11 GMT",
+      "bytes": 1116979,
+      "sha256": "2326d98361858dde1f3dc60e58d83707f4f405c50ebfe468c225ccc6f64486aa"
+    },
+    {
+      "url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/05/SustainabilityDataSpaces_-MD6.pdf",
+      "final_url": "https://sustainabilitydataspace.com/wp-content/uploads/2026/05/SustainabilityDataSpaces_-MD6.pdf",
+      "status": 200,
+      "content_type": "application/pdf",
+      "etag": "\"126ac8-6a0eddbe-95f54c9fea7e1f69;;;\"",
+      "last_modified": "Thu, 21 May 2026 10:26:06 GMT",
+      "bytes": 1206984,
+      "sha256": "2f8f6c1832c7c1e47d9253085e143d1ecc43fc701bb9bd225279bef0d88bf242"
+    }
+  ]
+}

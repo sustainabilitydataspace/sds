@@ -1,0 +1,7 @@
+concept,entity,period,external_key,value,unit,metadata_json,value_type
+fixture_training_score_points,madrid_plant,2026-01-31,fixture:weighted:score:madrid:2026-01,80,points,"{""observed"": true}",number
+fixture_training_score_points,madrid_plant,2026-02-28,fixture:weighted:score:madrid:2026-02,100,points,"{""observed"": true}",number
+fixture_training_score_points,madrid_plant,2026-03-31,fixture:weighted:score:madrid:2026-03,50,points,"{""observed"": true}",number
+fixture_training_employee_count,madrid_plant,2026-01-31,fixture:weighted:fte:madrid:2026-01,10,FTE,"{""observed"": true}",number
+fixture_training_employee_count,madrid_plant,2026-02-28,fixture:weighted:fte:madrid:2026-02,30,FTE,"{""observed"": true}",number
+fixture_training_employee_count,madrid_plant,2026-03-31,fixture:weighted:fte:madrid:2026-03,60,FTE,"{""observed"": true}",number

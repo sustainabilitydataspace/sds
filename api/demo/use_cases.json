@@ -1,0 +1,181 @@
+{
+  "synthetic_public_data": true,
+  "use_cases": {
+    "UC-01": {
+      "kind": "functional_unit_conversion",
+      "claim": "Energy observation is strictly imported and converted from kWh to MWh.",
+      "limit": "Compatible-unit conversion and persisted observation only; no energy-efficiency calculation.",
+      "rows": [
+        {
+          "external_key": "demo-wave1:uc01-energy",
+          "concept": "urn:sds:reg:esrs:e1_5_01",
+          "entity": "gate_facility",
+          "verification": "unit_conversion",
+          "source_value": "1200",
+          "source_unit": "kWh",
+          "target_value": "1.2",
+          "target_unit": "MWh",
+          "prohibited_conclusion": "No energy-efficiency score or optimisation is performed.",
+          "metadata": {
+            "source": "synthetic_public_demo",
+            "use_case": "UC-01",
+            "evidence_status": "available",
+            "measurement_method": "synthetic_metered_observation",
+            "prohibited_conclusion": "No energy-efficiency score or optimisation is performed."
+          }
+        }
+      ]
+    },
+    "UC-02": {
+      "kind": "functional_unit_conversion",
+      "claim": "Scope 1 emissions observation is strictly imported and converted from kg CO2e to t CO2e.",
+      "limit": "Compatible-unit conversion only; no emissions-factor, Scope 1-3 aggregation, or inventory-completeness calculation.",
+      "rows": [
+        {
+          "external_key": "demo-wave1:uc02-emissions",
+          "concept": "urn:sds:reg:ghg:ghg_corporate_reporting_ghg_scope1_gross_emissions_tco2e",
+          "entity": "gate_facility",
+          "verification": "unit_conversion",
+          "source_value": "2500",
+          "source_unit": "kg CO2e",
+          "target_value": "2.5",
+          "target_unit": "t CO2e",
+          "prohibited_conclusion": "No emissions factor, Scope 1-3 aggregation, or inventory completeness decision is performed.",
+          "metadata": {
+            "source": "synthetic_public_demo",
+            "use_case": "UC-02",
+            "evidence_status": "available",
+            "emissions_scope": "scope_1",
+            "conversion_boundary": "compatible_unit_only",
+            "prohibited_conclusion": "No emissions factor, Scope 1-3 aggregation, or inventory completeness decision is performed."
+          }
+        }
+      ]
+    },
+    "UC-03": {
+      "kind": "functional_unit_conversion",
+      "claim": "Water withdrawal and discharge are strictly imported and converted from L to m³ with source, destination, stress, and evidence dimensions retained.",
+      "limit": "Compatible-unit conversion plus persisted dimensions only; no water-risk assessment or allocation calculation.",
+      "rows": [
+        {
+          "external_key": "demo-wave1:uc03-withdrawal",
+          "concept": "urn:sds:reg:esrs:e3_4_11",
+          "entity": "gate_facility",
+          "verification": "unit_conversion",
+          "source_value": "250000",
+          "source_unit": "L",
+          "target_value": "250",
+          "target_unit": "m³",
+          "prohibited_conclusion": "No water-risk, basin allocation, or compliance conclusion is performed.",
+          "metadata": {
+            "source": "synthetic_public_demo",
+            "use_case": "UC-03",
+            "evidence_status": "available",
+            "water_source": "synthetic_municipal_supply",
+            "water_destination": "synthetic_onsite_process_use",
+            "water_stress_status": "high_water_stress",
+            "evidence_reference": "synthetic://demo/uc03/withdrawal",
+            "prohibited_conclusion": "No water-risk, basin allocation, or compliance conclusion is performed."
+          }
+        },
+        {
+          "external_key": "demo-wave1:uc03-discharge",
+          "concept": "urn:sds:reg:esrs:e3_4_12",
+          "entity": "gate_facility",
+          "verification": "unit_conversion",
+          "source_value": "40000",
+          "source_unit": "L",
+          "target_value": "40",
+          "target_unit": "m³",
+          "prohibited_conclusion": "No water-risk, basin allocation, or compliance conclusion is performed.",
+          "metadata": {
+            "source": "synthetic_public_demo",
+            "use_case": "UC-03",
+            "evidence_status": "available",
+            "water_source": "synthetic_onsite_treatment",
+            "water_destination": "synthetic_surface_water_outfall",
+            "water_stress_status": "high_water_stress",
+            "evidence_reference": "synthetic://demo/uc03/discharge",
+            "prohibited_conclusion": "No water-risk, basin allocation, or compliance conclusion is performed."
+          }
+        }
+      ]
+    },
+    "UC-04": {
+      "kind": "bounded_data_contract",
+      "claim": "Waste/material evidence dimensions are persisted as a bounded data contract.",
+      "limit": "No circularity engine, waste-treatment optimisation, or circularity completion result is implemented.",
+      "rows": [
+        {
+          "external_key": "demo-wave1:uc04-materials",
+          "concept": "urn:sds:reg:esrs:e5_5_07",
+          "entity": "gate_facility",
+          "verification": "bounded_data_contract",
+          "stored_value": "12",
+          "stored_unit": "t",
+          "prohibited_conclusion": "No circularity calculation, treatment optimisation, or completion decision is performed.",
+          "metadata": {
+            "source": "synthetic_public_demo",
+            "use_case": "UC-04",
+            "data_contract_status": "partial",
+            "material_origin": "synthetic_post_industrial",
+            "hazardous": false,
+            "treatment_route": "synthetic_recycling_evidence_pending",
+            "prohibited_conclusion": "No circularity calculation, treatment optimisation, or completion decision is performed."
+          }
+        }
+      ]
+    },
+    "UC-05": {
+      "kind": "bounded_data_contract",
+      "claim": "An SME-supporting energy observation retains evidence, consent, and gap metadata as a bounded data contract.",
+      "limit": "No policy enforcement, connector control, ESG score, lending score, credit decision, approval, or rejection is implemented.",
+      "rows": [
+        {
+          "external_key": "demo-wave1:uc05-evidence",
+          "concept": "urn:sds:reg:esrs:e1_5_01",
+          "entity": "gate_facility",
+          "verification": "bounded_data_contract",
+          "stored_value": "600",
+          "stored_unit": "MWh",
+          "prohibited_conclusion": "No policy enforcement, connector control, ESG score, lending score, or credit decision is performed.",
+          "metadata": {
+            "source": "synthetic_public_demo",
+            "use_case": "UC-05",
+            "data_contract_status": "gap",
+            "evidence_reference": "synthetic://demo/uc05/energy-evidence",
+            "consent_status": "not_granted",
+            "gap_reason": "synthetic_missing_supplier_attestation",
+            "prohibited_conclusion": "No policy enforcement, connector control, ESG score, lending score, or credit decision is performed."
+          }
+        }
+      ]
+    },
+    "UC-06": {
+      "kind": "bounded_data_contract",
+      "claim": "A water observation retains provenance, geographic granularity, evidence coverage, and permission metadata as a bounded data contract.",
+      "limit": "No legal, territorial, certification, admissibility, or compliance conclusion is implemented.",
+      "rows": [
+        {
+          "external_key": "demo-wave1:uc06-coverage",
+          "concept": "urn:sds:reg:esrs:e3_4_01",
+          "entity": "gate_facility",
+          "verification": "bounded_data_contract",
+          "stored_value": "75",
+          "stored_unit": "m³",
+          "prohibited_conclusion": "No legal, territorial, certification, admissibility, or compliance conclusion is performed.",
+          "metadata": {
+            "source": "synthetic_public_demo",
+            "use_case": "UC-06",
+            "data_contract_status": "partial",
+            "evidence_reference": "synthetic://demo/uc06/water-coverage",
+            "geographic_granularity": "synthetic_basin_level",
+            "coverage_status": "incomplete",
+            "permission_status": "restricted",
+            "prohibited_conclusion": "No legal, territorial, certification, admissibility, or compliance conclusion is performed."
+          }
+        }
+      ]
+    }
+  }
+}

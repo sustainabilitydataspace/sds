@@ -3,7 +3,15 @@
 from enum import Enum
 
 import sqlalchemy as sa
-from sqlalchemy import ARRAY, BigInteger, Boolean, Column, Date, DateTime
+from sqlalchemy import (
+    ARRAY,
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+)
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -11,6 +19,38 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from .base import Base
+
+
+def _lower_hex_check_sql(column_name: str) -> str:
+    remainder = column_name
+    for character in "0123456789abcdef":
+        remainder = f"replace({remainder}, '{character}', '')"
+    return f"length({column_name}) = 64 AND {remainder} = ''"
+
+
+_VALUE_REVISION_STATES_SQL = ", ".join(
+    f"'{state}'"
+    for state in (
+        "legacy_current",
+        "draft",
+        "submitted",
+        "validated",
+        "approved",
+        "locked",
+        "published",
+        "reported",
+        "superseded",
+        "corrected",
+        "restated",
+        "migrated",
+        "system_recalc",
+        "redacted_input",
+        "invalidated",
+        "voided",
+        "rejected",
+        "redacted",
+    )
+)
 
 
 class ConceptState(str, Enum):
@@ -55,6 +95,8 @@ class ESGValue(Base):
     __tablename__ = "esg_values"
 
     id = Column(String, primary_key=True)
+    tenant_id = Column(String, nullable=True)
+    ownership_state = Column(String(20), nullable=False)
     concept = Column(String, nullable=False, index=True)
     entity = Column(String, nullable=False, index=True)
     period = Column(Date, nullable=False, index=True)
@@ -95,10 +137,19 @@ class ESGValue(Base):
         ),
         Index("ix_esg_values_change_cursor", "updated_at", "id"),
         Index(
-            "ix_esg_values_external_key_unique",
+            "ix_esg_values_tenant_external_key_unique",
+            "tenant_id",
             "external_key",
             unique=True,
-            postgresql_where=text("external_key IS NOT NULL"),
+            postgresql_where=text(
+                "external_key IS NOT NULL AND ownership_state = 'resolved'"
+            ),
+        ),
+        CheckConstraint(
+            "(ownership_state = 'resolved' AND tenant_id IS NOT NULL "
+            "AND length(trim(tenant_id)) > 0) OR "
+            "(ownership_state = 'quarantined' AND tenant_id IS NULL)",
+            name="ck_esg_values_ownership",
         ),
     )
 
@@ -109,6 +160,8 @@ class ValueIdempotencyKey(Base):
     __tablename__ = "value_idempotency_keys"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String, nullable=True)
+    ownership_state = Column(String(20), nullable=False)
     user_id = Column(String, nullable=False)
     scope = Column(String(50), nullable=False)
     idempotency_key = Column(String(255), nullable=False)
@@ -122,13 +175,20 @@ class ValueIdempotencyKey(Base):
 
     __table_args__ = (
         Index(
-            "ix_value_idempotency_keys_user_scope_key",
+            "ix_value_idempotency_keys_tenant_user_scope_key",
+            "tenant_id",
             "user_id",
             "scope",
             "idempotency_key",
             unique=True,
         ),
         Index("ix_value_idempotency_keys_expires_at", "expires_at"),
+        CheckConstraint(
+            "(ownership_state = 'resolved' AND tenant_id IS NOT NULL "
+            "AND length(trim(tenant_id)) > 0) OR "
+            "(ownership_state = 'quarantined' AND tenant_id IS NULL)",
+            name="ck_value_idempotency_keys_ownership",
+        ),
     )
 
 
@@ -169,6 +229,14 @@ class IndicatorImportJob(Base):
     __tablename__ = "indicator_import_jobs"
 
     id = Column(String, primary_key=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    owner_user_id = Column(
+        String,
+        ForeignKey("user_accounts.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+    ownership_state = Column(String(20), nullable=False)
     job_type = Column(String(20), nullable=False)  # validation or import
     source_format = Column(String(20), nullable=False)  # csv
     status = Column(
@@ -196,8 +264,16 @@ class IndicatorImportJob(Base):
 
     __table_args__ = (
         Index("ix_indicator_import_jobs_type_status", "job_type", "status"),
+        Index("ix_indicator_import_jobs_tenant_created", "tenant_id", "created_at"),
         Index(
             "ix_indicator_import_jobs_submitted_created", "submitted_by", "created_at"
+        ),
+        CheckConstraint(
+            "(ownership_state = 'resolved' AND tenant_id IS NOT NULL "
+            "AND length(trim(tenant_id)) > 0 AND owner_user_id IS NOT NULL "
+            "AND length(trim(owner_user_id)) > 0) OR "
+            "(ownership_state = 'quarantined' AND tenant_id IS NULL)",
+            name="ck_indicator_import_jobs_ownership",
         ),
     )
 
@@ -259,6 +335,7 @@ class UserAccount(Base):
     role = Column(String(50), nullable=False)  # UserRole.value
     is_active = Column(Boolean, default=True)
     password_hash = Column(String, nullable=False)
+    auth_version = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     last_login = Column(DateTime)
@@ -1654,6 +1731,10 @@ class ValueContext(Base):
 
     __table_args__ = (
         sa.CheckConstraint(
+            "length(trim(tenant_id)) > 0",
+            name="ck_value_contexts_tenant_nonblank",
+        ),
+        sa.CheckConstraint(
             "source_observation_type IN ("
             "'standard_direct_legacy', "
             "'canonical_operational', "
@@ -1665,6 +1746,11 @@ class ValueContext(Base):
             "tenant_id",
             "context_hash",
             name="uq_value_contexts_tenant_hash",
+        ),
+        sa.UniqueConstraint(
+            "id",
+            "tenant_id",
+            name="uq_value_contexts_id_tenant",
         ),
         Index(
             "ix_value_contexts_indicator_period",
@@ -1691,7 +1777,7 @@ class ValueRevision(Base):
     __tablename__ = "value_revisions"
 
     id = Column(String(100), primary_key=True)
-    context_id = Column(Integer, ForeignKey("value_contexts.id"), nullable=False)
+    context_id = Column(Integer, nullable=False)
     tenant_id = Column(String(100), nullable=False, index=True)
     revision_number = Column(Integer, nullable=False)
     state = Column(String(30), nullable=False, index=True)
@@ -1717,21 +1803,69 @@ class ValueRevision(Base):
     input_revision_ids = Column(JSONB)
     conversion_trace = Column(JSONB)
     trace_hash = Column(String(64), index=True)
-    parent_revision_id = Column(String(100), ForeignKey("value_revisions.id"))
+    parent_revision_id = Column(String(100))
     revision_provenance = Column(String(80), index=True)
     source_payload_hash = Column(String(64), index=True)
+    creation_event_id = Column(String(100), nullable=False, unique=True)
+    last_state_event_id = Column(String(100), unique=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     created_by = Column(String(100))
 
     context = relationship("ValueContext", back_populates="revisions")
     calculation_contract = relationship("CanonicalCalculationContract")
-    parent_revision = relationship("ValueRevision", remote_side=[id])
+    parent_revision = relationship("ValueRevision", remote_side=[id], viewonly=True)
 
     __table_args__ = (
+        sa.CheckConstraint(
+            "length(trim(tenant_id)) > 0",
+            name="ck_value_revisions_tenant_nonblank",
+        ),
+        sa.CheckConstraint(
+            f"state IN ({_VALUE_REVISION_STATES_SQL})",
+            name="ck_value_revisions_state",
+        ),
+        sa.ForeignKeyConstraint(
+            ["context_id", "tenant_id"],
+            ["value_contexts.id", "value_contexts.tenant_id"],
+            name="fk_value_revisions_context_tenant",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["parent_revision_id", "context_id", "tenant_id"],
+            [
+                "value_revisions.id",
+                "value_revisions.context_id",
+                "value_revisions.tenant_id",
+            ],
+            name="fk_value_revisions_parent_context_tenant",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["creation_event_id"],
+            ["value_revision_events.id"],
+            name="fk_value_revisions_creation_event_id",
+            ondelete="RESTRICT",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        sa.ForeignKeyConstraint(
+            ["last_state_event_id"],
+            ["value_revision_events.id"],
+            name="fk_value_revisions_last_state_event_id",
+            ondelete="RESTRICT",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         sa.UniqueConstraint(
             "context_id",
             "revision_number",
             name="uq_value_revisions_context_revision",
+        ),
+        sa.UniqueConstraint(
+            "id",
+            "context_id",
+            "tenant_id",
+            name="uq_value_revisions_id_context_tenant",
         ),
         Index(
             "ix_value_revisions_source_observation",
@@ -1752,8 +1886,8 @@ class ValueRevisionEvent(Base):
     tenant_id = Column(String(100), nullable=False, index=True)
     event_seq = Column(BigInteger, nullable=False)
     context_event_seq = Column(Integer, nullable=False)
-    context_id = Column(Integer, ForeignKey("value_contexts.id"), nullable=False)
-    revision_id = Column(String(100), ForeignKey("value_revisions.id"), index=True)
+    context_id = Column(Integer, nullable=False)
+    revision_id = Column(String(100), nullable=False, index=True)
     event_type = Column(String(50), nullable=False, index=True)
     from_state = Column(String(30))
     to_state = Column(String(30))
@@ -1761,14 +1895,54 @@ class ValueRevisionEvent(Base):
         Boolean, nullable=False, default=False, server_default=sa.false()
     )
     event_payload = Column(JSONB)
+    event_payload_canonical = Column(Text, nullable=False)
     idempotency_key = Column(String(255))
+    previous_event_hash = Column(String(64))
+    event_hash = Column(String(64), nullable=False)
     occurred_at = Column(DateTime, default=func.now(), nullable=False)
     occurred_by = Column(String(100))
 
     context = relationship("ValueContext")
-    revision = relationship("ValueRevision")
+    revision = relationship(
+        "ValueRevision",
+        primaryjoin="and_(ValueRevisionEvent.revision_id == ValueRevision.id, "
+        "ValueRevisionEvent.context_id == ValueRevision.context_id, "
+        "ValueRevisionEvent.tenant_id == ValueRevision.tenant_id)",
+        foreign_keys="[ValueRevisionEvent.revision_id, "
+        "ValueRevisionEvent.context_id, ValueRevisionEvent.tenant_id]",
+        viewonly=True,
+    )
 
     __table_args__ = (
+        sa.CheckConstraint(
+            "length(trim(tenant_id)) > 0",
+            name="ck_value_revision_events_tenant_nonblank",
+        ),
+        sa.CheckConstraint(
+            "previous_event_hash IS NULL OR "
+            f"({_lower_hex_check_sql('previous_event_hash')})",
+            name="ck_value_revision_events_previous_hash_format",
+        ),
+        sa.CheckConstraint(
+            _lower_hex_check_sql("event_hash"),
+            name="ck_value_revision_events_hash_format",
+        ),
+        sa.ForeignKeyConstraint(
+            ["context_id", "tenant_id"],
+            ["value_contexts.id", "value_contexts.tenant_id"],
+            name="fk_value_revision_events_context_tenant",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["revision_id", "context_id", "tenant_id"],
+            [
+                "value_revisions.id",
+                "value_revisions.context_id",
+                "value_revisions.tenant_id",
+            ],
+            name="fk_value_revision_events_revision_context_tenant",
+            ondelete="RESTRICT",
+        ),
         sa.UniqueConstraint(
             "tenant_id",
             "event_seq",
@@ -1783,19 +1957,53 @@ class ValueRevisionEvent(Base):
     )
 
 
+class ValueRevisionEventEffect(Base):
+    """One-shot receipt binding an audit event to an exact durable mutation."""
+
+    __tablename__ = "value_revision_event_effects"
+
+    event_id = Column(String(100), primary_key=True)
+    effect_kind = Column(String(32), primary_key=True)
+    tenant_id = Column(String(100), nullable=False)
+    context_id = Column(Integer, nullable=False)
+    revision_id = Column(String(100), nullable=False)
+    previous_state = Column(String(30))
+    new_state = Column(String(30))
+    previous_pointer_revision_id = Column(String(100))
+    new_pointer_revision_id = Column(String(100))
+    report_snapshot_id = Column(String(200))
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    __table_args__ = (
+        sa.CheckConstraint(
+            "effect_kind IN ('revision_created', 'state_transition', "
+            "'current_pointer', 'reported_pointer')",
+            name="ck_value_revision_event_effects_kind",
+        ),
+        sa.ForeignKeyConstraint(
+            ["event_id"],
+            ["value_revision_events.id"],
+            name="fk_value_revision_event_effects_event",
+            ondelete="RESTRICT",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+    )
+
+
 class CurrentValuePointer(Base):
     """Operational pointer to the current usable value revision."""
 
     __tablename__ = "current_value_pointers"
 
-    context_id = Column(Integer, ForeignKey("value_contexts.id"), primary_key=True)
+    context_id = Column(Integer, primary_key=True)
     tenant_id = Column(String(100), nullable=False, index=True)
     revision_id = Column(
         String(100),
-        ForeignKey("value_revisions.id"),
         nullable=False,
         index=True,
     )
+    last_event_id = Column(String(100), nullable=False, unique=True)
     pointer_basis = Column(
         String(50), nullable=False, default="current", server_default="current"
     )
@@ -1805,7 +2013,38 @@ class CurrentValuePointer(Base):
     updated_by = Column(String(100))
 
     context = relationship("ValueContext", back_populates="current_pointer")
-    revision = relationship("ValueRevision")
+    revision = relationship("ValueRevision", viewonly=True)
+
+    __table_args__ = (
+        sa.CheckConstraint(
+            "length(trim(tenant_id)) > 0",
+            name="ck_current_value_pointers_tenant_nonblank",
+        ),
+        sa.ForeignKeyConstraint(
+            ["context_id", "tenant_id"],
+            ["value_contexts.id", "value_contexts.tenant_id"],
+            name="fk_current_value_pointers_context_tenant",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["revision_id", "context_id", "tenant_id"],
+            [
+                "value_revisions.id",
+                "value_revisions.context_id",
+                "value_revisions.tenant_id",
+            ],
+            name="fk_current_value_pointers_revision_context_tenant",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["last_event_id"],
+            ["value_revision_events.id"],
+            name="fk_current_value_pointers_last_event_id",
+            ondelete="RESTRICT",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+    )
 
 
 class ReportedValuePointer(Base):
@@ -1819,8 +2058,9 @@ class ReportedValuePointer(Base):
     reporting_period_id = Column(String(100), nullable=False, index=True)
     standard_release_id = Column(String(100), nullable=False, index=True)
     report_snapshot_id = Column(String(200), nullable=False, index=True)
-    context_id = Column(Integer, ForeignKey("value_contexts.id"), nullable=False)
-    revision_id = Column(String(100), ForeignKey("value_revisions.id"), nullable=False)
+    context_id = Column(Integer, nullable=False)
+    revision_id = Column(String(100), nullable=False)
+    creation_event_id = Column(String(100), nullable=False, unique=True)
     pointer_basis = Column(
         String(50), nullable=False, default="reported", server_default="reported"
     )
@@ -1828,9 +2068,37 @@ class ReportedValuePointer(Base):
     reported_by = Column(String(100))
 
     context = relationship("ValueContext")
-    revision = relationship("ValueRevision")
+    revision = relationship("ValueRevision", viewonly=True)
 
     __table_args__ = (
+        sa.CheckConstraint(
+            "length(trim(tenant_id)) > 0",
+            name="ck_reported_value_pointers_tenant_nonblank",
+        ),
+        sa.ForeignKeyConstraint(
+            ["context_id", "tenant_id"],
+            ["value_contexts.id", "value_contexts.tenant_id"],
+            name="fk_reported_value_pointers_context_tenant",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["revision_id", "context_id", "tenant_id"],
+            [
+                "value_revisions.id",
+                "value_revisions.context_id",
+                "value_revisions.tenant_id",
+            ],
+            name="fk_reported_value_pointers_revision_context_tenant",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["creation_event_id"],
+            ["value_revision_events.id"],
+            name="fk_reported_value_pointers_creation_event_id",
+            ondelete="RESTRICT",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         sa.UniqueConstraint(
             "tenant_id",
             "entity_id",

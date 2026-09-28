@@ -21,12 +21,9 @@ os.chdir(API_ROOT)
 sys.path.insert(0, str(API_ROOT))
 
 from src.calculation.unit_converter import UnitConverter  # noqa: E402
-from src.config.settings import settings  # noqa: E402
 from src.database.init_db import init_db_for_engine  # noqa: E402
 from src.ontology.local_graph import load_ontology_graph  # noqa: E402
 from src.services.canonical_concept_store import CanonicalConceptStore  # noqa: E402
-from src.services.hierarchy_store import DatabaseHierarchyStore  # noqa: E402
-from src.services.indicator_store import IndicatorStore  # noqa: E402
 from src.services.runtime_execution import build_conversion_engine  # noqa: E402
 from src.services.value_csv_import import (  # noqa: E402
     ValueCsvContractError,
@@ -36,7 +33,30 @@ from src.services.value_ingest import (  # noqa: E402
     ValueIngestError,
     prepare_value_records,
 )
-from src.services.value_store import DatabaseValueStore  # noqa: E402
+
+
+def _make_hierarchy_store(*args, **kwargs):
+    from src.services.hierarchy_store import DatabaseHierarchyStore as Store
+
+    return Store(*args, **kwargs)
+
+
+def _make_indicator_store(*args, **kwargs):
+    from src.services.indicator_store import IndicatorStore as Store
+
+    return Store(*args, **kwargs)
+
+
+def _make_value_store(*args, **kwargs):
+    from src.services.value_store import DatabaseValueStore as Store
+
+    return Store(*args, **kwargs)
+
+
+# Preserve patchable construction seams used by importer and gate tests.
+DatabaseHierarchyStore = _make_hierarchy_store
+IndicatorStore = _make_indicator_store
+DatabaseValueStore = _make_value_store
 
 _CALCULATION_VALUE_CONCEPT_FIELDS = (
     "canonical_datapoint_id",
@@ -64,20 +84,18 @@ _PLACEHOLDER_TENANT_IDS = {
 }
 
 
-def get_default_database_url() -> str:
-    if settings.database_url:
-        return settings.database_url.get_secret_value()
+def get_default_database_url(cli_url: str | None = None) -> str:
+    from scripts.operational_db_url import resolve_operational_database_url
 
-    env_database_url = os.getenv("DATABASE_URL")
-    if env_database_url:
-        return env_database_url
+    if cli_url is not None:
+        return resolve_operational_database_url(cli_url)
 
-    postgres_user = os.getenv("POSTGRES_USER", "sds")
-    postgres_password = os.getenv("POSTGRES_PASSWORD", "password")
-    postgres_host = os.getenv("POSTGRES_HOST", "localhost")
-    postgres_port = os.getenv("POSTGRES_PORT", "5432")
-    postgres_db = os.getenv("POSTGRES_DB", "sds")
-    return f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+    from src.config.settings import settings
+
+    configured = (
+        settings.database_url.get_secret_value() if settings.database_url else None
+    )
+    return resolve_operational_database_url(cli_url, configured_url=configured)
 
 
 def _require_explicit_tenant_id(tenant_id: str | None) -> str:
@@ -351,9 +369,7 @@ def main(argv: list[str] | None = None) -> int:
         required=True,
         help="CSV file with concept,entity,period,value,unit and optional value_type",
     )
-    parser.add_argument(
-        "--db-url", type=str, default=get_default_database_url(), help="PostgreSQL URL"
-    )
+    parser.add_argument("--db-url", type=str, default=None, help="PostgreSQL URL")
     parser.add_argument(
         "--default-entity",
         type=str,
@@ -414,6 +430,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
 
+        if not args.dry_run:
+            _require_explicit_tenant_id(args.tenant_id)
+        args.db_url = get_default_database_url(args.db_url)
         if args.dry_run:
             validated = validate_values_csv_import(
                 csv_path=args.csv,

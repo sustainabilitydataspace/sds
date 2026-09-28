@@ -1,0 +1,19 @@
+{
+  "acceptance_threshold": 90,
+  "command": "make api-ci-local",
+  "coverage": {
+    "covered_lines": 21714,
+    "excluded_lines": 160,
+    "missing_lines": 589,
+    "num_statements": 22303,
+    "percent_covered": 97.35909967268977,
+    "percent_covered_display": "97"
+  },
+  "coverage_fail_under": 97.01,
+  "date": "2026-07-10",
+  "evidence_id": "A01 API CI coverage gate",
+  "quality_objective": ">97",
+  "skipped_tests": 57,
+  "source": "api/artifacts/coverage/coverage.json",
+  "passed_tests": 2682
+}

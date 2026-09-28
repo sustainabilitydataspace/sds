@@ -11,4 +11,8 @@ Canonical version 1.0:
 - `final/e13-informe-final-recomendaciones-futuro-espacio-datos-v1-0.md`
 - `final/e13-informe-final-recomendaciones-futuro-espacio-datos-v1-0.docx`
 
-The package keeps the May draft for traceability. The Spanish V1.0 Markdown under `final/` is canonical. The existing DOCX remains the editorial reference and is not approved for synchronization from the revised Markdown until the user approves the original-vs-change workbook.
+The package keeps the May draft for historical traceability. The Spanish V1.0
+Markdown under `final/` is canonical and the owner-accepted 2026-09-18 project
+closure is recorded separately in the public status surface. The existing DOCX
+is a parallel editorial reference; this code promotion does not regenerate or
+synchronize Word files.

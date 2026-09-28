@@ -1,0 +1,115 @@
+{
+  "contract_version": "1.0",
+  "source_package": {
+    "producer": "atomizer",
+    "generated_at": "2026-05-20T00:00:00Z"
+  },
+  "register": {
+    "path": "sds_dataset_register.csv"
+  },
+  "values": {
+    "path": "sds_values.csv"
+  },
+  "models": [
+    {
+      "model_id": "SDS_CONVERSION_CONTRACT_V1",
+      "standard_id": "SDS Fixture",
+      "requirement_id": "conversion-contract-v1",
+      "source_model": "canonical"
+    }
+  ],
+  "nodes": [
+    {
+      "node_id": "fixture:conversion_emissions_intensity",
+      "model_id": "SDS_CONVERSION_CONTRACT_V1",
+      "indicator_identifier": "urn:sds:reg:test:conversion_emissions_intensity",
+      "canonical_datapoint_id": "fixture_conversion_emissions_intensity",
+      "label": "Conversion fixture emissions intensity",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "calculation_contract_fixture",
+      "unit_name": "tCO2e/EURm",
+      "unit_type": "GHGIntensity",
+      "result_currency": "EUR",
+      "conversion_policy": "fail_closed",
+      "formula": {
+        "kind": "ratio",
+        "semantic_expression": "fixture_conversion_scope1_emissions / fixture_conversion_revenue_eur_m",
+        "runtime_expression": "scope1_emissions_tco2e / revenue_eur_m",
+        "component_ids": [
+          "fixture_conversion_scope1_emissions",
+          "fixture_conversion_revenue"
+        ],
+        "numerator_component_id": "fixture_conversion_scope1_emissions",
+        "denominator_component_id": "fixture_conversion_revenue",
+        "component_refs": [
+          {
+            "component_id": "fixture_conversion_scope1_emissions",
+            "node_id": null,
+            "indicator_identifier": "urn:sds:reg:test:conversion_scope1_emissions",
+            "component_scope": "public_register",
+            "expected_unit": "tCO2e"
+          },
+          {
+            "component_id": "fixture_conversion_revenue",
+            "node_id": null,
+            "indicator_identifier": "urn:sds:reg:test:conversion_revenue",
+            "component_scope": "public_register",
+            "unit_name": "CurrencyMillion",
+            "currency": "GBP",
+            "expected_currency": "EUR",
+            "fx_policy_id": "ecb-reference-monthly-average",
+            "conversion_policy": "fail_closed"
+          }
+        ],
+        "note": "Revenue is observed in millions of GBP and must be converted to millions of EUR before computing tCO2e/EURm. FX currency conversion is declared through expected_currency, not expected_unit."
+      },
+      "aggregation": {
+        "temporal": "RATIO_RECOMPUTE",
+        "perimeter": "RATIO_RECOMPUTE",
+        "missing_data": "BLOCK",
+        "zero_is_value": true,
+        "ratio": {
+          "numerator_component_id": "fixture_conversion_scope1_emissions",
+          "denominator_component_id": "fixture_conversion_revenue",
+          "recompute_from_components": true
+        }
+      },
+      "gate_ids": [
+        "gate_conversion_fail_closed"
+      ],
+      "support_rule_ids": [
+        "sr_no_latest_rate_fallback"
+      ],
+      "trace_labels": [
+        "contract:SDS_CONVERSION_CONTRACT_V1",
+        "unit:tCO2e/EURm",
+        "currency:EUR",
+        "conversion_policy:fail_closed",
+        "fx_policy:ecb-reference-monthly-average"
+      ],
+      "evidence": [
+        {
+          "source_id": "SDS conversion contract fixture",
+          "anchor": "conversion_contract_v1",
+          "role": "test_contract"
+        }
+      ]
+    }
+  ],
+  "support_rules": [
+    {
+      "support_rule_id": "sr_no_latest_rate_fallback",
+      "text": "FX conversion requires an explicit date or period window; latest-rate fallback is not allowed."
+    }
+  ],
+  "gates": [
+    {
+      "gate_id": "gate_conversion_fail_closed",
+      "severity": "error",
+      "text": "Missing FX policy, expected currency, or value date blocks conversion."
+    }
+  ]
+}

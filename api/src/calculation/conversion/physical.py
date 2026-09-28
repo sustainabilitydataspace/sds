@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import operator
+import re
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -68,11 +69,79 @@ class PhysicalUnitConverter:
         self.units = units
         self.rules = list(rules)
         self.precision = precision
-        aliases = {
-            alias: unit.symbol for unit in units.values() for alias in unit.aliases
+        # The database catalog retains display-safe canonical symbols such as
+        # ``kg CO2e`` and ``m³``.  The expression grammar deliberately uses
+        # identifier-safe tokens, so derive a lossless expression registry and
+        # map catalog symbols/aliases into it before parsing.  Keeping the
+        # original catalog symbols in ``self.units`` preserves public/API
+        # output and direct-rule matching.
+        expression_units: dict[str, PhysicalUnit] = {}
+        # Catalog symbols always take precedence over aliases.  This is a
+        # deliberate exception to the usual alias conflict rule: the catalog
+        # can describe a historical alias (for example ``torr`` -> ``mmHg``)
+        # that is also a separately catalogued canonical symbol.
+        canonical_aliases: dict[str, str] = {}
+        for unit in units.values():
+            expression_symbol = self._expression_symbol_for(unit)
+            if expression_symbol is None:
+                continue
+            existing = expression_units.get(expression_symbol)
+            if existing is not None and existing.symbol != unit.symbol:
+                raise ValueError(
+                    "ambiguous expression unit token: "
+                    f"{expression_symbol} maps to both {existing.symbol!r} "
+                    f"and {unit.symbol!r}"
+                )
+            expression_units[expression_symbol] = unit
+
+            for canonical_symbol in (unit.symbol, expression_symbol):
+                existing_canonical = canonical_aliases.get(canonical_symbol)
+                if (
+                    existing_canonical is not None
+                    and existing_canonical != expression_symbol
+                ):
+                    raise ValueError(
+                        "ambiguous catalog canonical symbol: "
+                        f"{canonical_symbol!r} maps to both "
+                        f"{existing_canonical!r} and {expression_symbol!r}"
+                    )
+                canonical_aliases[canonical_symbol] = expression_symbol
+
+        aliases = dict(canonical_aliases)
+        alias_owners: dict[str, str] = {}
+        for unit in units.values():
+            expression_symbol = self._expression_symbol_for(unit)
+            if expression_symbol is None:
+                continue
+            for alias in unit.aliases:
+                canonical_target = canonical_aliases.get(alias)
+                if canonical_target is not None:
+                    # Canonical catalog symbols win regardless of catalog order.
+                    continue
+                existing_target = alias_owners.get(alias)
+                if existing_target is not None and existing_target != expression_symbol:
+                    raise ValueError(
+                        "ambiguous expression unit alias: "
+                        f"{alias!r} maps to both {existing_target!r} "
+                        f"and {expression_symbol!r}"
+                    )
+                alias_owners[alias] = expression_symbol
+                aliases[alias] = expression_symbol
+
+        self._expression_units = expression_units
+        dimensions = {
+            symbol: unit.dimension for symbol, unit in self._expression_units.items()
         }
-        dimensions = {symbol: unit.dimension for symbol, unit in units.items()}
         self.parser = UnitExpressionParser(unit_dimensions=dimensions, aliases=aliases)
+
+    @staticmethod
+    def _expression_symbol_for(unit: PhysicalUnit) -> str | None:
+        """Return this catalog unit's safe atomic expression token, if any."""
+        candidates = (re.sub(r"\s+", "", unit.symbol), *unit.aliases)
+        for candidate in candidates:
+            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", candidate):
+                return candidate
+        return None
 
     def convert(
         self, value, from_unit: str, to_unit: str, *, as_of: date | None = None
@@ -148,7 +217,7 @@ class PhysicalUnitConverter:
         return self._round(value * from_factor / to_factor)
 
     def _expression_factor(self, expression: str) -> Decimal:
-        return _FactorExpressionParser(expression, self.units).parse()
+        return _FactorExpressionParser(expression, self._expression_units).parse()
 
     def _round(self, value: Decimal) -> Decimal:
         return value.quantize(

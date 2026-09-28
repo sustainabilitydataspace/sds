@@ -10,23 +10,19 @@ from fastapi import HTTPException, Request
 from rdflib import Graph, Namespace
 
 import structlog
-from src.config.settings import settings
 
 logger = structlog.get_logger(__name__)
+
+
+def _requires_database() -> bool:
+    from src.config.settings import settings
+
+    return settings.require_database
 
 
 def _resolve_ontology_files() -> list[Path] | None:
     here = Path(__file__).resolve()
     api_root = here.parents[2]
-
-    if settings.semantic_bundle_path:
-        bundle_root = Path(settings.semantic_bundle_path).expanduser()
-        split_candidates = [
-            bundle_root / "core_tbox.owl",
-            bundle_root / "generated_projection.owl",
-        ]
-        if all(candidate.is_file() for candidate in split_candidates):
-            return split_candidates
 
     split_candidates = [
         api_root / "ontologies" / "core_tbox.owl",
@@ -35,7 +31,7 @@ def _resolve_ontology_files() -> list[Path] | None:
     if all(candidate.is_file() for candidate in split_candidates):
         return split_candidates
 
-    if settings.require_database:
+    if _requires_database():
         return None
 
     candidates = [
@@ -74,7 +70,7 @@ def _load_graph(file_path: Path) -> Graph:
 
 def _assert_strict_runtime_projection(ontology_files: list[Path]) -> None:
     """Require the generated split ontology pair in DB-first mode."""
-    if not settings.require_database:
+    if not _requires_database():
         return
 
     expected = {"core_tbox.owl", "generated_projection.owl"}
@@ -90,7 +86,7 @@ def load_ontology_graph() -> tuple[Graph, str]:
     """Load and cache the ontology graph for non-FastAPI callers (e.g. engine/tests)."""
     ontology_files = _resolve_ontology_files()
     if not ontology_files:
-        if settings.require_database:
+        if _requires_database():
             raise RuntimeError(
                 "Canonical DB-first semantic runtime requires core_tbox.owl + generated_projection.owl."
             )
@@ -126,7 +122,14 @@ def get_ontology_graph(request: Request) -> Graph:
         request.app.state.ontology_graph_path = file_path
         return graph
     except Exception as e:
-        logger.error("Failed to load ontology graph", error=str(e))
-        if settings.require_database:
-            raise HTTPException(status_code=503, detail=str(e))
+        logger.error(
+            "Failed to load ontology graph",
+            error_code="ontology_graph_unavailable",
+            error_type=type(e).__name__,
+        )
+        if _requires_database():
+            raise HTTPException(
+                status_code=503,
+                detail="Canonical ontology projection unavailable",
+            )
         raise HTTPException(status_code=503, detail="Failed to load ontology")

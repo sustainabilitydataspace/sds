@@ -22,12 +22,8 @@ from src.database.models import (
 
 logger = structlog.get_logger(__name__)
 
-CURRENCIES_SEED_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "samples"
-    / "public-demo"
-    / "currencies_seed.json"
-)
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+CURRENCIES_SEED_PATH = DATA_DIR / "currencies_iso4217_seed.json"
 CONVERSION_BOOTSTRAP_LOCK_KEY = 640_104_216
 DEFAULT_FX_POLICY_ID = "ecb-reference-monthly-average"
 DEFAULT_FX_POLICY_SELECTION_MODE = "monthly_average"
@@ -184,6 +180,7 @@ def _fx_policy_seed_rows() -> list[tuple[str, dict[str, Any]]]:
                 "policy_metadata": {
                     "source": "ECB operational history loader required",
                     "loader": "scripts/load_ecb_fx_history.py",
+                    "max_previous_rate_age_days": 7,
                 },
             },
         ),

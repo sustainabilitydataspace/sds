@@ -1,0 +1,17 @@
+{
+  "profile": "sds-computation-profile-v1",
+  "description": "Conformance vectors bound into the profile hash. Each case runs an operation and asserts the exact Decimal result.",
+  "cases": [
+    {"id": "sum_order_a", "op": "sum", "inputs": ["0.1", "0.2", "0.3"], "expected": "0.6"},
+    {"id": "sum_order_b", "op": "sum", "inputs": ["0.3", "0.1", "0.2"], "expected": "0.6"},
+    {"id": "quantize_half_even_down", "op": "quantize", "value": "2.5", "scale": "1", "expected": "2"},
+    {"id": "quantize_half_even_up", "op": "quantize", "value": "3.5", "scale": "1", "expected": "4"},
+    {"id": "divide_exact", "op": "divide", "num": "1", "den": "4", "expected": "0.25"},
+    {"id": "factor_chain_order_a", "op": "factor_chain", "value": "10", "factors": [["currency", "usd", "2"], ["unit", "kg", "3"], ["emission_factor", "co2e", "5"]], "expected": "300"},
+    {"id": "factor_chain_order_b", "op": "factor_chain", "value": "10", "factors": [["emission_factor", "co2e", "5"], ["unit", "kg", "3"], ["currency", "usd", "2"]], "expected": "300"},
+    {"id": "factor_chain_duplicate_key", "op": "factor_chain", "value": "1", "factors": [["unit", "k", "2"], ["unit", "k", "7"]], "expected": "14"},
+    {"id": "divide_inexact_intermediate_rounding", "op": "divide", "num": "1", "den": "3", "expected": "0.33333333333333333333333333333333333333333333333333"},
+    {"id": "sum_intermediate_rounding_drops_tiny_addend", "op": "sum", "inputs": ["1", "1E-50"], "expected": "1.0000000000000000000000000000000000000000000000000"},
+    {"id": "sum_intermediate_precision_retains_50th_digit", "op": "sum", "inputs": ["1", "1E-49"], "expected": "1.0000000000000000000000000000000000000000000000001"}
+  ]
+}

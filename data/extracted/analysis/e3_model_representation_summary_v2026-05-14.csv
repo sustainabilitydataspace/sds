@@ -1,0 +1,18 @@
+metric,value,threshold,status,evidence
+delivery_register_rows,1805,,info,deliverables/E03-modelo-ngsi-ld/evidence/e03-dataset-register-v1-0.csv
+ngsi_ld_dataset_entities,1805,>=1444,pass,data/extracted/analysis/ngsi_ld/entities.jsonld
+representation_rate,100.00%,>=90.00%,pass,data/extracted/analysis/ngsi_ld/entities.jsonld
+ngsi_ld_total_entities,3405,,info,data/extracted/analysis/ngsi_ld/entities.jsonld
+semantics_bundle_files,8,>=1,pass,data/extracted/analysis/semantics_bundle/sds_semantics_bundle_v1.0.0_manifest.json
+semantics_manifest_hashes,8,>=1,pass,data/extracted/analysis/semantics_bundle/sds_semantics_bundle_v1.0.0_manifest.json
+ontology_core_triples,189,>=1,pass,data/extracted/analysis/wave2_projection_summary.json
+ontology_projection_triples,38917,>=1,pass,data/extracted/analysis/wave2_projection_summary.json
+ontology_runtime_merged_triples,39106,>=1,pass,data/extracted/analysis/wave2_projection_summary.json
+projected_semantic_concepts,6873,>=105,pass,data/extracted/analysis/wave2_projection_summary.json
+projected_disclosures,1317,>=1,pass,data/extracted/analysis/wave2_projection_summary.json
+projected_variable_concepts,1,>=1,pass,data/extracted/analysis/wave2_projection_summary.json
+projected_non_disclosure_concepts,5556,>=1,pass,data/extracted/analysis/wave2_projection_summary.json
+projected_formulas,2,>=1,pass,data/extracted/analysis/wave2_projection_summary.json
+representation_gap_list,NO_OPEN_GAP,closed,pass,data/extracted/analysis/e3_model_gap_list_v2026-05-14.csv
+ontology_projection_gate,pass,pass,pass,make -C api gate-w2
+semantics_contract_gate,pass,pass,pass,make gate-semantics

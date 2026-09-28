@@ -3,9 +3,12 @@ from __future__ import annotations
 import csv
 import hashlib
 import re
-import sys
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+
+from defusedxml import ElementTree as ET
+from defusedxml.common import DefusedXmlException
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DELIVERABLES_ROOT = REPO_ROOT / "deliverables"
@@ -29,7 +32,7 @@ REQUIRED_COLUMNS = {
 }
 
 PRIVATE_PATH_PATTERNS = (
-    re.compile(r"\b[A-Z]:\\", re.IGNORECASE),
+    re.compile(r"\b[A-Z]:[\\/]", re.IGNORECASE),
     re.compile(r"OneDrive\s*-", re.IGNORECASE),
     re.compile(r"/Users/|/home/", re.IGNORECASE),
 )
@@ -37,9 +40,7 @@ PRIVATE_URL_PATTERNS = (
     re.compile(r"sharepoint\.com", re.IGNORECASE),
     re.compile(r"vimeo\.com/\d+/[A-Za-z0-9]+", re.IGNORECASE),
 )
-APPROVED_PUBLIC_URLS = (
-    "https://vimeo.com/1140000644/12690da9dc?fl=pl&fe=vl",
-)
+APPROVED_PUBLIC_URLS = ("https://vimeo.com/1140000644/12690da9dc?fl=pl&fe=vl",)
 LOCAL_ONLY_MARKERS = (
     "workspace/",
     "workspace\\",
@@ -71,6 +72,31 @@ MAKE_COMMAND_PATTERN = re.compile(
     r"(?P<target>[A-Za-z0-9_.-]+)"
 )
 MAKE_TARGET_PATTERN = re.compile(r"^([A-Za-z0-9_.-]+)\s*:(?:\s|$)")
+DELIVERABLE_ID_PATTERN = re.compile(r"`(E\d{2})`")
+TRACEABILITY_STATUS_PATTERN = re.compile(
+    r"^\|\s*`(?P<deliverable_id>E\d{2})`\s*\|\s*`(?P<status>[^`]+)`\s*\|",
+    re.MULTILINE,
+)
+DOCUMENT_TABLE_METADATA_PATTERN = re.compile(
+    r"^\|\s*(?P<field>Versión|Version|Fecha|Date|Estado|Status)\s*\|\s*"
+    r"(?P<value>[^|]+?)\s*\|",
+    re.IGNORECASE | re.MULTILINE,
+)
+DOCUMENT_VERSION_PATTERN = re.compile(
+    r"(?:^|\s)(?:\*\*)?(?:Versión|Version)\s*:\s*(?:\*\*)?\s*"
+    r"`?(?P<value>V[0-9][A-Za-z0-9._-]*)`?",
+    re.IGNORECASE | re.MULTILINE,
+)
+DOCUMENT_DATE_PATTERN = re.compile(
+    r"(?:^|\s)(?:\*\*)?(?:Fecha|Date(?:\s*\(UTC\))?)\s*:\s*(?:\*\*)?\s*"
+    r"[\"`]*(?P<value>[0-9]{4}-[0-9]{2}-[0-9]{2})",
+    re.IGNORECASE | re.MULTILINE,
+)
+DOCUMENT_STATUS_PATTERN = re.compile(
+    r"(?:^|\s)(?:\*\*)?(?:Estado|Status)\s*:\s*(?:\*\*)?\s*"
+    r"`?(?P<value>[A-Za-z][A-Za-z -]+?)`?(?:\\|\n|$)",
+    re.IGNORECASE | re.MULTILINE,
+)
 TEXT_HASH_EXTENSIONS = {
     ".adoc",
     ".csv",
@@ -84,6 +110,10 @@ TEXT_HASH_EXTENSIONS = {
     ".yml",
 }
 PUBLIC_TEXT_SCAN_EXTENSIONS = TEXT_HASH_EXTENSIONS | {".jsonld"}
+OOXML_TEXT_PART_EXTENSIONS = {".xml", ".rels"}
+MAX_DOCX_PARTS = 5000
+MAX_DOCX_PART_BYTES = 16 * 1024 * 1024
+MAX_DOCX_TOTAL_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -180,6 +210,17 @@ def iter_public_markdown_scan_paths(repo_root: Path = REPO_ROOT):
         )
 
 
+def iter_public_docx_scan_paths(repo_root: Path = REPO_ROOT):
+    """Yield public Word packages whose internal XML needs privacy inspection."""
+    deliverables_root = repo_root / "deliverables"
+    if deliverables_root.exists():
+        yield from sorted(
+            path
+            for path in deliverables_root.rglob("*")
+            if path.is_file() and path.suffix.lower() == ".docx"
+        )
+
+
 def scan_public_markdown(path: Path, repo_root: Path = REPO_ROOT) -> list[str]:
     issues: list[str] = []
     text = path.read_text(encoding="utf-8", errors="ignore")
@@ -209,9 +250,8 @@ def scan_public_markdown(path: Path, repo_root: Path = REPO_ROOT) -> list[str]:
         and "http 404" in normalized
     ):
         records_current_200 = (
-            ("2026-06-23" in normalized or "2026-07-10" in normalized)
-            and "http 200" in normalized
-        )
+            "2026-06-23" in normalized or "2026-07-10" in normalized
+        ) and "http 200" in normalized
         explicitly_historical = any(
             marker in normalized for marker in E11_HISTORICAL_AVAILABILITY_MARKERS
         )
@@ -230,9 +270,89 @@ def scan_public_markdown(path: Path, repo_root: Path = REPO_ROOT) -> list[str]:
             if match.group(1) not in {"CITATION_KEY", "SOURCE_KEY"}
         ]
     if citation_markers and not REFERENCES_HEADING_PATTERN.search(text):
-        issues.append(
-            f"citation markers without a references section in {rel_path}"
-        )
+        issues.append(f"citation markers without a references section in {rel_path}")
+    return issues
+
+
+def scan_public_docx(path: Path, repo_root: Path = REPO_ROOT) -> list[str]:
+    """Scan OOXML text and metadata without exposing matched private values."""
+    issues: list[str] = []
+    relative_path = path.relative_to(repo_root)
+    try:
+        with zipfile.ZipFile(path) as package:
+            entries = package.infolist()
+            if len(entries) > MAX_DOCX_PARTS:
+                return [f"OOXML part-count limit exceeded in {relative_path}"]
+            if (
+                sum(entry.file_size for entry in entries)
+                > MAX_DOCX_TOTAL_UNCOMPRESSED_BYTES
+            ):
+                return [f"OOXML package-size limit exceeded in {relative_path}"]
+
+            for entry in entries:
+                if (
+                    Path(entry.filename).suffix.lower()
+                    not in OOXML_TEXT_PART_EXTENSIONS
+                ):
+                    continue
+                if entry.file_size > MAX_DOCX_PART_BYTES:
+                    issues.append(
+                        f"OOXML part-size limit exceeded in {relative_path} ({entry.filename})"
+                    )
+                    continue
+                try:
+                    root = ET.fromstring(package.read(entry))
+                except (
+                    ET.ParseError,
+                    DefusedXmlException,
+                    KeyError,
+                    OSError,
+                    RuntimeError,
+                    zipfile.BadZipFile,
+                ):
+                    issues.append(
+                        f"invalid OOXML text part in {relative_path} ({entry.filename})"
+                    )
+                    continue
+
+                text_parts: list[str] = []
+                for element in root.iter():
+                    local_name = element.tag.rsplit("}", 1)[-1].casefold()
+                    value = (element.text or "").strip()
+                    if local_name in {"creator", "lastmodifiedby"} and value:
+                        issues.append(
+                            f"author metadata in {relative_path} ({entry.filename})"
+                        )
+                    if value:
+                        text_parts.append(value)
+                    if element.tail and element.tail.strip():
+                        text_parts.append(element.tail.strip())
+                    text_parts.extend(
+                        value.strip() for value in element.attrib.values()
+                    )
+
+                text = "\n".join(text_parts)
+                for pattern in PRIVATE_PATH_PATTERNS:
+                    if pattern.search(text):
+                        issues.append(
+                            f"private path marker in {relative_path} ({entry.filename})"
+                        )
+                for marker in LOCAL_ONLY_MARKERS:
+                    if marker.casefold() in text.casefold():
+                        issues.append(
+                            f"local-only marker {marker!r} in {relative_path} ({entry.filename})"
+                        )
+                if EMAIL_PATTERN.search(text):
+                    issues.append(
+                        f"email address in {relative_path} ({entry.filename})"
+                    )
+                for pattern in SECRET_PATTERNS:
+                    if pattern.search(text):
+                        issues.append(
+                            f"secret-like assignment in {relative_path} ({entry.filename})"
+                        )
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile):
+        issues.append(f"invalid or unreadable DOCX package: {relative_path}")
     return issues
 
 
@@ -301,6 +421,178 @@ def validate_documented_make_targets(
                 f"does not define target '{command.target}'"
             )
 
+    return issues
+
+
+def validate_public_status_surfaces(
+    rows: list[dict[str, str]], repo_root: Path = REPO_ROOT
+) -> list[str]:
+    """Keep human status summaries aligned with the canonical register."""
+    issues: list[str] = []
+    expected = {
+        row["deliverable_id"].strip(): row["status"].strip()
+        for row in rows
+        if row.get("deliverable_id", "").strip() in REQUIRED_IDS
+    }
+    deliverables_readme = repo_root / "deliverables" / "README.md"
+    traceability_matrix = (
+        repo_root
+        / "deliverables"
+        / "evidence-public"
+        / "pdf-first-traceability-matrix-sds-v2026-02-02.md"
+    )
+
+    if not deliverables_readme.exists():
+        issues.append("missing deliverables/README.md status surface")
+    else:
+        readme_text = deliverables_readme.read_text(encoding="utf-8", errors="ignore")
+        readme_statuses: dict[str, str] = {}
+        for label, status in (
+            ("Published locally", "published-local"),
+            ("Official URL evidence", "official-url-recorded"),
+        ):
+            match = re.search(
+                rf"^- {re.escape(label)}:\s*(?P<ids>.*)$",
+                readme_text,
+                flags=re.MULTILINE,
+            )
+            if match:
+                readme_statuses.update(
+                    {
+                        deliverable_id: status
+                        for deliverable_id in DELIVERABLE_ID_PATTERN.findall(
+                            match.group("ids")
+                        )
+                    }
+                )
+        for deliverable_id, status in expected.items():
+            actual = readme_statuses.get(deliverable_id)
+            if actual != status:
+                issues.append(
+                    f"deliverables README status for {deliverable_id} is "
+                    f"{actual!r}, expected {status!r}"
+                )
+
+    if not traceability_matrix.exists():
+        issues.append("missing public deliverables traceability matrix")
+    else:
+        matrix_text = traceability_matrix.read_text(encoding="utf-8", errors="ignore")
+        matrix_statuses = {
+            match.group("deliverable_id"): match.group("status")
+            for match in TRACEABILITY_STATUS_PATTERN.finditer(matrix_text)
+        }
+        for deliverable_id, status in expected.items():
+            actual = matrix_statuses.get(deliverable_id)
+            if actual != status:
+                issues.append(
+                    f"traceability matrix status for {deliverable_id} is "
+                    f"{actual!r}, expected {status!r}"
+                )
+
+    for row in rows:
+        deliverable_id = row.get("deliverable_id", "").strip()
+        if deliverable_id not in REQUIRED_IDS:
+            continue
+        canonical_path = row.get("canonical_path", "").strip()
+        parts = Path(canonical_path).parts
+        if len(parts) < 2:
+            continue
+        readme_path = repo_root / parts[0] / parts[1] / "README.md"
+        if not readme_path.exists():
+            continue
+        readme_text = readme_path.read_text(encoding="utf-8", errors="ignore")
+        match = re.search(
+            r"^(?:Status|Estado):\s*`([^`]+)`",
+            readme_text,
+            flags=re.MULTILINE,
+        )
+        actual = match.group(1) if match else None
+        expected_status = row.get("status", "").strip()
+        if actual != expected_status:
+            issues.append(
+                f"{readme_path.relative_to(repo_root)} status is {actual!r}, "
+                f"expected {expected_status!r}"
+            )
+        if expected_status == "published-local" and re.search(
+            r"not approved for synchronization|candidate for review, not registered",
+            readme_text,
+            flags=re.IGNORECASE,
+        ):
+            issues.append(
+                f"{readme_path.relative_to(repo_root)} retains an unpromoted-state marker"
+            )
+
+    return issues
+
+
+def _normalized_document_status(value: str) -> str:
+    normalized = " ".join(value.strip().strip("`\\").casefold().split())
+    if normalized in {"documento final", "final document", "published-local"}:
+        return "published-local"
+    return normalized
+
+
+def extract_document_metadata(text: str) -> dict[str, set[str]]:
+    metadata: dict[str, set[str]] = {
+        "version": set(),
+        "date": set(),
+        "status": set(),
+    }
+    for match in DOCUMENT_TABLE_METADATA_PATTERN.finditer(text):
+        field = match.group("field").casefold()
+        value = match.group("value").strip().strip("`")
+        if field in {"versión", "version"}:
+            metadata["version"].add(value)
+        elif field in {"fecha", "date"}:
+            metadata["date"].add(value)
+        else:
+            metadata["status"].add(_normalized_document_status(value))
+    # The formal ficha table is authoritative when present. A Pandoc
+    # frontmatter date can describe an earlier Markdown source edit, not the
+    # accepted deliverable's date in the public register.
+    if not metadata["version"]:
+        metadata["version"].update(
+            match.group("value") for match in DOCUMENT_VERSION_PATTERN.finditer(text)
+        )
+    if not metadata["date"]:
+        metadata["date"].update(
+            match.group("value") for match in DOCUMENT_DATE_PATTERN.finditer(text)
+        )
+    if not metadata["status"]:
+        metadata["status"].update(
+            _normalized_document_status(match.group("value"))
+            for match in DOCUMENT_STATUS_PATTERN.finditer(text)
+        )
+    return metadata
+
+
+def validate_register_document_metadata(
+    rows: list[dict[str, str]], repo_root: Path = REPO_ROOT
+) -> list[str]:
+    issues: list[str] = []
+    for row in rows:
+        relative_path = row.get("canonical_path", "").strip()
+        if not relative_path or Path(relative_path).suffix.casefold() != ".md":
+            continue
+        document_path = repo_root / relative_path
+        if not document_path.exists():
+            continue
+        deliverable_id = row.get("deliverable_id", "").strip()
+        document_text = document_path.read_text(encoding="utf-8", errors="ignore")
+        metadata_header = "\n".join(document_text.splitlines()[:30])
+        metadata = extract_document_metadata(metadata_header)
+        expected = {
+            "version": row.get("version", "").strip(),
+            "date": row.get("date", "").strip(),
+            "status": row.get("status", "").strip(),
+        }
+        for field, expected_value in expected.items():
+            actual_values = metadata[field]
+            if actual_values != {expected_value}:
+                issues.append(
+                    f"{deliverable_id} {field} metadata {sorted(actual_values)!r} "
+                    f"does not match register {expected_value!r}"
+                )
     return issues
 
 
@@ -386,8 +678,13 @@ def main() -> int:
     for markdown in iter_public_markdown_scan_paths(REPO_ROOT):
         issues.extend(scan_public_markdown(markdown))
 
+    for docx in iter_public_docx_scan_paths(REPO_ROOT):
+        issues.extend(scan_public_docx(docx))
+
     issues.extend(validate_citation_system())
     issues.extend(validate_documented_make_targets())
+    issues.extend(validate_public_status_surfaces(rows))
+    issues.extend(validate_register_document_metadata(rows))
 
     if issues:
         for issue in issues:
@@ -404,6 +701,8 @@ def main() -> int:
     print("[OK] privacy heuristic clean")
     print("[OK] citation system available")
     print("[OK] documented acceptance-gate make targets resolve")
+    print("[OK] public status surfaces match the deliverables register")
+    print("[OK] canonical document metadata matches the deliverables register")
     print("")
     print("PASS")
     return 0

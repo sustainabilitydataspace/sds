@@ -69,6 +69,7 @@ class JWTHandler:
         username: str,
         role: UserRole,
         company_id: Optional[str] = None,
+        auth_version: int = 0,
         expires_delta: Optional[timedelta] = None,
     ) -> str:
         """Create an access token."""
@@ -89,6 +90,8 @@ class JWTHandler:
             "role": role.value,
             "company_id": company_id,
             "permissions": [p.value for p in permissions],
+            "auth_version": auth_version,
+            "jti": secrets.token_urlsafe(24),
             "exp": expire,
             "iat": datetime.now(timezone.utc),
             "type": "access",
@@ -112,6 +115,7 @@ class JWTHandler:
         username: str,
         role: Optional[UserRole] = None,
         company_id: Optional[str] = None,
+        auth_version: int = 0,
         expires_delta: Optional[timedelta] = None,
     ) -> str:
         """Create a refresh token."""
@@ -126,6 +130,8 @@ class JWTHandler:
         to_encode = {
             "sub": user_id,
             "username": username,
+            "auth_version": auth_version,
+            "jti": secrets.token_urlsafe(24),
             "exp": expire,
             "iat": datetime.now(timezone.utc),
             "type": "refresh",
@@ -165,13 +171,19 @@ class JWTHandler:
             exp_timestamp: float = payload.get("exp")
             iat_timestamp: float = payload.get("iat")
             token_type: str = payload.get("type", "access")
+            auth_version = payload.get("auth_version")
 
             if token_type != "access":
                 self.logger.warning("Invalid token type", token_type=token_type)
                 return None
 
-            if user_id is None or username is None:
-                self.logger.warning("Invalid token payload", payload=payload)
+            if (
+                user_id is None
+                or username is None
+                or not isinstance(auth_version, int)
+                or auth_version < 0
+            ):
+                self.logger.warning("Invalid token payload")
                 return None
 
             # Convert timestamps to datetime
@@ -203,6 +215,7 @@ class JWTHandler:
                 role=role,
                 company_id=company_id,
                 permissions=permissions,
+                auth_version=auth_version,
                 exp=exp,
                 iat=iat,
             )
@@ -239,13 +252,13 @@ class JWTHandler:
         refresh_token: str,
         *,
         user_lookup: Optional[Callable[[str], Optional[Any]]] = None,
+        consume_token: Optional[Callable[[str, datetime], bool]] = None,
+        on_replay: Optional[Callable[[str], None]] = None,
+        require_user: bool = True,
     ) -> Optional[Dict[str, Any]]:
-        """Create new access token from refresh token."""
+        """Rotate a one-use refresh token and issue a new token pair."""
 
         try:
-            if self._is_revoked(refresh_token):
-                self.logger.warning("Refresh token revoked")
-                return None
             payload = jwt.decode(
                 refresh_token, self.secret_key, algorithms=[self.algorithm], leeway=5
             )
@@ -253,33 +266,42 @@ class JWTHandler:
             user_id: str = payload.get("sub")
             username: str = payload.get("username")
             token_type: str = payload.get("type")
+            auth_version = payload.get("auth_version")
 
-            if user_id is None or username is None or token_type != "refresh":
+            if (
+                user_id is None
+                or username is None
+                or token_type != "refresh"
+                or not isinstance(auth_version, int)
+                or auth_version < 0
+            ):
                 self.logger.warning("Invalid refresh token payload")
                 return None
 
-            # Check if refresh token is expired
             exp_timestamp: float = payload.get("exp")
-            if exp_timestamp:
-                exp = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
-                if datetime.now(timezone.utc) > exp:
-                    self.logger.warning("Refresh token expired", user_id=user_id)
-                    return None
+            if not exp_timestamp:
+                return None
+            exp = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+            if datetime.now(timezone.utc) > exp:
+                self.logger.warning("Refresh token expired", user_id=user_id)
+                return None
 
             role = None
             company_id = None
             if user_lookup is not None:
-                try:
-                    user = user_lookup(user_id)
-                except TypeError:
-                    user = user_lookup(user_id=user_id)
-                if not user or not getattr(user, "is_active", True):
-                    self.logger.warning(
-                        "Refresh token user invalid or inactive", user_id=user_id
-                    )
-                    return None
-                role = getattr(user, "role", None)
-                company_id = getattr(user, "company_id", None)
+                user = user_lookup(user_id)
+                if user is None or not getattr(user, "is_active", False):
+                    if require_user:
+                        self.logger.warning(
+                            "Refresh token user invalid or inactive", user_id=user_id
+                        )
+                        return None
+                else:
+                    role = getattr(user, "role", None)
+                    company_id = getattr(user, "company_id", None)
+                    if int(getattr(user, "auth_version", -1)) != auth_version:
+                        self.logger.warning("Refresh token session version is stale")
+                        return None
 
             if role is None:
                 role_str = payload.get("role")
@@ -290,9 +312,32 @@ class JWTHandler:
             if company_id is None:
                 company_id = payload.get("company_id")
 
-            # Create new access token
+            if consume_token is not None:
+                consumed = consume_token(refresh_token, exp)
+            elif self._is_revoked(refresh_token):
+                consumed = False
+            else:
+                self._revoked_tokens.add(self._token_fingerprint(refresh_token))
+                consumed = True
+            if not consumed:
+                if on_replay is not None:
+                    on_replay(user_id)
+                self.logger.warning("Refresh token replay detected", user_id=user_id)
+                return None
+
             new_access_token = self.create_access_token(
-                user_id=user_id, username=username, role=role, company_id=company_id
+                user_id=user_id,
+                username=username,
+                role=role,
+                company_id=company_id,
+                auth_version=auth_version,
+            )
+            new_refresh_token = self.create_refresh_token(
+                user_id=user_id,
+                username=username,
+                role=role,
+                company_id=company_id,
+                auth_version=auth_version,
             )
 
             self.logger.info(
@@ -301,6 +346,7 @@ class JWTHandler:
 
             return {
                 "access_token": new_access_token,
+                "refresh_token": new_refresh_token,
                 "token_type": "bearer",
                 "expires_in": self.access_token_expire_minutes * 60,
             }
@@ -368,13 +414,44 @@ class JWTHandler:
         self, token: str, expires_at: datetime, db_session
     ) -> None:
         """Revoke a token with DB persistence."""
+        from sqlalchemy.exc import IntegrityError
+
         from src.database.models import RevokedToken
 
         fingerprint = self._token_fingerprint(token)
+        if db_session.query(RevokedToken).filter_by(token_hash=fingerprint).first():
+            self._revoked_tokens.add(fingerprint)
+            return
+        db_session.add(RevokedToken(token_hash=fingerprint, expires_at=expires_at))
+        try:
+            db_session.commit()
+        except IntegrityError:
+            db_session.rollback()
         self._revoked_tokens.add(fingerprint)
-        revoked = RevokedToken(token_hash=fingerprint, expires_at=expires_at)
-        db_session.add(revoked)
-        db_session.commit()
+
+    def consume_token_persistent(
+        self, token: str, expires_at: datetime, db_session
+    ) -> bool:
+        """Atomically consume a one-use token; return false on replay."""
+        from sqlalchemy.exc import IntegrityError
+
+        from src.database.models import RevokedToken
+
+        fingerprint = self._token_fingerprint(token)
+        if fingerprint in self._revoked_tokens:
+            return False
+        if db_session.query(RevokedToken).filter_by(token_hash=fingerprint).first():
+            self._revoked_tokens.add(fingerprint)
+            return False
+        db_session.add(RevokedToken(token_hash=fingerprint, expires_at=expires_at))
+        try:
+            db_session.commit()
+        except IntegrityError:
+            db_session.rollback()
+            self._revoked_tokens.add(fingerprint)
+            return False
+        self._revoked_tokens.add(fingerprint)
+        return True
 
     def is_revoked_persistent(self, token: str, db_session) -> bool:
         """Check if token is revoked, checking memory first then DB."""

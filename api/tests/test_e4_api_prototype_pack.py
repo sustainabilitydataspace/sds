@@ -14,6 +14,13 @@ E4_DOC_PATH = (
     / "final"
     / "e04-prototipo-api-transformacion-datos-v2026-06-09.md"
 )
+E4_SUPERSEDED_DOC_PATH = (
+    REPO_ROOT
+    / "deliverables"
+    / "E04-api-prototype"
+    / "final"
+    / "e04-prototype-data-transformation.md"
+)
 E4_REPORT_PATH = (
     REPO_ROOT / "data" / "extracted" / "analysis" / "e4_performance_report.txt"
 )
@@ -114,6 +121,16 @@ def test_e4_doc_does_not_overclaim_dimension_ledger_as_raw_transformation():
     assert "r10 queda cerrado por la ejecución postgresql" in normalized
     assert "4,675" in normalized
     assert "87,547 observaciones empresariales" not in normalized
+
+
+def test_superseded_e4_snapshot_has_an_explicit_noncanonical_boundary():
+    text = E4_SUPERSEDED_DOC_PATH.read_text(encoding="utf-8")
+    normalized = " ".join(text.lower().replace(">", " ").split())
+
+    assert "superseded non-canonical snapshot" in normalized
+    assert "must not be used as current e4 acceptance evidence" in normalized
+    assert "87,547` transformed rows" not in normalized
+    assert "e4 proves the sds technical transformation" not in normalized
 
 
 def test_e4_operational_r10_report_is_passed_and_cleanup_complete():

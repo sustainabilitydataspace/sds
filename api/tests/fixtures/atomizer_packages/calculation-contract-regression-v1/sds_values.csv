@@ -1,0 +1,13 @@
+concept,entity,period,external_key,value,unit,metadata_json,value_type
+fixture_scope1_stationary_tco2e,fixture_entity_parent,2024-01,fixture:stationary:parent:2024-01,1.5,tCO2e,"{""observed"": true}",number
+fixture_scope1_mobile_tco2e,fixture_entity_parent,2024-01,fixture:mobile:parent:2024-01,500,kgCO2e,"{""observed"": true}",number
+fixture_scope1_stationary_tco2e,fixture_entity_zero,2024-01,fixture:stationary:zero:2024-01,0,tCO2e,"{""observed"": true}",number
+fixture_scope1_mobile_tco2e,fixture_entity_zero,2024-01,fixture:mobile:zero:2024-01,0,tCO2e,"{""observed"": true}",number
+fixture_scope1_stationary_tco2e,fixture_entity_missing,2024-01,fixture:stationary:missing:2024-01,2.0,tCO2e,"{""observed"": true}",number
+fixture_revenue_eur_m,fixture_entity_parent,2024,fixture:revenue:parent:2024,25,EURm,"{""observed"": true}",number
+fixture_revenue_eur_m,fixture_entity_zero,2024,fixture:revenue:zero:2024,10,EURm,"{""observed"": true}",number
+fixture_average_headcount,fixture_entity_parent,2024-01,fixture:headcount:parent:2024-01,10,FTE,"{""observed"": true}",number
+fixture_average_headcount,fixture_entity_parent,2024-02,fixture:headcount:parent:2024-02,14,FTE,"{""observed"": true}",number
+fixture_average_headcount,fixture_entity_parent,2024-03,fixture:headcount:parent:2024-03,16,FTE,"{""observed"": true}",number
+fixture_year_end_employees,fixture_entity_parent,2024-01-31,fixture:employees:parent:2024-01-31,10,FTE,"{""observed"": true}",number
+fixture_year_end_employees,fixture_entity_parent,2024-12-31,fixture:employees:parent:2024-12-31,12,FTE,"{""observed"": true}",number

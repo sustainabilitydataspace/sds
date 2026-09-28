@@ -10,6 +10,10 @@ from sqlalchemy.orm import Session
 from ..models import ValueImportJob
 
 _TERMINAL_STATUSES = {"completed", "failed"}
+LEGACY_RECONCILIATION_REASON = (
+    "H15 controlled legacy value job reconciliation: historical execution effects "
+    "are indeterminate; no retry or replay was performed."
+)
 
 
 class ValueImportJobRepository:
@@ -55,20 +59,57 @@ class ValueImportJobRepository:
         )
 
     def list_active_for_recovery(self, limit: int) -> list[ValueImportJob]:
-        """Inspect active jobs without flushing changes in the caller's session.
+        return (
+            self.db.query(ValueImportJob)
+            .filter(ValueImportJob.status.in_(("pending", "running")))
+            .order_by(ValueImportJob.created_at.asc(), ValueImportJob.id.asc())
+            .limit(limit)
+            .all()
+        )
 
-        Returns ordinary session objects, not an isolated snapshot or a job claim.
+    def reconcile_legacy_active_jobs(self) -> int:
+        """Terminalize active value jobs without rewriting retained evidence.
+
+        Requires a fresh, dedicated session and a quiesced deployment: all old
+        instances/workers stopped, with a single writer enforced externally.
+        Blocking row locks serialize duplicate reconciliation; they do not fence
+        historical workers or establish whether an import committed values.
         """
-        if type(limit) is not int or limit <= 0:
-            raise ValueError("limit must be a positive integer")
-        with self.db.no_autoflush:
-            return (
-                self.db.query(ValueImportJob)
-                .filter(ValueImportJob.status.in_(("pending", "running")))
-                .order_by(ValueImportJob.created_at.asc(), ValueImportJob.id.asc())
-                .limit(limit)
-                .all()
-            )
+        try:
+            active_ids = [
+                row.id
+                for row in (
+                    self.db.query(ValueImportJob.id)
+                    .filter(ValueImportJob.status.in_(("pending", "running")))
+                    .order_by(ValueImportJob.id.asc())
+                    .with_for_update()
+                    .all()
+                )
+            ]
+            count = 0
+            if active_ids:
+                now = datetime.now(timezone.utc)
+                count = (
+                    self.db.query(ValueImportJob)
+                    .filter(
+                        ValueImportJob.id.in_(active_ids),
+                        ValueImportJob.status.in_(("pending", "running")),
+                    )
+                    .update(
+                        {
+                            "status": "failed",
+                            "error_message": LEGACY_RECONCILIATION_REASON,
+                            "completed_at": now,
+                            "updated_at": now,
+                        },
+                        synchronize_session=False,
+                    )
+                )
+            self.db.commit()
+            return count
+        except Exception:
+            self.db.rollback()
+            raise
 
     def mark_running(self, job_id: str) -> Optional[ValueImportJob]:
         job = (

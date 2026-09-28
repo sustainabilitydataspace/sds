@@ -7,7 +7,6 @@ import inspect
 import re
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
 from typing import Any, Awaitable, Callable, Iterable, Optional
 
 from fastapi import HTTPException
@@ -21,10 +20,25 @@ from src.api.models import (
     ValueResolveRequest,
     ValueResolveResponse,
 )
+from src.database.repositories.standard_mapping_repository import (
+    MappingCandidateLimitExceeded,
+)
 
 CalculateCallable = Callable[
     [CalculationRequest], Awaitable[CalculationResponse] | CalculationResponse
 ]
+
+
+class CalculationContractAbsent(HTTPException):
+    """The only calculation 404 that permits mapping fallback in-process."""
+
+    def __init__(self, concept: str, *, detail: Optional[str] = None):
+        super().__init__(
+            status_code=404,
+            detail=detail
+            or f"No executable calculation contract for concept: {concept}",
+        )
+
 
 _EQUIVALENT_RELATIONSHIPS = {
     "equivalent",
@@ -141,8 +155,19 @@ async def resolve_value_request(
             mapping_route=None,
         )
 
-    if request.source_concept:
-        return await _resolve_from_explicit_source(
+    try:
+        if request.source_concept:
+            return await _resolve_from_explicit_source(
+                request,
+                value_store=value_store,
+                period_start=period_start,
+                period_end=period_end,
+                unit_converter=unit_converter,
+                mapping_store=mapping_store,
+                calculate=calculate,
+            )
+
+        return await _resolve_from_mapping_candidates(
             request,
             value_store=value_store,
             period_start=period_start,
@@ -151,16 +176,15 @@ async def resolve_value_request(
             mapping_store=mapping_store,
             calculate=calculate,
         )
-
-    return await _resolve_from_mapping_candidates(
-        request,
-        value_store=value_store,
-        period_start=period_start,
-        period_end=period_end,
-        unit_converter=unit_converter,
-        mapping_store=mapping_store,
-        calculate=calculate,
-    )
+    except MappingCandidateLimitExceeded as error:
+        return _empty_response(
+            request,
+            status=ValueResolutionStatus.AMBIGUOUS_MAPPING,
+            trace_reason=(
+                "Mapping candidate set exceeded the bounded classification limit "
+                f"of {error.limit}; resolution was refused without truncation."
+            ),
+        )
 
 
 async def _resolve_from_explicit_source(
@@ -186,6 +210,15 @@ async def _resolve_from_explicit_source(
             trace_reason="No mapping route or direct value found for requested source and target.",
         )
 
+    if _has_conflicting_transfer_authority(routes):
+        return _mapping_refusal(
+            request,
+            status=ValueResolutionStatus.AMBIGUOUS_MAPPING,
+            method=None,
+            routes=routes,
+            reason="Contradictory equivalent and non-equivalent mappings match the same pair.",
+        )
+
     equivalent = [route for route in routes if route.is_equivalent]
     if len(equivalent) > 1:
         return _mapping_refusal(
@@ -201,6 +234,14 @@ async def _resolve_from_explicit_source(
             source_concept=None,
             target_concept=request.target_concept,
         )
+        if _has_conflicting_transfer_authority(target_routes):
+            return _mapping_refusal(
+                request,
+                status=ValueResolutionStatus.AMBIGUOUS_MAPPING,
+                method=None,
+                routes=target_routes,
+                reason="Contradictory component mapping authority matches the target.",
+            )
         component_result = await _try_component_aggregation(
             request,
             routes=_component_routes(target_routes or routes),
@@ -269,6 +310,15 @@ async def _resolve_from_mapping_candidates(
             request,
             status=ValueResolutionStatus.NOT_FOUND,
             trace_reason="No direct value, calculation, or mapping candidate resolved the request.",
+        )
+
+    if _has_conflicting_transfer_authority(routes):
+        return _mapping_refusal(
+            request,
+            status=ValueResolutionStatus.AMBIGUOUS_MAPPING,
+            method=None,
+            routes=routes,
+            reason="Contradictory equivalent and non-equivalent mappings match the same pair.",
         )
 
     equivalent = [route for route in routes if route.is_equivalent]
@@ -403,172 +453,17 @@ async def _try_component_aggregation(
     component_routes = _dedupe_routes(_component_routes(routes))
     if len(component_routes) < 2:
         return None
-
-    resolved: list[tuple[_MappingRoute, _RouteValue]] = []
-    missing: list[str] = []
-    for route in component_routes:
-        route_value = await _resolve_source_route(
-            request,
-            source_concept=route.source_concept,
-            value_store=value_store,
-            period_start=period_start,
-            period_end=period_end,
-            calculate=calculate,
-            mapped=True,
-        )
-        if route_value is None:
-            missing.append(route.source_concept)
-            continue
-        resolved.append((route, route_value))
-
-    candidates = [route.as_candidate() for route in component_routes]
-    mapping_row_ids = [route.row_id for route in component_routes if route.row_id]
-    component_concepts = [route.source_concept for route in component_routes]
-
-    if missing:
-        trace = None
-        if request.include_trace:
-            trace = {
-                "reason": (
-                    "Target can be derived only by aggregating all narrower "
-                    "component mappings; one or more component values are missing."
-                ),
-                "route": ValueResolutionMethod.COMPONENT_AGGREGATION.value,
-                "relationship_type": "narrower",
-                "required_components": component_concepts,
-                "missing_inputs": missing,
-                "candidates": candidates,
-            }
-        return ValueResolveResponse(
-            status=ValueResolutionStatus.NOT_ENOUGH_EVIDENCE,
-            method=None,
-            target_concept=request.target_concept,
-            source_concept=explicit_source_concept or request.source_concept,
-            entity=request.entity,
-            period=request.period,
-            granularity=request.granularity,
-            value=None,
-            unit=request.target_unit,
-            relationship_type="narrower",
-            mapping_row_ids=mapping_row_ids,
-            component_concepts=component_concepts,
-            missing_inputs=missing,
-            candidates=candidates,
-            trace=trace,
-        )
-
-    target_unit = request.target_unit or _first_non_empty_unit(
-        route_value.unit for _route, route_value in resolved
-    )
-    if not target_unit:
-        return _component_refusal_response(
-            request,
-            status=ValueResolutionStatus.NOT_TRANSFORMABLE,
-            method=ValueResolutionMethod.COMPONENT_AGGREGATION,
-            routes=component_routes,
-            reason="Narrower component values resolved, but no aggregation unit is available.",
-            source_concept=explicit_source_concept,
-        )
-
-    total = Decimal("0")
-    conversion_steps: list[dict[str, Any]] = []
-    trace_components: list[dict[str, Any]] = []
-    for route, route_value in resolved:
-        decimal_value = _decimal_value(route_value.value)
-        if decimal_value is None:
-            return _component_refusal_response(
-                request,
-                status=ValueResolutionStatus.NOT_TRANSFORMABLE,
-                method=ValueResolutionMethod.COMPONENT_AGGREGATION,
-                routes=component_routes,
-                reason=(
-                    "Narrower component aggregation requires numeric component "
-                    f"values; {route.source_concept} resolved to a non-numeric value."
-                ),
-                source_concept=explicit_source_concept,
-            )
-
-        component_value = decimal_value
-        component_unit = route_value.unit
-        if component_unit and component_unit != target_unit:
-            if unit_converter is None:
-                return _component_unsupported_conversion_response(
-                    request,
-                    routes=component_routes,
-                    from_unit=component_unit,
-                    to_unit=target_unit,
-                    error="Unit converter is not initialized.",
-                    source_concept=explicit_source_concept,
-                )
-            try:
-                conversion_result = unit_converter.convert(
-                    component_value, component_unit, target_unit
-                )
-            except Exception as exc:
-                return _component_unsupported_conversion_response(
-                    request,
-                    routes=component_routes,
-                    from_unit=component_unit,
-                    to_unit=target_unit,
-                    error=str(exc),
-                    source_concept=explicit_source_concept,
-                )
-            component_value = Decimal(str(conversion_result.converted_value))
-            component_unit = conversion_result.converted_unit
-            conversion_steps.append(
-                {
-                    "step_type": "unit",
-                    "source_concept": route.source_concept,
-                    "from_unit": conversion_result.original_unit,
-                    "to_unit": conversion_result.converted_unit,
-                    "original_value": str(conversion_result.original_value),
-                    "converted_value": str(conversion_result.converted_value),
-                    "formula": conversion_result.formula_used,
-                }
-            )
-
-        total += component_value
-        trace_components.append(
-            {
-                "mapping_row_id": route.row_id,
-                "mapping_source_concept": route.source_concept,
-                "resolved_source_concept": route_value.source_concept,
-                "source_value_id": route_value.value_id,
-                "value": str(component_value),
-                "unit": component_unit,
-            }
-        )
-
-    trace = None
-    if request.include_trace:
-        trace = {
-            "route": ValueResolutionMethod.COMPONENT_AGGREGATION.value,
-            "relationship_type": "narrower",
-            "target_concept": request.target_concept,
-            "component_count": len(resolved),
-            "formula": " + ".join(component_concepts),
-            "components": trace_components,
-        }
-        if conversion_steps:
-            trace["conversion"] = conversion_steps
-
-    return ValueResolveResponse(
-        status=ValueResolutionStatus.RESOLVED,
-        method=ValueResolutionMethod.COMPONENT_AGGREGATION,
-        target_concept=request.target_concept,
-        source_concept=explicit_source_concept or request.source_concept,
-        entity=request.entity,
-        period=request.period,
-        granularity=request.granularity,
-        value=total,
-        unit=target_unit,
-        value_id=None,
-        relationship_type="narrower",
-        mapping_row_ids=mapping_row_ids,
-        component_concepts=component_concepts,
-        candidates=candidates,
-        conversion_steps=conversion_steps,
-        trace=trace,
+    return _component_refusal_response(
+        request,
+        status=ValueResolutionStatus.BRIDGE_REQUIRED,
+        method=ValueResolutionMethod.REFUSED_NON_EQUIVALENT_MAPPING,
+        routes=component_routes,
+        reason=(
+            "Pairwise narrower mappings do not certify an exhaustive, disjoint "
+            "additive partition of this target; an executable calculation "
+            "contract or independently certified partition is required."
+        ),
+        source_concept=explicit_source_concept,
     )
 
 
@@ -762,48 +657,6 @@ def _component_refusal_response(
     )
 
 
-def _component_unsupported_conversion_response(
-    request: ValueResolveRequest,
-    *,
-    routes: list[_MappingRoute],
-    from_unit: str,
-    to_unit: str,
-    error: str,
-    source_concept: Optional[str],
-) -> ValueResolveResponse:
-    candidates = [route.as_candidate() for route in routes]
-    component_concepts = [route.source_concept for route in routes]
-    trace = None
-    if request.include_trace:
-        trace = {
-            "route": ValueResolutionMethod.COMPONENT_AGGREGATION.value,
-            "relationship_type": "narrower",
-            "required_components": component_concepts,
-            "conversion": {
-                "from_unit": from_unit,
-                "to_unit": to_unit,
-                "error": error,
-            },
-            "candidates": candidates,
-        }
-    return ValueResolveResponse(
-        status=ValueResolutionStatus.UNSUPPORTED_CONVERSION,
-        method=ValueResolutionMethod.COMPONENT_AGGREGATION,
-        target_concept=request.target_concept,
-        source_concept=source_concept or request.source_concept,
-        entity=request.entity,
-        period=request.period,
-        granularity=request.granularity,
-        value=None,
-        unit=None,
-        relationship_type="narrower",
-        mapping_row_ids=[route.row_id for route in routes if route.row_id],
-        component_concepts=component_concepts,
-        candidates=candidates,
-        trace=trace,
-    )
-
-
 def _mapping_refusal(
     request: ValueResolveRequest,
     *,
@@ -874,11 +727,7 @@ async def _try_calculation(
             if inspect.isawaitable(maybe_response)
             else maybe_response
         )
-    except HTTPException as exc:
-        if exc.status_code == 403:
-            raise
-        return None
-    except Exception:
+    except CalculationContractAbsent:
         return None
 
     contract_id = _trace_field(response, "contract_id")
@@ -1035,6 +884,17 @@ def _find_mapping_routes(
     rows = _load_mapping_rows(mapping_store, source_concept, target_concept)
     routes: list[_MappingRoute] = []
     for row in rows:
+        row_id = getattr(row, "id", None)
+        if not isinstance(row_id, int) or isinstance(row_id, bool) or row_id <= 0:
+            raise MappingCandidateLimitExceeded(500)
+        if not _normalize_token(
+            getattr(row, "source_standard", None)
+        ) or not _normalize_token(getattr(row, "target_standard", None)):
+            raise MappingCandidateLimitExceeded(500)
+        if not _normalize_token(
+            getattr(row, "source_code", None)
+        ) or not _normalize_token(getattr(row, "target_code", None)):
+            raise MappingCandidateLimitExceeded(500)
         forward_source = (
             _side_matches(
                 source_concept,
@@ -1090,22 +950,37 @@ def _load_mapping_rows(
     source_concept: Optional[str],
     target_concept: str,
 ) -> list[Any]:
+    candidate_limit = 500
     rows_by_id: dict[str, Any] = {}
-    used_unfiltered_fallback = False
 
     def add(rows: Iterable[Any]) -> None:
-        for row in rows or []:
+        for count, row in enumerate(rows or [], start=1):
+            if count > candidate_limit:
+                raise MappingCandidateLimitExceeded(candidate_limit)
             key = str(getattr(row, "id", id(row)))
+            previous = rows_by_id.get(key)
+            if previous is not None and any(
+                getattr(previous, name, None) != getattr(row, name, None)
+                for name in (
+                    "source_standard",
+                    "source_code",
+                    "target_standard",
+                    "target_code",
+                    "relationship_type",
+                )
+            ):
+                raise MappingCandidateLimitExceeded(candidate_limit)
             rows_by_id[key] = row
+            if len(rows_by_id) > candidate_limit:
+                raise MappingCandidateLimitExceeded(candidate_limit)
 
     def search_once(**kwargs: Any) -> None:
-        nonlocal used_unfiltered_fallback
         try:
             add(mapping_store.search(**kwargs))
-        except TypeError:
-            if not used_unfiltered_fallback:
-                add(mapping_store.search())
-                used_unfiltered_fallback = True
+        except TypeError as exc:
+            # A no-argument legacy search has no completeness guarantee; it
+            # may have silently clipped the decisive mapping at its own cap.
+            raise MappingCandidateLimitExceeded(candidate_limit) from exc
 
     source_standards = (
         _standard_candidates(source_concept) if source_concept else [None]
@@ -1122,19 +997,19 @@ def _load_mapping_rows(
                     source_codes=[item for item in source_codes if item],
                     target_standards=[item for item in target_standards if item],
                     target_codes=[item for item in target_codes if item],
-                    limit=500,
+                    limit=candidate_limit + 1,
                 )
             )
             return list(rows_by_id.values())
-        except TypeError:
-            rows_by_id.clear()
+        except TypeError as exc:
+            raise MappingCandidateLimitExceeded(candidate_limit) from exc
 
     if hasattr(mapping_store, "search"):
         for source_standard in source_standards:
             for source_code in source_codes:
                 for target_standard in target_standards:
                     for target_code in target_codes:
-                        kwargs = {"limit": 500}
+                        kwargs = {"limit": candidate_limit + 1}
                         if source_standard:
                             kwargs["source_standard"] = source_standard
                         if source_code:
@@ -1149,7 +1024,7 @@ def _load_mapping_rows(
             for target_code in target_codes:
                 for source_standard in source_standards:
                     for source_code in source_codes:
-                        kwargs = {"limit": 500}
+                        kwargs = {"limit": candidate_limit + 1}
                         if target_standard:
                             kwargs["source_standard"] = target_standard
                         if target_code:
@@ -1161,9 +1036,9 @@ def _load_mapping_rows(
                         search_once(**kwargs)
     if not rows_by_id and hasattr(mapping_store, "get_all"):
         try:
-            add(mapping_store.get_all(limit=500, offset=0))
-        except TypeError:
-            add(mapping_store.get_all())
+            add(mapping_store.get_all(limit=candidate_limit + 1, offset=0))
+        except TypeError as exc:
+            raise MappingCandidateLimitExceeded(candidate_limit) from exc
 
     return list(rows_by_id.values())
 
@@ -1184,7 +1059,8 @@ def _component_routes(routes: list[_MappingRoute]) -> list[_MappingRoute]:
     return [
         route
         for route in routes
-        if _normalize_relationship(route.relationship_type)
+        if route.direction == "forward"
+        and _normalize_relationship(route.relationship_type)
         in _COMPONENT_AGGREGATION_RELATIONSHIPS
     ]
 
@@ -1222,6 +1098,8 @@ def _value_concept_candidates(concept: str) -> list[str]:
     prefix = prefix.strip().lower()
     local = local.strip()
     if prefix in {"csrd", "esrs"}:
+        add(f"csrd:{local}")
+        add(f"esrs:{local}")
         segment = _sds_identifier_segment(local)
         add(f"urn:sds:reg:esrs:{segment}")
         add(f"urn:sds:reg:csrd:{segment}")
@@ -1259,20 +1137,6 @@ def _gri_code_from_sds_segment(segment: str) -> str:
     return token.replace("_", "-").upper()
 
 
-def _first_non_empty_unit(units: Iterable[Optional[str]]) -> Optional[str]:
-    for unit in units:
-        if unit:
-            return unit
-    return None
-
-
-def _decimal_value(value: Any) -> Optional[Decimal]:
-    try:
-        return Decimal(str(value))
-    except Exception:
-        return None
-
-
 def _side_matches(
     concept: Optional[str],
     standard: Any,
@@ -1293,6 +1157,7 @@ def _side_matches(
 def _standard_candidates(concept: Optional[str]) -> list[str]:
     if not concept:
         return []
+    concept = _mapping_concept(concept)
     prefix = concept.split(":", 1)[0].lower() if ":" in concept else ""
     mapping = {
         "csrd": ["CSRD", "ESRS"],
@@ -1305,15 +1170,16 @@ def _standard_candidates(concept: Optional[str]) -> list[str]:
 
 
 def _code_candidates(concept: str) -> set[str]:
-    prefix = concept.split(":", 1)[0] if ":" in concept else ""
+    concept = _mapping_concept(concept)
     local = concept.split(":", 1)[1] if ":" in concept else concept
     raw = {concept, local, local.replace("_", "-"), local.replace("-", "_")}
-    prefix_label = prefix.upper()
-    if prefix_label in {"GRI", "ESRS", "CSRD"}:
-        raw.add(f"{prefix_label} {local}")
-        raw.add(f"{prefix_label} {local.replace('_', '-')}")
-        if local.upper().startswith(prefix_label + " "):
-            stripped = local[len(prefix_label) + 1 :]
+    for label in _standard_candidates(concept):
+        if label not in {"GRI", "ESRS", "CSRD"}:
+            continue
+        raw.add(f"{label} {local}")
+        raw.add(f"{label} {local.replace('_', '-')}")
+        if local.upper().startswith(label + " "):
+            stripped = local[len(label) + 1 :]
             raw.add(stripped)
             raw.add(stripped.replace("_", "-"))
     return {_normalize_code(item) for item in raw if item}
@@ -1322,20 +1188,61 @@ def _code_candidates(concept: str) -> set[str]:
 def _raw_code_candidates(concept: Optional[str]) -> list[str]:
     if not concept:
         return []
-    prefix = concept.split(":", 1)[0] if ":" in concept else ""
+    concept = _mapping_concept(concept)
     local = concept.split(":", 1)[1] if ":" in concept else concept
     raw = {concept, local, local.replace("_", "-"), local.replace("-", "_")}
-    prefix_label = prefix.upper()
-    if prefix_label in {"GRI", "ESRS", "CSRD"}:
-        raw.add(f"{prefix_label} {local}")
-        raw.add(f"{prefix_label} {local.replace('_', '-')}")
-        raw.add(f"{prefix_label} {local.replace('-', '_')}")
-        if local.upper().startswith(prefix_label + " "):
-            stripped = local[len(prefix_label) + 1 :]
+    for label in _standard_candidates(concept):
+        if label not in {"GRI", "ESRS", "CSRD"}:
+            continue
+        raw.add(f"{label} {local}")
+        raw.add(f"{label} {local.replace('_', '-')}")
+        raw.add(f"{label} {local.replace('-', '_')}")
+        if local.upper().startswith(label + " "):
+            stripped = local[len(label) + 1 :]
             raw.add(stripped)
             raw.add(stripped.replace("_", "-"))
             raw.add(stripped.replace("-", "_"))
     return sorted({item for item in raw if item}, key=lambda item: (len(item), item))
+
+
+def _mapping_concept(concept: str) -> str:
+    """Use the same SDS register aliases for mapping lookup as for value lookup."""
+    match = re.fullmatch(r"urn:sds:reg:(esrs|csrd|gri):([^:]+)", concept, re.IGNORECASE)
+    if match is None:
+        return concept
+    namespace, segment = match.groups()
+    if namespace.lower() == "gri":
+        return f"gri:{_gri_code_from_sds_segment(segment)}"
+    return f"csrd:{_esrs_code_from_sds_segment(segment)}"
+
+
+def _has_conflicting_transfer_authority(routes: list[_MappingRoute]) -> bool:
+    by_pair: dict[tuple[str, str], set[bool]] = {}
+    for route in routes:
+        pair = (
+            _mapping_side_key(route.source_concept),
+            _mapping_side_key(route.target_concept),
+        )
+        authorities = by_pair.setdefault(pair, set())
+        authorities.add(route.is_equivalent)
+        if len(authorities) > 1:
+            return True
+    return False
+
+
+def _mapping_side_key(concept: str) -> str:
+    prefix, _, code = _mapping_concept(concept).partition(":")
+    prefix = "csrd" if prefix.lower() == "esrs" else prefix.lower()
+    return f"{prefix}:{_normalize_code(_without_mapping_standard_label(prefix, code))}"
+
+
+def _without_mapping_standard_label(prefix: str, code: str) -> str:
+    labels = {"csrd": "ESRS|CSRD", "gri": "GRI"}.get(prefix)
+    if labels is None:
+        return code
+    # Source codes can redundantly carry their standard with separators other
+    # than a literal space. Classify these as one authority before transfer.
+    return re.sub(rf"^(?:{labels})[^a-zA-Z0-9]+", "", code, count=1, flags=re.I)
 
 
 def _concept_from_mapping_side(standard: Any, code: Any) -> str:
@@ -1349,7 +1256,7 @@ def _concept_from_mapping_side(standard: Any, code: Any) -> str:
         "SYG": "syg",
         "SDS": "syg",
     }.get(standard_token, standard_token.lower() or "mapped")
-    return f"{prefix}:{code_token}"
+    return f"{prefix}:{_without_mapping_standard_label(prefix, code_token)}"
 
 
 def _normalize_relationship(value: str) -> str:

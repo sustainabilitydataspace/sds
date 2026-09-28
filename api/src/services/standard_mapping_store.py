@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 import structlog
 from src.database.repositories.standard_mapping_repository import (
     CanonicalPairwiseMappingRepository,
-    StandardMappingRepository,
+    MappingCandidateLimitExceeded,
 )
 from src.services.canonical_data import canonical_data_required, require_canonical_data
 
@@ -143,6 +143,8 @@ class InMemoryStandardMappingStore:
         target_codes: Optional[List[str]] = None,
         limit: int = 500,
     ) -> List[StandardMappingData]:
+        if limit <= 0:
+            raise ValueError("candidate route limit must be positive")
         self._ensure_loaded()
         source_standards = {item.lower() for item in source_standards or [] if item}
         source_codes = [item.lower() for item in source_codes or [] if item]
@@ -190,7 +192,9 @@ class InMemoryStandardMappingStore:
                     results.append(mapping)
             elif target_on_target or target_on_source:
                 results.append(mapping)
-        return results[:limit]
+            if len(results) > limit:
+                raise MappingCandidateLimitExceeded(limit)
+        return results
 
     def search(
         self,
@@ -264,26 +268,19 @@ class StandardMappingStore:
     """Canonical pairwise mapping store.
 
     The public mappings surface is DB-backed by the canonical materialized
-    pairwise read-model. Fresh local DBs also seed the legacy ``standard_mappings``
-    table from bundled reference data; when the canonical read-model has not yet
-    been materialized, this store reads that DB table as a compatibility source.
+    pairwise read-model. The retired ``standard_mappings`` table cannot serve
+    runtime requests, including when the canonical model is empty.
     The JSON fallback remains available only through ``InMemoryStandardMappingStore``
     for isolated fixture tests and is not used for API behavior.
     """
 
     def __init__(self, db: Optional[Session] = None):
         self._db = db
-        self._fallback = InMemoryStandardMappingStore()
         self._use_db = db is not None
 
     def _get_repo(self) -> Optional[Any]:
         if self._use_db and self._db:
             return CanonicalPairwiseMappingRepository(self._db)
-        return None
-
-    def _get_legacy_repo(self) -> Optional[Any]:
-        if self._use_db and self._db:
-            return StandardMappingRepository(self._db)
         return None
 
     def _get_repo_for_operation(self, operation: str) -> Optional[Any]:
@@ -296,72 +293,13 @@ class StandardMappingStore:
             )
         return repo
 
-    def _canonical_read_model_is_empty(self, repo: Any, operation: str) -> bool:
-        try:
-            return repo.count() == 0
-        except Exception as exc:
-            self._handle_repo_failure(f"{operation}.canonical_count", exc)
-            return False
-
     def _handle_repo_failure(self, operation: str, error: Exception) -> None:
-        if canonical_data_required():
-            require_canonical_data(
-                component="StandardMappingStore",
-                operation=operation,
-                reason="database query failed",
-                error=error,
-            )
-        logger.warning(
-            "Canonical mapping DB query failed",
+        require_canonical_data(
+            component="StandardMappingStore",
             operation=operation,
-            error=str(error),
+            reason="database query failed",
+            error=error,
         )
-
-    @staticmethod
-    def _add_unique(rows_by_id: dict[str, Any], rows: List[Any]) -> None:
-        for row in rows or []:
-            key = str(getattr(row, "id", id(row)))
-            rows_by_id[key] = row
-
-    def _legacy_candidate_routes(
-        self,
-        legacy_repo: Any,
-        *,
-        source_standards: Optional[List[str]] = None,
-        source_codes: Optional[List[str]] = None,
-        target_standards: Optional[List[str]] = None,
-        target_codes: Optional[List[str]] = None,
-        limit: int = 500,
-    ) -> List[Any]:
-        rows_by_id: dict[str, Any] = {}
-        source_standards = [item for item in source_standards or [] if item] or [None]
-        source_codes = [item for item in source_codes or [] if item] or [None]
-        target_standards = [item for item in target_standards or [] if item] or [None]
-        target_codes = [item for item in target_codes or [] if item] or [None]
-
-        def search_once(**kwargs: Any) -> None:
-            filtered = {key: value for key, value in kwargs.items() if value}
-            filtered["limit"] = limit
-            self._add_unique(rows_by_id, legacy_repo.search(**filtered))
-
-        for source_standard in source_standards:
-            for source_code in source_codes:
-                for target_standard in target_standards:
-                    for target_code in target_codes:
-                        search_once(
-                            source_standard=source_standard,
-                            source_code=source_code,
-                            target_standard=target_standard,
-                            target_code=target_code,
-                        )
-                        search_once(
-                            source_standard=target_standard,
-                            source_code=target_code,
-                            target_standard=source_standard,
-                            target_code=source_code,
-                        )
-
-        return list(rows_by_id.values())[:limit]
 
     def is_db_available(self) -> bool:
         return self._use_db and self._db is not None
@@ -375,80 +313,38 @@ class StandardMappingStore:
         repo = self._get_repo_for_operation("get_all")
         if repo:
             try:
-                rows = repo.get_all(
+                return repo.get_all(
                     limit=limit, offset=offset, changed_since=changed_since
                 )
-                if rows or not self._canonical_read_model_is_empty(repo, "get_all"):
-                    return rows
             except Exception as exc:
                 self._handle_repo_failure("get_all", exc)
-                return []
-        legacy_repo = self._get_legacy_repo()
-        if legacy_repo:
-            try:
-                return legacy_repo.get_all(
-                    limit=limit, offset=offset, changed_since=changed_since
-                )
-            except Exception as exc:
-                self._handle_repo_failure("get_all.legacy", exc)
         return []
 
     def count(self, changed_since: Optional[datetime] = None) -> int:
         repo = self._get_repo_for_operation("count")
         if repo:
             try:
-                count = repo.count(changed_since=changed_since)
-                if count > 0:
-                    return count
+                return repo.count(changed_since=changed_since)
             except Exception as exc:
                 self._handle_repo_failure("count", exc)
-                return 0
-        legacy_repo = self._get_legacy_repo()
-        if legacy_repo:
-            try:
-                return legacy_repo.count(changed_since=changed_since)
-            except Exception as exc:
-                self._handle_repo_failure("count.legacy", exc)
         return 0
 
     def find_by_source(self, standard: str, code: str, limit: int = 100) -> List[Any]:
         repo = self._get_repo_for_operation("find_by_source")
         if repo:
             try:
-                rows = repo.find_by_source(standard, code, limit=limit)
-                if rows or not self._canonical_read_model_is_empty(
-                    repo, "find_by_source"
-                ):
-                    return rows
+                return repo.find_by_source(standard, code, limit=limit)
             except Exception as exc:
                 self._handle_repo_failure("find_by_source", exc)
-                return []
-        legacy_repo = self._get_legacy_repo()
-        if legacy_repo:
-            try:
-                return legacy_repo.find_by_source(standard, code, limit=limit)
-            except Exception as exc:
-                self._handle_repo_failure("find_by_source.legacy", exc)
         return []
 
     def find_by_target(self, standard: str, code: str, limit: int = 100) -> List[Any]:
         repo = self._get_repo_for_operation("find_by_target")
         if repo:
             try:
-                rows = repo.find_by_target(standard, code, limit=limit)
-                if rows or not self._canonical_read_model_is_empty(
-                    repo, "find_by_target"
-                ):
-                    return rows
+                return repo.find_by_target(standard, code, limit=limit)
             except Exception as exc:
                 self._handle_repo_failure("find_by_target", exc)
-                return []
-        legacy_repo = self._get_legacy_repo()
-        if legacy_repo:
-            try:
-                return legacy_repo.find_by_target(standard, code, limit=limit)
-            except Exception as exc:
-                self._handle_repo_failure("find_by_target.legacy", exc)
         return []
 
     def find_between_standards(
@@ -460,22 +356,9 @@ class StandardMappingStore:
         repo = self._get_repo_for_operation("find_between_standards")
         if repo:
             try:
-                rows = repo.find_between_standards(source_std, target_std, limit=limit)
-                if rows or not self._canonical_read_model_is_empty(
-                    repo, "find_between_standards"
-                ):
-                    return rows
+                return repo.find_between_standards(source_std, target_std, limit=limit)
             except Exception as exc:
                 self._handle_repo_failure("find_between_standards", exc)
-                return []
-        legacy_repo = self._get_legacy_repo()
-        if legacy_repo:
-            try:
-                return legacy_repo.find_between_standards(
-                    source_std, target_std, limit=limit
-                )
-            except Exception as exc:
-                self._handle_repo_failure("find_between_standards.legacy", exc)
         return []
 
     def search(
@@ -492,7 +375,7 @@ class StandardMappingStore:
         repo = self._get_repo_for_operation("search")
         if repo:
             try:
-                rows = repo.search(
+                return repo.search(
                     source_standard=source_standard,
                     source_code=source_code,
                     target_standard=target_standard,
@@ -502,46 +385,17 @@ class StandardMappingStore:
                     limit=limit,
                     changed_since=changed_since,
                 )
-                if rows or not self._canonical_read_model_is_empty(repo, "search"):
-                    return rows
             except Exception as exc:
                 self._handle_repo_failure("search", exc)
-                return []
-        legacy_repo = self._get_legacy_repo()
-        if legacy_repo:
-            try:
-                return legacy_repo.search(
-                    source_standard=source_standard,
-                    source_code=source_code,
-                    target_standard=target_standard,
-                    target_code=target_code,
-                    dimension=dimension,
-                    min_confidence=min_confidence,
-                    limit=limit,
-                    changed_since=changed_since,
-                )
-            except Exception as exc:
-                self._handle_repo_failure("search.legacy", exc)
         return []
 
     def get_supported_standards(self) -> List[str]:
         repo = self._get_repo_for_operation("get_supported_standards")
         if repo:
             try:
-                standards = repo.get_supported_standards()
-                if standards or not self._canonical_read_model_is_empty(
-                    repo, "get_supported_standards"
-                ):
-                    return standards
+                return repo.get_supported_standards()
             except Exception as exc:
                 self._handle_repo_failure("get_supported_standards", exc)
-                return []
-        legacy_repo = self._get_legacy_repo()
-        if legacy_repo:
-            try:
-                return legacy_repo.get_supported_standards()
-            except Exception as exc:
-                self._handle_repo_failure("get_supported_standards.legacy", exc)
         return []
 
     def search_by_dimension(self, dimension: str, limit: int = 100) -> List[Any]:
@@ -567,26 +421,20 @@ class StandardMappingStore:
                     target_codes=target_codes,
                     limit=limit,
                 )
-                if rows or not self._canonical_read_model_is_empty(
-                    repo, "find_candidate_routes"
-                ):
-                    return rows
+                if rows is None:
+                    raise MappingCandidateLimitExceeded(limit)
+                return rows
+            except MappingCandidateLimitExceeded:
+                raise
             except Exception as exc:
-                self._handle_repo_failure("find_candidate_routes", exc)
-                return []
-        legacy_repo = self._get_legacy_repo()
-        if legacy_repo:
-            try:
-                return self._legacy_candidate_routes(
-                    legacy_repo,
-                    source_standards=source_standards,
-                    source_codes=source_codes,
-                    target_standards=target_standards,
-                    target_codes=target_codes,
-                    limit=limit,
+                if canonical_data_required():
+                    self._handle_repo_failure("find_candidate_routes", exc)
+                logger.warning(
+                    "Canonical mapping candidate query failed",
+                    operation="find_candidate_routes",
+                    error=str(exc),
                 )
-            except Exception as exc:
-                self._handle_repo_failure("find_candidate_routes.legacy", exc)
+                raise MappingCandidateLimitExceeded(limit) from exc
         return []
 
 

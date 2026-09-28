@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, Optional
@@ -95,6 +96,13 @@ class InMemoryCanonicalMappingPackageJobStore:
     def acquire_import_submission_lock(self) -> None:
         return None
 
+    def reconcile_legacy_active_jobs(self) -> int:
+        # Process-local test jobs do not survive a worker restart.
+        return 0
+
+    def import_lifecycle_lock(self):
+        return nullcontext()
+
     def has_active_import(self) -> bool:
         return any(
             job.job_type == CanonicalMappingPackageJobType.IMPORT
@@ -132,6 +140,7 @@ class InMemoryCanonicalMappingPackageJobStore:
         rejected_rows: int,
         committed: bool,
         error_message: Optional[str] = None,
+        commit: bool = True,
     ) -> Optional[CanonicalMappingPackageJobResponse]:
         stored = self._jobs.get(job_id)
         if stored is None:
@@ -192,6 +201,12 @@ class InMemoryCanonicalMappingPackageJobStore:
     ) -> CanonicalMappingPackageJobResponse:
         return CanonicalMappingPackageJobResponse(**stored.__dict__)
 
+    def commit_import(self) -> None:
+        return None
+
+    def rollback_import(self) -> None:
+        return None
+
 
 class DatabaseCanonicalMappingPackageJobStore:
     """PostgreSQL-backed canonical mapping package job store."""
@@ -209,8 +224,14 @@ class DatabaseCanonicalMappingPackageJobStore:
     def acquire_import_submission_lock(self) -> None:
         self._repo.acquire_import_submission_lock()
 
+    def import_lifecycle_lock(self):
+        return self._repo.import_lifecycle_lock()
+
     def has_active_import(self) -> bool:
         return self._repo.has_active_import()
+
+    def reconcile_legacy_active_jobs(self) -> int:
+        return self._repo.reconcile_legacy_active_jobs()
 
     def mark_running(self, job_id: str) -> Optional[CanonicalMappingPackageJobResponse]:
         job = self._repo.mark_running(job_id)
@@ -219,6 +240,12 @@ class DatabaseCanonicalMappingPackageJobStore:
     def complete(self, **kwargs) -> Optional[CanonicalMappingPackageJobResponse]:
         job = self._repo.complete(**kwargs)
         return self._to_response(job) if job else None
+
+    def commit_import(self) -> None:
+        self._repo.db.commit()
+
+    def rollback_import(self) -> None:
+        self._repo.db.rollback()
 
     def fail(self, **kwargs) -> Optional[CanonicalMappingPackageJobResponse]:
         job = self._repo.fail(**kwargs)

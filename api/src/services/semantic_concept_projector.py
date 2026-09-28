@@ -385,18 +385,25 @@ class SemanticConceptProjector:
         projected_identifiers: set[str] = set()
         present_identifiers: set[str] = set()
         stale_identifiers: list[str] = []
+        indicator_ids = [indicator.id for indicator in indicators]
+        projected_concepts = (
+            self.db.query(Concept)
+            .filter(
+                Concept.indicator_id.in_(indicator_ids),
+                Concept.projection_source == PROJECTION_SOURCE,
+            )
+            .all()
+            if indicator_ids
+            else []
+        )
+        concepts_by_indicator = {
+            (concept.indicator_id, concept.uri): concept
+            for concept in projected_concepts
+        }
         for indicator in indicators:
             payload = _payload_for_indicator(indicator)
             payload_hash = _projection_hash(payload)
-            concept = (
-                self.db.query(Concept)
-                .filter(
-                    Concept.uri == indicator.identifier,
-                    Concept.indicator_id == indicator.id,
-                    Concept.projection_source == PROJECTION_SOURCE,
-                )
-                .first()
-            )
+            concept = concepts_by_indicator.get((indicator.id, indicator.identifier))
             if concept is None:
                 continue
             present_identifiers.add(indicator.identifier)
@@ -973,9 +980,29 @@ def _parent_disclosure_key(payload: dict[str, Any]) -> tuple[str, str] | None:
 
 
 def _csrd_parent_code(*, source_ref: str, code_esrs: str) -> str | None:
-    match = re.search(r"\b([A-Z]{1,4}[0-9]?(?:-[A-Z0-9]+)+):P\d+\b", source_ref)
-    if match:
-        return match.group(1)
+    # Parse whitespace-delimited references in linear time. The former nested
+    # quantified regex exhibited catastrophic backtracking on long malformed
+    # source_ref values supplied through indicator imports.
+    for raw_token in source_ref.split():
+        token = raw_token.strip("()[]{}.,;\"'")
+        prefix, separator, paragraph = token.rpartition(":P")
+        if not separator or not paragraph.isdigit():
+            continue
+        components = prefix.split("-")
+        if len(components) < 2:
+            continue
+        head, *segments = components
+        head_letters = head.rstrip("0123456789")
+        head_digits = head[len(head_letters) :]
+        if not (1 <= len(head_letters) <= 4 and head_letters.isalpha()):
+            continue
+        if head != head.upper() or len(head_digits) > 1:
+            continue
+        if all(
+            segment and segment.isalnum() and segment == segment.upper()
+            for segment in segments
+        ):
+            return prefix
     if code_esrs:
         return re.split(r"[_:.]", code_esrs, maxsplit=1)[0] or None
     return None

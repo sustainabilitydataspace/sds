@@ -1,0 +1,32 @@
+{
+  "$schema": "./trust_issuers_schema.json",
+  "version": "2026-09-12",
+  "effectiveDate": "2026-09-12",
+  "description": "SDS trust-enforcement hold. No VC issuer, JWK, trust anchor, credential status-list endpoint, or automated VC authorization is published or active.",
+  "statusListStandard": "BitstringStatusList2025",
+  "runtimeEnforcement": {
+    "status": "not_activated",
+    "reason": "No runtime VC verifier or approved issuer-key provenance and custody evidence exists. Historical placeholder issuer records and unusable JWKs were removed rather than represented as trust anchors.",
+    "activationPrerequisite": "A per-issuer custody decision package, verified DID-document provenance, usable JWK with kid/thumbprint, status-list procedure, rotation and revocation evidence, explicit approval, and fail-closed runtime verification tests."
+  },
+  "revocationCheckPolicy": {
+    "cacheMaxAge": 300,
+    "offlineFallback": "reject",
+    "staleThreshold": 3600
+  },
+  "issuers": [],
+  "rotationPolicy": {
+    "activationGate": "No issuer can be added while runtimeEnforcement.status is not_activated.",
+    "futureReviewFrequency": "quarterly after activation",
+    "futureCompromiseResponse": "immediate revocation and runtime denial after activation"
+  },
+  "verificationRequirements": {
+    "signatureValid": true,
+    "issuerInRegistry": true,
+    "statusCredentialValid": true,
+    "subjectDIDBinding": true,
+    "scopeAlignment": true,
+    "temporalValidity": true,
+    "status": "target_requirements_not_runtime_enforced"
+  }
+}

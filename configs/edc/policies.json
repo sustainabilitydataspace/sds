@@ -1,0 +1,346 @@
+[
+  {
+    "uid": "policy-deny-all",
+    "policy": {
+      "permissions": [],
+      "prohibitions": [
+        {
+          "action": {
+            "type": "USE"
+          },
+          "constraints": [],
+          "duties": []
+        }
+      ],
+      "obligations": []
+    }
+  },
+  {
+    "uid": "policy-reporting-365d-retention",
+    "policy": {
+      "permissions": [
+        {
+          "action": {
+            "type": "USE"
+          },
+          "constraints": [
+            {
+              "leftExpression": "purpose",
+              "operator": "EQ",
+              "rightExpression": "reporting"
+            },
+            {
+              "leftExpression": "spatial",
+              "operator": "EQ",
+              "rightExpression": "EU"
+            }
+          ],
+          "duties": [
+            {
+              "action": {
+                "type": "LOG"
+              }
+            },
+            {
+              "action": {
+                "type": "DELETE"
+              },
+              "constraints": [
+                {
+                  "leftExpression": "elapsedTime",
+                  "operator": "LTEQ",
+                  "rightExpression": "P365D"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prohibitions": [
+        {
+          "action": {
+            "type": "TRANSFER"
+          },
+          "constraints": [
+            {
+              "leftExpression": "spatial",
+              "operator": "NEQ",
+              "rightExpression": "EU"
+            }
+          ],
+          "duties": []
+        }
+      ],
+      "obligations": []
+    }
+  },
+  {
+    "uid": "policy-supervisory-730d",
+    "policy": {
+      "permissions": [
+        {
+          "action": {
+            "type": "USE"
+          },
+          "constraints": [
+            {
+              "leftExpression": "purpose",
+              "operator": "EQ",
+              "rightExpression": "supervisory"
+            },
+            {
+              "leftExpression": "spatial",
+              "operator": "IN",
+              "rightExpression": [
+                "EU",
+                "ES"
+              ]
+            }
+          ],
+          "duties": [
+            {
+              "action": {
+                "type": "LOG"
+              }
+            },
+            {
+              "action": {
+                "type": "NOTIFY"
+              }
+            },
+            {
+              "action": {
+                "type": "DELETE"
+              },
+              "constraints": [
+                {
+                  "leftExpression": "elapsedTime",
+                  "operator": "LTEQ",
+                  "rightExpression": "P730D"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prohibitions": [
+        {
+          "action": {
+            "type": "TRANSFER"
+          },
+          "constraints": [
+            {
+              "leftExpression": "spatial",
+              "operator": "NOT_IN",
+              "rightExpression": [
+                "EU",
+                "ES"
+              ]
+            }
+          ],
+          "duties": []
+        }
+      ],
+      "obligations": []
+    }
+  },
+  {
+    "uid": "policy-audit-540d-trace",
+    "policy": {
+      "permissions": [
+        {
+          "action": {
+            "type": "USE"
+          },
+          "constraints": [
+            {
+              "leftExpression": "purpose",
+              "operator": "EQ",
+              "rightExpression": "audit"
+            }
+          ],
+          "duties": [
+            {
+              "action": {
+                "type": "LOG"
+              }
+            },
+            {
+              "action": {
+                "type": "ATTRIBUTE"
+              }
+            },
+            {
+              "action": {
+                "type": "DELETE"
+              },
+              "constraints": [
+                {
+                  "leftExpression": "elapsedTime",
+                  "operator": "LTEQ",
+                  "rightExpression": "P540D"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prohibitions": [],
+      "obligations": []
+    }
+  },
+  {
+    "uid": "policy-research-180d",
+    "policy": {
+      "permissions": [
+        {
+          "action": {
+            "type": "USE"
+          },
+          "constraints": [
+            {
+              "leftExpression": "purpose",
+              "operator": "EQ",
+              "rightExpression": "research"
+            },
+            {
+              "leftExpression": "spatial",
+              "operator": "IN",
+              "rightExpression": [
+                "EU",
+                "LATAM"
+              ]
+            }
+          ],
+          "duties": [
+            {
+              "action": {
+                "type": "AGGREGATE"
+              }
+            },
+            {
+              "action": {
+                "type": "ANONYMIZE"
+              }
+            },
+            {
+              "action": {
+                "type": "DELETE"
+              },
+              "constraints": [
+                {
+                  "leftExpression": "elapsedTime",
+                  "operator": "LTEQ",
+                  "rightExpression": "P180D"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prohibitions": [
+        {
+          "action": {
+            "type": "DERIVE"
+          },
+          "constraints": [
+            {
+              "leftExpression": "dataType",
+              "operator": "EQ",
+              "rightExpression": "personalData"
+            }
+          ],
+          "duties": []
+        }
+      ],
+      "obligations": []
+    }
+  },
+  {
+    "uid": "policy-interop-30d",
+    "policy": {
+      "permissions": [
+        {
+          "action": {
+            "type": "USE"
+          },
+          "constraints": [
+            {
+              "leftExpression": "purpose",
+              "operator": "EQ",
+              "rightExpression": "interop_testing"
+            }
+          ],
+          "duties": [
+            {
+              "action": {
+                "type": "DELETE"
+              },
+              "constraints": [
+                {
+                  "leftExpression": "elapsedTime",
+                  "operator": "LTEQ",
+                  "rightExpression": "P30D"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prohibitions": [],
+      "obligations": []
+    }
+  },
+  {
+    "uid": "policy-geofence-eu",
+    "policy": {
+      "permissions": [],
+      "prohibitions": [
+        {
+          "action": {
+            "type": "TRANSFER"
+          },
+          "constraints": [
+            {
+              "leftExpression": "spatial",
+              "operator": "NEQ",
+              "rightExpression": "EU"
+            }
+          ],
+          "duties": []
+        }
+      ],
+      "obligations": []
+    }
+  },
+  {
+    "uid": "policy-no-analytics",
+    "policy": {
+      "permissions": [],
+      "prohibitions": [
+        {
+          "action": {
+            "type": "ANALYZE"
+          },
+          "constraints": [],
+          "duties": []
+        },
+        {
+          "action": {
+            "type": "DERIVE"
+          },
+          "constraints": [],
+          "duties": []
+        },
+        {
+          "action": {
+            "type": "AGGREGATE"
+          },
+          "constraints": [],
+          "duties": []
+        }
+      ],
+      "obligations": []
+    }
+  }
+]

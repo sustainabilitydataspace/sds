@@ -3,12 +3,16 @@ FastAPI dependencies for authentication and authorization.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 import structlog
+from src.auth.authorization import (
+    has_cross_tenant_admin_access,
+    require_bearer_authentication,
+)
 from src.auth.jwt_handler import jwt_handler
 from src.auth.models import Permission, TokenData, User, UserRole
 from src.config.settings import settings
@@ -75,22 +79,25 @@ async def get_token_data(
                     )
                     raise invalid_credentials
 
-            if settings.require_database:
-                user = users.get_user_by_id(user_id=token_data.user_id)
-                if user is None or not user.is_active:
+            user = users.get_user_by_id(user_id=token_data.user_id)
+            if isinstance(user, User):
+                if not user.is_active or user.auth_version != token_data.auth_version:
                     raise invalid_credentials
-                return TokenData(
-                    user_id=user.id,
-                    username=user.username,
-                    role=user.role,
-                    company_id=user.company_id,
-                    permissions=user.permissions,
-                    auth_method="bearer",
-                    exp=token_data.exp,
-                    iat=token_data.iat,
-                )
-
-            return token_data
+            elif settings.require_database:
+                raise invalid_credentials
+            else:
+                return token_data
+            return TokenData(
+                user_id=user.id,
+                username=user.username,
+                role=user.role,
+                company_id=user.company_id,
+                permissions=user.permissions,
+                auth_version=user.auth_version,
+                auth_method="bearer",
+                exp=token_data.exp,
+                iat=token_data.iat,
+            )
 
         if api_key:
             resolved = api_keys.authenticate(api_key)
@@ -114,6 +121,7 @@ async def get_token_data(
                 company_id=user.company_id,
                 permissions=effective_permissions,
                 auth_method="api_key",
+                api_key_id=resolved.key_id,
                 exp=None,
                 iat=None,
             )
@@ -132,22 +140,32 @@ async def get_current_user(
     users=Depends(get_user_store),
 ) -> User:
     """Get current user from token data."""
-    if getattr(settings, "require_database", False):
-        db_user = users.get_user_by_id(user_id=token_data.user_id)
-        if db_user is None or not db_user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found or inactive",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        if getattr(token_data, "auth_method", "bearer") == "api_key":
-            return db_user.model_copy(
-                update={"permissions": list(token_data.permissions)}
-            )
-        return db_user
-
-    # Offline mode: fabricated user from token
-    user = User(
+    user = (
+        users.get_user_by_id(user_id=token_data.user_id)
+        if hasattr(users, "get_user_by_id")
+        else None
+    )
+    if isinstance(user, User) and not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if isinstance(user, User):
+        updates = {
+            "auth_method": token_data.auth_method,
+            "api_key_id": token_data.api_key_id,
+        }
+        if token_data.auth_method == "api_key":
+            updates["permissions"] = list(token_data.permissions)
+        return user.model_copy(update=updates)
+    if settings.require_database:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return User(
         id=token_data.user_id,
         username=token_data.username,
         email=f"{token_data.username}@example.com",
@@ -159,8 +177,10 @@ async def get_current_user(
         updated_at=datetime.now(),
         last_login=None,
         permissions=token_data.permissions,
+        auth_version=token_data.auth_version,
+        auth_method=token_data.auth_method,
+        api_key_id=token_data.api_key_id,
     )
-    return user
 
 
 async def get_current_active_user(
@@ -183,6 +203,8 @@ def require_role(required_role: UserRole):
     async def role_checker(
         current_user: User = Depends(get_current_active_user),
     ) -> User:
+        # Role alone cannot authorize a narrowed API key.
+        require_bearer_authentication(current_user)
         # Define role hierarchy (higher roles include lower role permissions)
         role_hierarchy = {
             UserRole.VIEWER: 1,
@@ -297,7 +319,7 @@ def require_company_access(allow_admin_override: bool = True):
         company_id: str, current_user: User = Depends(get_current_active_user)
     ) -> User:
         # Admin can access all companies (if override allowed)
-        if allow_admin_override and current_user.role == UserRole.ADMIN:
+        if allow_admin_override and has_cross_tenant_admin_access(current_user):
             return current_user
 
         # User must belong to the same company

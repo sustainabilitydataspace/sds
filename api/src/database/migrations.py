@@ -8,8 +8,9 @@ from sqlalchemy import Connection, inspect
 
 from alembic import command
 from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 
-BASELINE_REVISION = "001_baseline_schema"
 HEAD_REVISION = "head"
 
 SERVICE_ROOT = Path(__file__).resolve().parents[2]
@@ -41,16 +42,38 @@ def _existing_user_tables(connection: Connection) -> set[str]:
     return tables
 
 
+def assert_database_schema_head(connection: Connection) -> None:
+    """Read only: require every DB revision to match the image's exact heads."""
+    config = Config(str(ALEMBIC_INI_PATH))
+    config.set_main_option("script_location", str(ALEMBIC_SCRIPT_PATH))
+    expected = tuple(ScriptDirectory.from_config(config).get_heads())
+    current = tuple(MigrationContext.configure(connection).get_current_heads())
+    if (
+        not expected
+        or not current
+        or len(current) != len(set(current))
+        or set(current) != set(expected)
+    ):
+        raise RuntimeError(
+            "Database is not at the approved Alembic head; startup refused"
+        )
+
+
 def ensure_database_schema(connection: Connection) -> None:
     """Ensure the database is at Alembic head.
 
-    Existing deployments created before Alembic are stamped to the baseline
-    revision and then upgraded. Fresh databases run the whole migration chain.
+    Fresh databases run the whole migration chain. Non-empty unversioned
+    databases are never adopted automatically: a partial fingerprint cannot
+    prove types, constraints, indexes, or provenance safely enough to stamp.
     """
     config = _alembic_config(connection)
     has_alembic = _has_alembic_version_table(connection)
 
     if not has_alembic and _existing_user_tables(connection):
-        command.stamp(config, BASELINE_REVISION)
+        raise RuntimeError(
+            "Refusing automatic adoption of unversioned non-empty database; "
+            "restore a qualified versioned snapshot or complete an explicit "
+            "operator-reviewed legacy migration before startup"
+        )
 
     command.upgrade(config, HEAD_REVISION)

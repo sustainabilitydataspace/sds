@@ -17,8 +17,8 @@ import structlog
 from src.calculation.aggregation_policy import aggregate_observations, resolve_entities
 from src.calculation.contracts import (
     CalculationContract,
+    CalculationContractNotFoundError,
     ContractExecutionError,
-    ContractResolutionError,
     DerivedCalculationNode,
 )
 from src.calculation.conversion import ConversionDependencyError, ConversionRequest
@@ -66,6 +66,10 @@ class CalculationError(Exception):
     """Exception raised for calculation errors."""
 
     pass
+
+
+class OntologyCalculationNotFoundError(CalculationError):
+    """No ontology calculation exists for this indicator; not an execution failure."""
 
 
 class AggregationMethod(Enum):
@@ -590,7 +594,16 @@ class CalculationEngine:
             # Step 1: Resolve dependencies
             dependencies = self.resolve_dependencies(indicator_uri, context, graph)
             if not dependencies:
-                raise CalculationError(
+                has_formula = any(
+                    graph.value(candidate, SDS.hasFormula) is not None
+                    for candidate in self._indicator_iri_candidates(indicator_uri)
+                )
+                error_type = (
+                    CalculationError
+                    if has_formula
+                    else OntologyCalculationNotFoundError
+                )
+                raise error_type(
                     f"No dependencies found for indicator: {indicator_uri}"
                 )
 
@@ -642,6 +655,8 @@ class CalculationEngine:
                 indicator=indicator_uri,
                 entity=context.entity_id,
             )
+            if isinstance(e, OntologyCalculationNotFoundError):
+                raise
             raise CalculationError(f"Indicator calculation failed: {e}")
 
     def calculate_contract(
@@ -919,7 +934,7 @@ class CalculationEngine:
 
         try:
             nested_contract = contract_resolver.resolve(contract_input.concept)
-        except ContractResolutionError:
+        except CalculationContractNotFoundError:
             return None
 
         if nested_contract.contract_id in calculation_stack:
@@ -1426,17 +1441,19 @@ class CalculationEngine:
         dependencies: List[VariableDependency],
         context: CalculationContext,
     ) -> Dict[str, Any]:
-        """Apply temporal and organizational aggregations to base values."""
-        aggregated_values = base_values.copy()
-
-        # For now, return values as-is
-        # In real implementation, this would:
-        # 1. Group values by temporal periods
-        # 2. Apply temporal aggregation (monthly -> annual)
-        # 3. Group values by organizational hierarchy
-        # 4. Apply organizational aggregation (plant -> country)
-
-        return aggregated_values
+        """Reject aggregation claims that the legacy ontology path cannot execute."""
+        unsupported = [
+            dependency
+            for dependency in dependencies
+            if dependency.temporal_granularity != context.temporal_granularity
+            or dependency.entity_id != context.entity_id
+        ]
+        if unsupported:
+            raise CalculationError(
+                "Ontology fallback does not implement temporal or organizational "
+                "aggregation; import an executable calculation contract instead"
+            )
+        return base_values.copy()
 
     def _get_indicator_formula(
         self,
@@ -1653,12 +1670,21 @@ class CalculationEngine:
     def _formula_variable_context(variables: Dict[str, Any]) -> Dict[str, Any]:
         """Expose stored variable references under the local names formulas use."""
         context = variables.copy()
+        alias_owners = {name: name for name in variables if isinstance(name, str)}
         for name, value in variables.items():
             if not isinstance(name, str):
                 continue
             for alias in (compact_reference(name), local_name(name)):
-                if alias and alias not in context:
-                    context[alias] = value
+                if not alias:
+                    continue
+                owner = alias_owners.get(alias)
+                if owner is not None and owner != name:
+                    raise CalculationError(
+                        "Ambiguous formula variable alias "
+                        f"{alias!r} is derived from both {owner!r} and {name!r}"
+                    )
+                alias_owners[alias] = name
+                context[alias] = value
         return context
 
     def _eval_ast_node(self, node, context: Dict[str, Any]) -> Any:

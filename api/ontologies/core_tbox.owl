@@ -1,10 +1,276 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-         xmlns:owl="http://www.w3.org/2002/07/owl#"
-         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-         xmlns:sds="https://sustainabilitydataspace.com/ontology#">
-  <owl:Ontology rdf:about="https://sustainabilitydataspace.com/ontology/public-demo"/>
-  <owl:Class rdf:about="https://sustainabilitydataspace.com/ontology#SampleMetric">
-    <rdfs:label>SDS public demonstration metric</rdfs:label>
-  </owl:Class>
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:owl="http://www.w3.org/2002/07/owl#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+   xmlns:sds="https://sustainabilitydataspace.com/ontology#"
+   xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#hasConversionRule">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label xml:lang="es">tiene regla de conversión</rdfs:label>
+    <rdfs:label xml:lang="en">has conversion rule</rdfs:label>
+    <rdfs:range rdf:resource="https://sustainabilitydataspace.com/ontology#ConversionRule"/>
+    <rdfs:comment xml:lang="en">Associates a unit with its conversion rules</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology">
+    <rdfs:label xml:lang="en">SustainabilityDataSpace Base Ontology</rdfs:label>
+    <rdfs:label xml:lang="es">Ontología Base SustainabilityDataSpace</rdfs:label>
+    <rdfs:comment xml:lang="en">Base ontology for ESG data integration across CSRD, GRI and Sygris taxonomies</rdfs:comment>
+    <rdfs:comment xml:lang="es">Ontología base para integración de datos ESG entre taxonomías CSRD, GRI y Sygris</rdfs:comment>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <owl:versionInfo>1.0.0</owl:versionInfo>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#fromUnit">
+    <rdfs:label xml:lang="en">from unit</rdfs:label>
+    <rdfs:label xml:lang="es">desde unidad</rdfs:label>
+    <rdfs:comment xml:lang="en">Source unit in a conversion rule</rdfs:comment>
+    <rdfs:domain rdf:resource="https://sustainabilitydataspace.com/ontology#ConversionRule"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://sustainabilitydataspace.com/ontology#Unit"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Dimension">
+    <rdfs:label xml:lang="es">Dimensión ESG</rdfs:label>
+    <rdfs:label xml:lang="en">ESG Dimension</rdfs:label>
+    <skos:definition xml:lang="es">Subdivisiones temáticas dentro de temas ESG (agua, energía, residuos, etc.)</skos:definition>
+    <skos:definition xml:lang="en">Thematic subdivisions within ESG topics (water, energy, waste, etc.)</skos:definition>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Variable">
+    <skos:definition xml:lang="en">Operational variables from Sygris taxonomy used as building blocks for indicators</skos:definition>
+    <skos:definition xml:lang="es">Variables operativas de la taxonomía Sygris usadas como bloques de construcción para indicadores</skos:definition>
+    <rdfs:label xml:lang="es">Variable</rdfs:label>
+    <rdfs:label xml:lang="en">Variable</rdfs:label>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Quarterly">
+    <skos:prefLabel xml:lang="es">Trimestral</skos:prefLabel>
+    <skos:prefLabel xml:lang="en">Quarterly</skos:prefLabel>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#TemporalLevel"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#ConversionRule_ft3_m3">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#ConversionRule"/>
+    <sds:fromUnit rdf:resource="https://sustainabilitydataspace.com/ontology#CubicFeet"/>
+    <skos:prefLabel xml:lang="en">Cubic Feet to Cubic Meter Conversion</skos:prefLabel>
+    <sds:formula>value * 0.0283168</sds:formula>
+    <sds:toUnit rdf:resource="https://sustainabilitydataspace.com/ontology#CubicMeter"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#CubicFeet">
+    <skos:prefLabel xml:lang="en">Cubic Feet</skos:prefLabel>
+    <skos:prefLabel xml:lang="es">Pies Cúbicos</skos:prefLabel>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#Unit"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <skos:altLabel>ft³</skos:altLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Environmental">
+    <skos:prefLabel xml:lang="es">Ambiental</skos:prefLabel>
+    <skos:prefLabel xml:lang="en">Environmental</skos:prefLabel>
+    <skos:definition xml:lang="en">Environmental sustainability aspects</skos:definition>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#Topic"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#hasUnit">
+    <rdfs:range rdf:resource="https://sustainabilitydataspace.com/ontology#Unit"/>
+    <rdfs:label xml:lang="en">has unit</rdfs:label>
+    <rdfs:label xml:lang="es">tiene unidad</rdfs:label>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:comment xml:lang="en">Associates a concept with its measurement unit</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#hasGranularity">
+    <rdfs:comment xml:lang="en">Associates a concept with its organizational granularity level</rdfs:comment>
+    <rdfs:label xml:lang="es">tiene granularidad</rdfs:label>
+    <rdfs:label xml:lang="en">has granularity</rdfs:label>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://sustainabilitydataspace.com/ontology#EntityLevel"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#hasFormula">
+    <rdfs:label xml:lang="en">has formula</rdfs:label>
+    <rdfs:label xml:lang="es">tiene fórmula</rdfs:label>
+    <rdfs:range rdf:resource="https://sustainabilitydataspace.com/ontology#CalculationFormula"/>
+    <rdfs:comment xml:lang="en">Associates a concept with its calculation formula</rdfs:comment>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#ConversionRule">
+    <skos:definition xml:lang="en">Rules for converting between equivalent measurement units</skos:definition>
+    <skos:definition xml:lang="es">Reglas para convertir entre unidades de medida equivalentes</skos:definition>
+    <rdfs:label xml:lang="es">Regla de Conversión</rdfs:label>
+    <rdfs:label xml:lang="en">Conversion Rule</rdfs:label>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#toUnit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label xml:lang="en">to unit</rdfs:label>
+    <rdfs:label xml:lang="es">hacia unidad</rdfs:label>
+    <rdfs:range rdf:resource="https://sustainabilitydataspace.com/ontology#Unit"/>
+    <rdfs:domain rdf:resource="https://sustainabilitydataspace.com/ontology#ConversionRule"/>
+    <rdfs:comment xml:lang="en">Target unit in a conversion rule</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Tonne">
+    <skos:altLabel>t</skos:altLabel>
+    <skos:prefLabel xml:lang="es">Tonelada</skos:prefLabel>
+    <skos:prefLabel xml:lang="en">Tonne</skos:prefLabel>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#Unit"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#hasParentEntity">
+    <rdfs:comment xml:lang="en">Defines hierarchical relationships between organizational entities</rdfs:comment>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label xml:lang="es">tiene entidad padre</rdfs:label>
+    <rdfs:label xml:lang="en">has parent entity</rdfs:label>
+    <rdfs:range rdf:resource="https://sustainabilitydataspace.com/ontology#EntityLevel"/>
+    <rdfs:domain rdf:resource="https://sustainabilitydataspace.com/ontology#EntityLevel"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#calculationExpression">
+    <rdfs:label xml:lang="es">expresión de cálculo</rdfs:label>
+    <rdfs:label xml:lang="en">calculation expression</rdfs:label>
+    <rdfs:comment xml:lang="en">Mathematical expression for calculating indicators</rdfs:comment>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <rdfs:domain rdf:resource="https://sustainabilitydataspace.com/ontology#CalculationFormula"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#ConversionRule_kg_t">
+    <sds:fromUnit rdf:resource="https://sustainabilitydataspace.com/ontology#Kilogram"/>
+    <sds:formula>value / 1000</sds:formula>
+    <sds:toUnit rdf:resource="https://sustainabilitydataspace.com/ontology#Tonne"/>
+    <skos:prefLabel xml:lang="en">Kilogram to Tonne Conversion</skos:prefLabel>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#ConversionRule"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Kilogram">
+    <skos:altLabel>kg</skos:altLabel>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#Unit"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <skos:prefLabel xml:lang="es">Kilogramo</skos:prefLabel>
+    <skos:prefLabel xml:lang="en">Kilogram</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#hasVariable">
+    <rdfs:comment xml:lang="en">Relates a disclosure indicator to its constituent variables</rdfs:comment>
+    <rdfs:domain rdf:resource="https://sustainabilitydataspace.com/ontology#Disclosure"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:range rdf:resource="https://sustainabilitydataspace.com/ontology#Variable"/>
+    <rdfs:label xml:lang="en">has variable</rdfs:label>
+    <rdfs:label xml:lang="es">tiene variable</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#CubicMeter">
+    <skos:altLabel>m³</skos:altLabel>
+    <skos:prefLabel xml:lang="en">Cubic Meter</skos:prefLabel>
+    <skos:prefLabel xml:lang="es">Metro Cúbico</skos:prefLabel>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#Unit"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#CalculationFormula">
+    <rdfs:label xml:lang="en">Calculation Formula</rdfs:label>
+    <rdfs:label xml:lang="es">Fórmula de Cálculo</rdfs:label>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <skos:definition xml:lang="en">Mathematical formulas for calculating indicators from variables</skos:definition>
+    <skos:definition xml:lang="es">Fórmulas matemáticas para calcular indicadores desde variables</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Semestral">
+    <skos:prefLabel xml:lang="es">Semestral</skos:prefLabel>
+    <skos:prefLabel xml:lang="en">Semestral</skos:prefLabel>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#TemporalLevel"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Social">
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#Topic"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <skos:prefLabel xml:lang="en">Social</skos:prefLabel>
+    <skos:prefLabel xml:lang="es">Social</skos:prefLabel>
+    <skos:definition xml:lang="en">Social responsibility aspects</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#TemporalLevel">
+    <rdfs:label xml:lang="en">Temporal Level</rdfs:label>
+    <rdfs:label xml:lang="es">Nivel Temporal</rdfs:label>
+    <skos:definition xml:lang="es">Niveles de granularidad temporal para agregación de datos</skos:definition>
+    <skos:definition xml:lang="en">Temporal granularity levels for data aggregation</skos:definition>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Monthly">
+    <skos:prefLabel xml:lang="es">Mensual</skos:prefLabel>
+    <skos:prefLabel xml:lang="en">Monthly</skos:prefLabel>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#TemporalLevel"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#EntityLevel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <skos:definition xml:lang="es">Niveles organizativos o territoriales en jerarquías empresariales</skos:definition>
+    <skos:definition xml:lang="en">Organizational or territorial levels in company hierarchies</skos:definition>
+    <rdfs:label xml:lang="es">Nivel de Entidad</rdfs:label>
+    <rdfs:label xml:lang="en">Entity Level</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Pound">
+    <skos:altLabel>lb</skos:altLabel>
+    <skos:prefLabel xml:lang="en">Pound</skos:prefLabel>
+    <skos:prefLabel xml:lang="es">Libra</skos:prefLabel>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#Unit"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Topic">
+    <skos:definition xml:lang="en">Main ESG dimensions: Environmental, Social, Governance</skos:definition>
+    <skos:definition xml:lang="es">Dimensiones principales ESG: Ambiental, Social, Gobernanza</skos:definition>
+    <rdfs:label xml:lang="es">Tema ESG</rdfs:label>
+    <rdfs:label xml:lang="en">ESG Topic</rdfs:label>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#ConversionRule_lb_kg">
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#ConversionRule"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <sds:fromUnit rdf:resource="https://sustainabilitydataspace.com/ontology#Pound"/>
+    <skos:prefLabel xml:lang="en">Pound to Kilogram Conversion</skos:prefLabel>
+    <sds:toUnit rdf:resource="https://sustainabilitydataspace.com/ontology#Kilogram"/>
+    <sds:formula>value * 0.45359237</sds:formula>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Unit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <skos:definition xml:lang="en">Measurement units for quantifying ESG metrics</skos:definition>
+    <skos:definition xml:lang="es">Unidades de medida para cuantificar métricas ESG</skos:definition>
+    <rdfs:label xml:lang="en">Unit</rdfs:label>
+    <rdfs:label xml:lang="es">Unidad</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Governance">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#Topic"/>
+    <skos:definition xml:lang="en">Corporate governance aspects</skos:definition>
+    <skos:prefLabel xml:lang="en">Governance</skos:prefLabel>
+    <skos:prefLabel xml:lang="es">Gobernanza</skos:prefLabel>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Disclosure">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <skos:definition xml:lang="en">High-level ESG indicators from regulatory (CSRD) or voluntary (GRI) standards</skos:definition>
+    <skos:definition xml:lang="es">Indicadores ESG de alto nivel de estándares regulatorios (CSRD) o voluntarios (GRI)</skos:definition>
+    <rdfs:label xml:lang="en">Disclosure</rdfs:label>
+    <rdfs:label xml:lang="es">Indicador</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#formula">
+    <rdfs:comment xml:lang="en">Mathematical formula for unit conversion</rdfs:comment>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label xml:lang="es">fórmula</rdfs:label>
+    <rdfs:label xml:lang="en">formula</rdfs:label>
+    <rdfs:domain rdf:resource="https://sustainabilitydataspace.com/ontology#ConversionRule"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#hasTemporalGranularity">
+    <rdfs:comment xml:lang="en">Associates a concept with its temporal granularity level</rdfs:comment>
+    <rdfs:label xml:lang="en">has temporal granularity</rdfs:label>
+    <rdfs:label xml:lang="es">tiene granularidad temporal</rdfs:label>
+    <rdfs:range rdf:resource="https://sustainabilitydataspace.com/ontology#TemporalLevel"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.w3.org/2004/02/skos/core#altLabel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.w3.org/2004/02/skos/core#definition">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://sustainabilitydataspace.com/ontology#Annual">
+    <skos:prefLabel xml:lang="en">Annual</skos:prefLabel>
+    <skos:prefLabel xml:lang="es">Anual</skos:prefLabel>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#NamedIndividual"/>
+    <rdf:type rdf:resource="https://sustainabilitydataspace.com/ontology#TemporalLevel"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.w3.org/2004/02/skos/core#prefLabel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
+  </rdf:Description>
 </rdf:RDF>

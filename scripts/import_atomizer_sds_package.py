@@ -14,9 +14,14 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
+import stat
 import subprocess
 import sys
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Any, Iterator, Mapping
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 API_ROOT = REPO_ROOT / "api"
@@ -125,6 +130,266 @@ SERVICE_VENV_POSIX = REPO_ROOT / "api" / ".venv" / "bin" / "python"
 MANIFEST_FILENAME = "manifest.json"
 CHECKSUM_FILENAME = "MANIFEST.sha256"
 PLACEHOLDER_TENANT_IDS = {"default", "placeholder"}
+MAX_PACKAGE_FILES = 64
+MAX_PACKAGE_MEMBER_BYTES = 256 * 1024 * 1024
+MAX_PACKAGE_TOTAL_BYTES = 1024 * 1024 * 1024
+MAX_MANIFEST_BYTES = 2 * 1024 * 1024
+MAX_CHECKSUM_BYTES = 256 * 1024
+IMPORT_SUBPROCESS_TIMEOUT_SECONDS = 900
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_CHECKSUM_RE = re.compile(r"^(?P<digest>[0-9a-f]{64}) [ *](?P<name>[^/\\\x00]+)$")
+
+
+class PackageSnapshotError(ValueError):
+    """Raised when an external Atomizer package cannot be snapshotted safely."""
+
+
+def _open_directory_without_symlinks(path: Path) -> int:
+    absolute = Path(os.path.abspath(path))
+    flags = os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(os.sep, flags)
+    try:
+        for part in absolute.parts[1:]:
+            next_descriptor = os.open(part, flags, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = next_descriptor
+        return descriptor
+    except Exception:
+        os.close(descriptor)
+        raise
+
+
+def _file_seal(info: os.stat_result) -> tuple[int, int, int, int, int, int, int]:
+    return (
+        info.st_dev,
+        info.st_ino,
+        info.st_mode,
+        info.st_nlink,
+        info.st_size,
+        info.st_mtime_ns,
+        info.st_ctime_ns,
+    )
+
+
+def _read_package_member(
+    package_fd: int, name: str, *, max_bytes: int
+) -> tuple[bytes, tuple[int, int, int, int, int, int, int]]:
+    flags = os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(name, flags, dir_fd=package_fd)
+    except OSError as exc:
+        raise PackageSnapshotError(f"cannot securely open package member {name}") from exc
+    try:
+        initial = os.fstat(descriptor)
+        if not stat.S_ISREG(initial.st_mode) or initial.st_nlink != 1:
+            raise PackageSnapshotError(
+                f"package member must be an independent regular file: {name}"
+            )
+        if initial.st_size > max_bytes:
+            raise PackageSnapshotError(f"package member exceeds byte budget: {name}")
+        chunks: list[bytes] = []
+        observed = 0
+        while True:
+            chunk = os.read(descriptor, min(1024 * 1024, max_bytes + 1 - observed))
+            if not chunk:
+                break
+            observed += len(chunk)
+            if observed > max_bytes:
+                raise PackageSnapshotError(f"package member exceeds byte budget: {name}")
+            chunks.append(chunk)
+        final = os.fstat(descriptor)
+        if _file_seal(initial) != _file_seal(final) or observed != initial.st_size:
+            raise PackageSnapshotError(f"package member changed while read: {name}")
+        return b"".join(chunks), _file_seal(initial)
+    finally:
+        os.close(descriptor)
+
+
+def _strict_json_object(raw: bytes) -> Mapping[str, Any]:
+    def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise PackageSnapshotError(f"duplicate manifest key: {key}")
+            result[key] = value
+        return result
+
+    try:
+        payload = json.loads(raw.decode("utf-8"), object_pairs_hook=reject_duplicates)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PackageSnapshotError("manifest.json must be strict UTF-8 JSON") from exc
+    if not isinstance(payload, Mapping):
+        raise PackageSnapshotError("manifest.json must contain a JSON object")
+    return payload
+
+
+def _manifest_declared_names(manifest: Mapping[str, Any]) -> frozenset[str]:
+    files = manifest.get("files")
+    if not isinstance(files, list) or not files:
+        raise PackageSnapshotError("manifest.json files must be a non-empty array")
+    names: set[str] = set()
+    for index, item in enumerate(files):
+        if not isinstance(item, Mapping):
+            raise PackageSnapshotError(f"manifest files[{index}] must be an object")
+        filename = item.get("path") or item.get("filename") or item.get("name")
+        if not isinstance(filename, str) or filename != filename.strip() or not filename:
+            raise PackageSnapshotError(
+                f"manifest files[{index}] has an invalid filename"
+            )
+        if (
+            Path(filename).name != filename
+            or "/" in filename
+            or "\\" in filename
+            or "\x00" in filename
+        ):
+            raise PackageSnapshotError(
+                f"manifest files[{index}] escapes the package directory"
+            )
+        if filename in names:
+            raise PackageSnapshotError(f"duplicate manifest file: {filename}")
+        digest = item.get("sha256")
+        if not isinstance(digest, str) or _SHA256_RE.fullmatch(digest) is None:
+            raise PackageSnapshotError(
+                f"manifest files[{index}] has an invalid SHA-256 digest"
+            )
+        names.add(filename)
+    return frozenset(names)
+
+
+def _write_snapshot_member(root_fd: int, name: str, payload: bytes) -> None:
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(name, flags, 0o600, dir_fd=root_fd)
+    try:
+        view = memoryview(payload)
+        while view:
+            written = os.write(descriptor, view)
+            view = view[written:]
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+@contextmanager
+def snapshot_atomizer_package(
+    package_dir: Path, *, require_integrity: bool
+) -> Iterator[Path]:
+    """Yield a private, closed snapshot of one external package directory."""
+
+    try:
+        package_fd = _open_directory_without_symlinks(package_dir)
+    except OSError as exc:
+        raise PackageSnapshotError("cannot securely open package directory") from exc
+    try:
+        observed = frozenset(os.listdir(package_fd))
+        if not observed or len(observed) > MAX_PACKAGE_FILES:
+            raise PackageSnapshotError("package inventory is empty or exceeds file budget")
+        has_manifest = MANIFEST_FILENAME in observed
+        has_checksums = CHECKSUM_FILENAME in observed
+        if has_manifest != has_checksums:
+            raise PackageSnapshotError(
+                "manifest.json and MANIFEST.sha256 must be supplied together"
+            )
+        if require_integrity and not has_manifest:
+            raise PackageSnapshotError(
+                "real package imports require manifest.json and MANIFEST.sha256"
+            )
+
+        manifest_bytes: bytes | None = None
+        if has_manifest:
+            manifest_bytes, _ = _read_package_member(
+                package_fd, MANIFEST_FILENAME, max_bytes=MAX_MANIFEST_BYTES
+            )
+            declared = _manifest_declared_names(_strict_json_object(manifest_bytes))
+            expected = declared | {MANIFEST_FILENAME, CHECKSUM_FILENAME}
+            if observed != expected:
+                raise PackageSnapshotError(
+                    f"package inventory mismatch: missing={sorted(expected - observed)} "
+                    f"extra={sorted(observed - expected)}"
+                )
+        else:
+            expected = observed
+
+        payloads: dict[str, bytes] = {}
+        seals: dict[str, tuple[int, int, int, int, int, int, int]] = {}
+        total_bytes = 0
+        for name in sorted(expected):
+            if Path(name).name != name or "/" in name or "\\" in name or "\x00" in name:
+                raise PackageSnapshotError(f"package member has unsafe name: {name}")
+            limit = (
+                MAX_MANIFEST_BYTES
+                if name == MANIFEST_FILENAME
+                else MAX_CHECKSUM_BYTES
+                if name == CHECKSUM_FILENAME
+                else MAX_PACKAGE_MEMBER_BYTES
+            )
+            if name == MANIFEST_FILENAME and manifest_bytes is not None:
+                payload, seal = _read_package_member(package_fd, name, max_bytes=limit)
+                if payload != manifest_bytes:
+                    raise PackageSnapshotError("manifest changed while package was read")
+            else:
+                payload, seal = _read_package_member(package_fd, name, max_bytes=limit)
+            payloads[name] = payload
+            seals[name] = seal
+            total_bytes += len(payload)
+            if total_bytes > MAX_PACKAGE_TOTAL_BYTES:
+                raise PackageSnapshotError("package exceeds total byte budget")
+
+        scan_flags = os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_CLOEXEC", 0)
+        scan_flags |= getattr(os, "O_NOFOLLOW", 0)
+        scan_fd = os.open(".", scan_flags, dir_fd=package_fd)
+        try:
+            if frozenset(os.listdir(scan_fd)) != expected:
+                raise PackageSnapshotError("package inventory changed while read")
+            for name in sorted(expected):
+                _, closing_seal = _read_package_member(
+                    scan_fd,
+                    name,
+                    max_bytes=(
+                        MAX_MANIFEST_BYTES
+                        if name == MANIFEST_FILENAME
+                        else MAX_CHECKSUM_BYTES
+                        if name == CHECKSUM_FILENAME
+                        else MAX_PACKAGE_MEMBER_BYTES
+                    ),
+                )
+                if closing_seal != seals[name]:
+                    raise PackageSnapshotError(f"package member changed while read: {name}")
+        finally:
+            os.close(scan_fd)
+
+        with tempfile.TemporaryDirectory(prefix="sds-atomizer-package-") as temporary:
+            snapshot = Path(temporary) / "package"
+            snapshot.mkdir(mode=0o700)
+            snapshot_fd = os.open(
+                snapshot,
+                os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_CLOEXEC", 0),
+            )
+            try:
+                for name in sorted(expected):
+                    _write_snapshot_member(snapshot_fd, name, payloads[name])
+            finally:
+                os.close(snapshot_fd)
+            yield snapshot
+    finally:
+        os.close(package_fd)
+
+
+def _explicit_package_member_name(package_dir: Path, explicit: Path | None) -> Path | None:
+    if explicit is None:
+        return None
+    candidate = explicit if explicit.is_absolute() else package_dir / explicit
+    absolute = Path(os.path.abspath(candidate))
+    root = Path(os.path.abspath(package_dir))
+    try:
+        relative = absolute.relative_to(root)
+    except ValueError as exc:
+        raise PackageSnapshotError("explicit package member must stay inside package-dir") from exc
+    if len(relative.parts) != 1 or relative.name in {MANIFEST_FILENAME, CHECKSUM_FILENAME}:
+        raise PackageSnapshotError("explicit package member must name one package payload")
+    return Path(relative.name)
 
 
 def resolve_python_executable() -> str:
@@ -148,12 +413,10 @@ def _load_manifest_json(package_dir: Path) -> dict | None:
     if not manifest_path.exists():
         return None
     try:
-        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"{MANIFEST_FILENAME} is invalid JSON: {exc}") from exc
-    if not isinstance(payload, dict):
-        raise ValueError(f"{MANIFEST_FILENAME} must be a JSON object")
-    return payload
+        payload = _strict_json_object(manifest_path.read_bytes())
+    except PackageSnapshotError as exc:
+        raise ValueError(f"{MANIFEST_FILENAME} is invalid: {exc}") from exc
+    return dict(payload)
 
 
 def _manifest_file_hashes(manifest: dict | None) -> dict[str, str]:
@@ -168,13 +431,25 @@ def _manifest_file_hashes(manifest: dict | None) -> dict[str, str]:
     for index, item in enumerate(files):
         if not isinstance(item, dict):
             raise ValueError(f"{MANIFEST_FILENAME} files[{index}] must be an object")
-        filename = str(item.get("filename") or "").strip()
-        sha256 = str(item.get("sha256") or "").strip().lower()
+        filename_value = item.get("filename") or item.get("path") or ""
+        filename = str(filename_value).strip()
+        path_value = item.get("path")
+        if path_value is not None and str(path_value) != filename:
+            raise ValueError(
+                f"{MANIFEST_FILENAME} files[{index}] filename/path mismatch"
+            )
+        sha256 = str(item.get("sha256") or "").strip()
         if not filename or not sha256:
             raise ValueError(
                 f"{MANIFEST_FILENAME} files[{index}] requires filename and sha256"
             )
-        hashes[Path(filename).name] = sha256
+        if Path(filename).name != filename or "/" in filename or "\\" in filename:
+            raise ValueError(f"{MANIFEST_FILENAME} files[{index}] has unsafe filename")
+        if _SHA256_RE.fullmatch(sha256) is None:
+            raise ValueError(f"{MANIFEST_FILENAME} files[{index}] has invalid sha256")
+        if filename in hashes:
+            raise ValueError(f"{MANIFEST_FILENAME} has duplicate file {filename}")
+        hashes[filename] = sha256
     return hashes
 
 
@@ -186,16 +461,17 @@ def _load_checksum_file(package_dir: Path) -> dict[str, str]:
     for line_number, raw_line in enumerate(
         checksum_path.read_text(encoding="utf-8").splitlines(), start=1
     ):
-        line = raw_line.strip()
-        if not line:
+        if not raw_line:
             continue
-        parts = line.split(maxsplit=1)
-        if len(parts) != 2:
+        match = _CHECKSUM_RE.fullmatch(raw_line)
+        if match is None:
             raise ValueError(
                 f"{CHECKSUM_FILENAME}:{line_number} must contain sha256 and filename"
             )
-        sha256, filename = parts
-        checksums[Path(filename.lstrip("*")).name] = sha256.lower()
+        filename = match.group("name")
+        if filename in checksums:
+            raise ValueError(f"{CHECKSUM_FILENAME} has duplicate file {filename}")
+        checksums[filename] = match.group("digest")
     return checksums
 
 
@@ -207,8 +483,6 @@ def validate_package_integrity(
 
     expected_files = [path.resolve() for path in package_files if path is not None]
     expected_names = {path.name for path in expected_files if path.exists()}
-    if not expected_names:
-        return
 
     manifest = _load_manifest_json(package_dir)
     manifest_hashes = _manifest_file_hashes(manifest)
@@ -216,10 +490,22 @@ def validate_package_integrity(
 
     if not manifest_hashes and not checksum_hashes:
         return
-    if manifest_hashes and not checksum_hashes:
-        raise ValueError(f"{CHECKSUM_FILENAME} is required when manifest files exist")
+    if not manifest_hashes or not checksum_hashes:
+        raise ValueError(
+            f"{MANIFEST_FILENAME} files and {CHECKSUM_FILENAME} are both required"
+        )
+    if set(manifest_hashes) != set(checksum_hashes):
+        raise ValueError("manifest and checksum inventories do not match")
+    undeclared_consumed = expected_names - set(manifest_hashes)
+    if undeclared_consumed:
+        raise ValueError(
+            "consumed files are missing from manifest: "
+            + ", ".join(sorted(undeclared_consumed))
+        )
 
-    actual_hashes = {path.name: _sha256_file(path) for path in expected_files}
+    actual_hashes = {
+        name: _sha256_file(package_dir / name) for name in sorted(manifest_hashes)
+    }
     errors: list[str] = []
 
     if manifest is not None and REGISTER_FILENAME in actual_hashes:
@@ -229,7 +515,7 @@ def validate_package_integrity(
                 f"{MANIFEST_FILENAME} sha256 does not match {REGISTER_FILENAME}"
             )
 
-    for name in sorted(expected_names):
+    for name in sorted(actual_hashes):
         actual = actual_hashes[name]
         manifest_hash = manifest_hashes.get(name)
         if manifest_hashes and manifest_hash is None:
@@ -600,6 +886,21 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _run_import_command(command: list[str]) -> int:
+    try:
+        return subprocess.call(
+            command,
+            cwd=str(REPO_ROOT),
+            timeout=IMPORT_SUBPROCESS_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        print("FAIL: package import subprocess exceeded its time budget", file=sys.stderr)
+        return 1
+    except OSError:
+        print("FAIL: package import subprocess could not be started", file=sys.stderr)
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -610,7 +911,32 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
-    package_dir = args.package_dir.resolve()
+    source_package_dir = Path(os.path.abspath(args.package_dir))
+    try:
+        register_member = _explicit_package_member_name(
+            source_package_dir, args.register_csv
+        )
+        values_member = _explicit_package_member_name(
+            source_package_dir, args.values_csv
+        )
+        calculation_member = _explicit_package_member_name(
+            source_package_dir, args.calculation_contract_json
+        )
+        with snapshot_atomizer_package(
+            source_package_dir, require_integrity=not args.dry_run
+        ) as package_dir:
+            args.package_dir = package_dir
+            args.register_csv = register_member
+            args.values_csv = values_member
+            args.calculation_contract_json = calculation_member
+            return _run_import(args, package_dir)
+    except PackageSnapshotError as exc:
+        print(f"FAIL: unsafe package input: {exc}", file=sys.stderr)
+        return 1
+
+
+def _run_import(args: argparse.Namespace, package_dir: Path) -> int:
+    """Run all preflight and import steps against one private package snapshot."""
 
     if args.batch_size is not None and args.batch_size < 1:
         print("FAIL: --batch-size must be >= 1", file=sys.stderr)
@@ -724,9 +1050,7 @@ def main(argv: list[str] | None = None) -> int:
     # partial-state reduction; each subprocess step is idempotent/re-runnable, and
     # the write-free preflight above rejects a bad package before any write).
     if register_csv is not None:
-        result = subprocess.call(
-            build_indicator_command(args, register_csv), cwd=str(REPO_ROOT)
-        )
+        result = _run_import_command(build_indicator_command(args, register_csv))
         if result != 0:
             return result
 
@@ -735,19 +1059,17 @@ def main(argv: list[str] | None = None) -> int:
         and standard_versioning.present
         and not args.skip_standard_versioning
     ):
-        result = subprocess.call(
-            build_standard_versioning_command(args, package_dir, register_csv),
-            cwd=str(REPO_ROOT),
+        result = _run_import_command(
+            build_standard_versioning_command(args, package_dir, register_csv)
         )
         if result != 0:
             return result
 
     if calculation_contract_json is not None:
-        result = subprocess.call(
+        result = _run_import_command(
             build_calculation_contract_command(
                 args, calculation_contract_json, register_csv
-            ),
-            cwd=str(REPO_ROOT),
+            )
         )
         if result != 0:
             return result
@@ -758,14 +1080,13 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if values_csv is not None:
-        result = subprocess.call(
+        result = _run_import_command(
             build_values_command(
                 args,
                 values_csv,
                 register_csv,
                 calculation_contract_json,
-            ),
-            cwd=str(REPO_ROOT),
+            )
         )
         if result != 0:
             return result

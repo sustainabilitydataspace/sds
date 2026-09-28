@@ -1,6 +1,7 @@
 """Localization foundation: append-only localized_text store (LOC-1).
 
-Implements the SDS API localization design:
+Implements the converged SDS API localization design
+(workspace/consensus/2026-06-22-sds-api-localization-universal-consensus/candidate-v2.md):
 a single cross-cutting, append-only/versioned translation store keyed by canonical subject
 identity (subject_kind, subject_uri, field, language, optional tenant scope) — NOT by DB primary
 key. Canonical source fields (Concept.label/description, etc.) stay authoritative in V1; this table

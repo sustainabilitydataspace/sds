@@ -4,12 +4,32 @@ API router for ontology endpoints.
 
 from __future__ import annotations
 
+import asyncio
+import json
+import multiprocessing
+import queue
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace, URIRef
+from pyparsing import ParseResults
+from rdflib import (
+    OWL,
+    RDF,
+    RDFS,
+    BNode,
+    ConjunctiveGraph,
+    Graph,
+    Literal,
+    Namespace,
+    URIRef,
+)
+from rdflib.plugins.sparql.parser import parseQuery
+from rdflib.plugins.sparql.parserutils import CompValue
 from sqlalchemy.orm import Session
 
 import structlog
@@ -32,6 +52,10 @@ from src.services.concept_service import ConceptService
 from src.services.resolver_read import SemanticResolverRepository, resolve_read_context
 
 logger = structlog.get_logger(__name__)
+_LOCAL_SPARQL_WORK_SLOTS = threading.BoundedSemaphore(2)
+_LOCAL_SPARQL_WORKERS = ThreadPoolExecutor(
+    max_workers=2, thread_name_prefix="sds-sparql"
+)
 
 router = APIRouter()
 
@@ -41,6 +65,263 @@ SKOS = Namespace("http://www.w3.org/2004/02/skos/core#")
 # VARCH-8e: backward-compatible public temporal-read selectors on /concepts.
 CONCEPTS_PROJECTION_VERSION = "sds-concepts-v1"
 CONCEPTS_EVS_KEY = "catalog:concepts"
+
+_FORBIDDEN_REMOTE_SPARQL_NODES = frozenset({"ServiceGraphPattern", "DatasetClause"})
+
+
+def _walk_sparql_nodes(value: Any):
+    if isinstance(value, CompValue):
+        yield value.name
+        for child in value.values():
+            yield from _walk_sparql_nodes(child)
+    elif isinstance(value, (list, tuple, ParseResults)):
+        for child in value:
+            yield from _walk_sparql_nodes(child)
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from _walk_sparql_nodes(child)
+
+
+def _validate_local_sparql_query(query: str) -> None:
+    """Reject clauses that can cause RDFLib to fetch attacker-selected URLs."""
+    try:
+        parsed = parseQuery(query)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid SPARQL query") from exc
+    if _FORBIDDEN_REMOTE_SPARQL_NODES.intersection(_walk_sparql_nodes(parsed)):
+        raise HTTPException(
+            status_code=400,
+            detail="Remote SPARQL graph access is not allowed",
+        )
+
+
+def _plain_rdf_term(term: URIRef | BNode | Literal) -> list[Optional[str]]:
+    if isinstance(term, Literal):
+        return [
+            "literal",
+            str(term),
+            str(term.datatype) if term.datatype is not None else None,
+            term.language,
+        ]
+    if isinstance(term, BNode):
+        return ["blank", str(term)]
+    if isinstance(term, URIRef):
+        return ["iri", str(term)]
+    raise HTTPException(status_code=400, detail="Unsupported ontology term")
+
+
+def _rdf_term_from_plain(term: list[Optional[str]]) -> URIRef | BNode | Literal:
+    if term[0] == "iri":
+        return URIRef(term[1])
+    if term[0] == "blank":
+        return BNode(term[1])
+    if term[0] == "literal":
+        return Literal(
+            term[1],
+            datatype=URIRef(term[2]) if term[2] is not None else None,
+            lang=term[3],
+            normalize=False,
+        )
+    raise ValueError("Unsupported ontology term")
+
+
+def _sparql_query_worker(
+    graph_payload: bytes,
+    prepared_query: str,
+    max_results: int,
+    max_result_bytes: int,
+    connection,
+) -> None:
+    """Execute one local query in a killable child and return bounded plain data."""
+    try:
+        _validate_local_sparql_query(prepared_query)
+        plain_graph = json.loads(graph_payload)
+        worker_graph = Graph()
+        for prefix, namespace in plain_graph["namespaces"]:
+            worker_graph.bind(prefix, Namespace(namespace))
+        for triple in plain_graph["triples"]:
+            worker_graph.add(tuple(_rdf_term_from_plain(term) for term in triple))
+        query_results = worker_graph.query(prepared_query)
+        rows: list[dict[str, Optional[str]]] = []
+        result_bytes = 2  # JSON array delimiters around the bounded rows.
+        if getattr(query_results, "type", None) == "ASK":
+            answer: dict[str, Optional[str]] = {
+                "boolean": str(bool(query_results.askAnswer)).lower()
+            }
+            result_bytes += len(
+                json.dumps(answer, ensure_ascii=False, separators=(",", ":")).encode(
+                    "utf-8"
+                )
+            )
+            if result_bytes > max_result_bytes:
+                connection.send({"status": "overflow"})
+                return
+            rows.append(answer)
+        else:
+            for row in query_results:
+                if len(rows) >= max_results:
+                    connection.send({"status": "overflow"})
+                    return
+                plain_row: dict[str, Optional[str]] = {}
+                for variable, value in row.asdict().items():
+                    cell = None if value is None else str(value)
+                    plain_row[str(variable)] = cell
+                result_bytes += (1 if rows else 0) + len(
+                    json.dumps(
+                        plain_row, ensure_ascii=False, separators=(",", ":")
+                    ).encode("utf-8")
+                )
+                if result_bytes > max_result_bytes:
+                    connection.send({"status": "overflow"})
+                    return
+                rows.append(plain_row)
+        connection.send({"status": "ok", "rows": rows})
+    except HTTPException as exc:
+        connection.send({"status": "invalid", "detail": exc.detail})
+    except BaseException:
+        connection.send({"status": "error"})
+    finally:
+        connection.close()
+
+
+def _execute_local_sparql_bounded(
+    graph: Graph,
+    prepared_query: str,
+    *,
+    timeout_seconds: float,
+    max_results: int,
+    max_graph_bytes: int,
+    max_result_bytes: int = 2 * 1024 * 1024,
+) -> list[dict[str, Optional[str]]]:
+    """Bound local query work and bytes; OS spawn/graph iterator is not preemptible."""
+    deadline = time.monotonic() + timeout_seconds
+    if isinstance(graph, ConjunctiveGraph):
+        raise HTTPException(
+            status_code=400, detail="Named ontology graphs are not supported"
+        )
+    namespaces = []
+    namespace_bytes = len(b'{"namespaces":[],"triples":[]}')
+    for prefix, namespace in graph.namespaces():
+        if time.monotonic() >= deadline:
+            raise HTTPException(status_code=504, detail="SPARQL query timed out")
+        if prefix is not None:
+            pair = [str(prefix), str(namespace)]
+            if time.monotonic() >= deadline:
+                raise HTTPException(status_code=504, detail="SPARQL query timed out")
+            namespace_bytes += (1 if namespaces else 0) + len(
+                json.dumps(pair, ensure_ascii=False, separators=(",", ":")).encode(
+                    "utf-8"
+                )
+            )
+            if namespace_bytes > max_graph_bytes:
+                raise HTTPException(
+                    status_code=413, detail="Ontology graph limit exceeded"
+                )
+            namespaces.append(pair)
+    if time.monotonic() >= deadline:
+        raise HTTPException(status_code=504, detail="SPARQL query timed out")
+    prefix = json.dumps(
+        {"namespaces": namespaces}, ensure_ascii=False, separators=(",", ":")
+    )
+    if time.monotonic() >= deadline:
+        raise HTTPException(status_code=504, detail="SPARQL query timed out")
+    graph_buffer = bytearray((prefix[:-1] + ',"triples":[').encode("utf-8"))
+    if len(graph_buffer) + 2 > max_graph_bytes:
+        raise HTTPException(status_code=413, detail="Ontology graph limit exceeded")
+    first_triple = True
+    for triple in graph:
+        if time.monotonic() >= deadline:
+            raise HTTPException(status_code=504, detail="SPARQL query timed out")
+        encoded = json.dumps(
+            [_plain_rdf_term(term) for term in triple],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        if len(graph_buffer) + len(encoded) + 2 + (not first_triple) > max_graph_bytes:
+            raise HTTPException(status_code=413, detail="Ontology graph limit exceeded")
+        if not first_triple:
+            graph_buffer.extend(b",")
+        graph_buffer.extend(encoded)
+        first_triple = False
+    graph_buffer.extend(b"]}")
+    graph_payload = bytes(graph_buffer)
+    if time.monotonic() >= deadline:
+        raise HTTPException(status_code=504, detail="SPARQL query timed out")
+
+    context = multiprocessing.get_context("spawn")
+    receive, send = context.Pipe(duplex=False)
+    worker = context.Process(
+        target=_sparql_query_worker,
+        args=(
+            graph_payload,
+            prepared_query,
+            max_results,
+            max_result_bytes,
+            send,
+        ),
+        daemon=True,
+    )
+    worker.start()
+    send.close()
+    try:
+        if not receive.poll(max(0.0, deadline - time.monotonic())):
+            worker.terminate()
+            worker.join(timeout=1.0)
+            if worker.is_alive():
+                worker.kill()
+                worker.join(timeout=1.0)
+            raise HTTPException(status_code=504, detail="SPARQL query timed out")
+        reply: queue.Queue[object] = queue.Queue(maxsize=1)
+
+        def read_reply() -> None:
+            try:
+                reply.put(receive.recv())
+            except (EOFError, OSError) as exc:
+                reply.put(exc)
+
+        reader = threading.Thread(target=read_reply, daemon=True)
+        reader.start()
+        try:
+            payload = reply.get(timeout=max(0.0, deadline - time.monotonic()))
+        except queue.Empty as exc:
+            worker.terminate()
+            worker.join(timeout=1.0)
+            if worker.is_alive():
+                worker.kill()
+                worker.join(timeout=1.0)
+            raise HTTPException(
+                status_code=504, detail="SPARQL query timed out"
+            ) from exc
+        if isinstance(payload, (EOFError, OSError)):
+            raise HTTPException(
+                status_code=500, detail="SPARQL query execution failed"
+            ) from payload
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="SPARQL query execution failed")
+    finally:
+        receive.close()
+        if worker.is_alive():
+            worker.join(timeout=1.0)
+            if worker.is_alive():
+                worker.terminate()
+                worker.join(timeout=1.0)
+                if worker.is_alive():
+                    worker.kill()
+                    worker.join(timeout=1.0)
+
+    if payload.get("status") == "overflow":
+        raise HTTPException(status_code=413, detail="SPARQL result limit exceeded")
+    if payload.get("status") == "invalid":
+        detail = payload.get("detail")
+        if detail not in (
+            "Invalid SPARQL query",
+            "Remote SPARQL graph access is not allowed",
+        ):
+            detail = "Invalid SPARQL query"
+        raise HTTPException(status_code=400, detail=detail)
+    if payload.get("status") != "ok" or not isinstance(payload.get("rows"), list):
+        raise HTTPException(status_code=400, detail="SPARQL query execution failed")
+    return payload["rows"]
 
 
 def _concepts_temporal_pins(
@@ -611,7 +892,7 @@ def _inject_prefixes(query: str) -> str:
 @router.post(
     "/sparql",
     summary="Execute SPARQL query",
-    description="Execute a custom SPARQL query against the ontology",
+    description="Execute a local SELECT or ASK SPARQL query against the ontology",
     dependencies=[Depends(require_permission(Permission.EXECUTE_SPARQL))],
 )
 async def execute_sparql(
@@ -640,10 +921,10 @@ async def execute_sparql(
         for line in lines:
             line = line.strip()
             if line and not line.startswith("PREFIX"):
-                if not line.startswith(("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")):
+                if not line.startswith(("SELECT", "ASK")):
                     raise HTTPException(
                         status_code=403,
-                        detail="Only SELECT, CONSTRUCT, DESCRIBE, and ASK queries are allowed",
+                        detail="Only SELECT and ASK queries are supported",
                     )
                 query_type_found = True
                 break
@@ -665,23 +946,51 @@ async def execute_sparql(
             )
 
         start = datetime.now(timezone.utc)
+        deadline = time.monotonic() + settings.sparql_query_timeout_seconds
         prepared = _inject_prefixes(query.query)
 
-        results = graph.query(prepared)
+        if not _LOCAL_SPARQL_WORK_SLOTS.acquire(blocking=False):
+            raise HTTPException(
+                status_code=503, detail="Local SPARQL capacity exhausted"
+            )
+
+        def execute_off_loop():
+            try:
+                return _execute_local_sparql_bounded(
+                    graph,
+                    prepared,
+                    timeout_seconds=max(0.0, deadline - time.monotonic()),
+                    max_results=settings.sparql_max_results,
+                    max_graph_bytes=settings.sparql_max_graph_bytes,
+                    max_result_bytes=settings.sparql_max_result_bytes,
+                )
+            finally:
+                _LOCAL_SPARQL_WORK_SLOTS.release()
+
+        try:
+            task = _LOCAL_SPARQL_WORKERS.submit(execute_off_loop)
+        except BaseException:
+            _LOCAL_SPARQL_WORK_SLOTS.release()
+            raise
+        task.add_done_callback(
+            lambda completed: (
+                _LOCAL_SPARQL_WORK_SLOTS.release() if completed.cancelled() else None
+            )
+        )
+        # A cancelled waiter leaves the slot held until the worker really exits.
+        results = await asyncio.wrap_future(task)
 
         rows: List[Dict[str, Any]] = []
         for row in results:
             row_dict: Dict[str, Any] = {}
-            for var, value in row.asdict().items():
+            for var, value in row.items():
                 if value is None:
                     row_dict[var] = None
                 else:
-                    value_str = str(value)
-                    row_dict[var] = (
-                        DEFAULT_NAMESPACES.compact(value_str)
-                        if value_str.startswith("http")
-                        else value_str
-                    )
+                    # The public response is a flat lexical projection, not a
+                    # typed SPARQL Results JSON binding. Never rewrite a
+                    # literal merely because it resembles an IRI.
+                    row_dict[var] = str(value)
             # G-AUDIT M1: this non-DB SPARQL path runs over the local public projection
             # (the F09 generator excludes internal/future concepts; production returns 501
             # for SPARQL). As defense-in-depth, drop any result row that references a

@@ -114,7 +114,16 @@ class UnitService:
                 "reverse_formula": rule.reverse_formula or None,
                 "description": rule.description or None,
                 "conditions": rule.conditions or {},
-                "metadata": rule.rule_metadata or {},
+                "metadata": {
+                    **(rule.rule_metadata or {}),
+                    "rule_id": rule.rule_hash
+                    or f"conversion-rule:{getattr(rule, 'id', 'unknown')}",
+                    "priority": rule.priority,
+                    "valid_from": rule.valid_from,
+                    "valid_to": rule.valid_to,
+                    "source_system": rule.source_system,
+                    "source_version": rule.source_version,
+                },
             }
             for rule in rules
         ]

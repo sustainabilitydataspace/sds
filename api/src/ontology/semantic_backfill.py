@@ -272,11 +272,7 @@ def load_semantic_records(
     )
 
     if ontology_path is None:
-        path = (
-            Path(__file__).resolve().parents[2]
-            / "ontologies"
-            / "generated_projection.owl"
-        )
+        path = Path(__file__).resolve().parents[2] / "ontologies" / "base.owl"
         graph = _load_graph(path)
     else:
         path = ontology_path

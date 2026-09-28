@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -22,9 +22,12 @@ from src.database.models import (
     StandardRelease,
 )
 from src.services.canonical_mapping_import import (
+    CanonicalMappingImportIssue,
     CanonicalMappingImportReport,
-    load_canonical_mapping_package_rows,
-    validate_canonical_mapping_package,
+    CanonicalMappingPackageSecurityError,
+    _load_canonical_mapping_package_rows_snapshot,
+    _validate_canonical_mapping_package_snapshot,
+    canonical_mapping_package_snapshot,
 )
 from src.services.canonical_mapping_import_lock import CANONICAL_MAPPING_IMPORT_LOCK_KEY
 from src.services.canonical_mapping_installed_standards import (
@@ -89,6 +92,62 @@ def import_canonical_mapping_package_to_db(
     allow_non_operational_relationships: bool = False,
     installed_standard_releases: set[StandardReleaseKey] | None = None,
     allow_partial_installed_standards: bool = False,
+    commit: bool = True,
+) -> CanonicalMappingDbImportReport:
+    """Snapshot one external package, then validate and import only those bytes."""
+
+    reported_package_dir = str(Path(package_dir).absolute())
+    try:
+        with canonical_mapping_package_snapshot(package_dir) as snapshot:
+            report = _import_canonical_mapping_package_snapshot_to_db(
+                package_dir=snapshot,
+                db=db,
+                dry_run=dry_run,
+                created_by=created_by,
+                allow_non_operational_relationships=allow_non_operational_relationships,
+                installed_standard_releases=installed_standard_releases,
+                allow_partial_installed_standards=allow_partial_installed_standards,
+                commit=commit,
+            )
+    except CanonicalMappingPackageSecurityError as exc:
+        db.rollback()
+        validation = CanonicalMappingImportReport(
+            package_dir=reported_package_dir,
+            package_schema_version=None,
+            mode="shadow_report_only",
+            valid=False,
+            file_counts={},
+            manifest_hash=None,
+            checksum_count=0,
+            errors=[
+                CanonicalMappingImportIssue(
+                    file="manifest.json", code=exc.code, message=str(exc)
+                )
+            ],
+        )
+        return CanonicalMappingDbImportReport(
+            package_dir=reported_package_dir,
+            mode="shadow_db_import",
+            dry_run=dry_run,
+            valid=False,
+            committed=False,
+            validation=validation,
+        )
+    report.package_dir = reported_package_dir
+    report.validation = replace(report.validation, package_dir=reported_package_dir)
+    return report
+
+
+def _import_canonical_mapping_package_snapshot_to_db(
+    *,
+    package_dir: Path,
+    db: Session,
+    dry_run: bool = False,
+    created_by: str = DEFAULT_CREATED_BY,
+    allow_non_operational_relationships: bool = False,
+    installed_standard_releases: set[StandardReleaseKey] | None = None,
+    allow_partial_installed_standards: bool = False,
+    commit: bool = True,
 ) -> CanonicalMappingDbImportReport:
     """Validate and import a package into canonical shadow tables only.
 
@@ -100,7 +159,7 @@ def import_canonical_mapping_package_to_db(
 
     package_dir = package_dir.resolve()
     _acquire_import_lock(db)
-    validation = validate_canonical_mapping_package(package_dir)
+    validation = _validate_canonical_mapping_package_snapshot(package_dir)
     report = CanonicalMappingDbImportReport(
         package_dir=str(package_dir),
         mode="shadow_db_import",
@@ -112,7 +171,7 @@ def import_canonical_mapping_package_to_db(
     if not validation.valid:
         return report
 
-    rows = load_canonical_mapping_package_rows(package_dir)
+    rows = _load_canonical_mapping_package_rows_snapshot(package_dir)
     if installed_standard_releases is not None:
         compatibility = validate_canonical_mapping_installed_standard_compatibility(
             package_dir=package_dir,
@@ -243,7 +302,7 @@ def import_canonical_mapping_package_to_db(
         db.flush()
         if dry_run:
             db.rollback()
-        else:
+        elif commit:
             db.commit()
             report.committed = True
         return report

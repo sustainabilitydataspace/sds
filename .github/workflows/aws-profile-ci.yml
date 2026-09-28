@@ -1,0 +1,106 @@
+name: AWS profile offline CI
+
+on:
+  push:
+    paths:
+      - ".github/workflows/aws-profile-ci.yml"
+      - "Makefile"
+      - "api/deploy/aws-ec2-rds/**"
+      - "api/tests/test_aws_public_profile.py"
+  pull_request:
+    paths:
+      - ".github/workflows/aws-profile-ci.yml"
+      - "Makefile"
+      - "api/deploy/aws-ec2-rds/**"
+      - "api/tests/test_aws_public_profile.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-profile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-profile:
+    name: Validate profile without AWS credentials
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.10"
+
+      - name: Run the stdlib profile validator
+        run: python api/deploy/aws-ec2-rds/validate.py api/deploy/aws-ec2-rds/operator.example.json
+
+      - name: Run the offline profile contract tests without third-party installs
+        run: |
+          python - <<'PY'
+          import inspect
+          import runpy
+          import tempfile
+          from pathlib import Path
+
+          namespace = runpy.run_path("api/tests/test_aws_public_profile.py")
+          tests = [
+              value
+              for name, value in sorted(namespace.items())
+              if name.startswith("test_") and callable(value)
+          ]
+          for test in tests:
+              parameters = inspect.signature(test).parameters
+              if not parameters:
+                  test()
+              elif tuple(parameters) == ("tmp_path",):
+                  with tempfile.TemporaryDirectory() as directory:
+                      test(Path(directory))
+              else:
+                  raise SystemExit(f"unsupported offline test signature: {test.__name__}")
+          print(f"offline profile tests passed: {len(tests)}")
+          PY
+
+      - name: Set up pinned Terraform CLI
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: "1.16.3"
+          terraform_wrapper: false
+
+      - name: Check Terraform formatting
+        run: terraform -chdir=api/deploy/aws-ec2-rds/terraform fmt -check -recursive
+
+      - name: Copy Terraform module to disposable workspace
+        env:
+          SOURCE: api/deploy/aws-ec2-rds/terraform
+          DESTINATION: ${{ runner.temp }}/sds-aws-terraform
+        run: |
+          python - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+
+          source = Path(os.environ["SOURCE"])
+          destination = Path(os.environ["DESTINATION"])
+          if destination.exists():
+              raise SystemExit("disposable Terraform destination already exists")
+          shutil.copytree(source, destination)
+          PY
+
+      - name: Initialize without remote state and validate
+        working-directory: ${{ runner.temp }}/sds-aws-terraform
+        run: |
+          terraform init -backend=false -input=false -lockfile=readonly
+          terraform validate
+
+      - name: Exercise mocked-provider plans only (no AWS plan or apply)
+        working-directory: ${{ runner.temp }}/sds-aws-terraform
+        env:
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: terraform test -filter=activation.tftest.hcl -no-color

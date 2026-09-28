@@ -23,20 +23,10 @@ from src.services.canonical_mapping_db_import import (
 )
 
 
-def get_default_database_url() -> str:
-    env_database_url = os.getenv("DATABASE_URL")
-    if env_database_url:
-        return env_database_url
+def get_default_database_url(cli_url: str | None = None) -> str:
+    from scripts.operational_db_settings import resolve_operational_database_url_with_settings
 
-    postgres_user = os.getenv("POSTGRES_USER", "sds")
-    postgres_password = os.getenv("POSTGRES_PASSWORD", "password")
-    postgres_host = os.getenv("POSTGRES_HOST", "localhost")
-    postgres_port = os.getenv("POSTGRES_PORT", "5432")
-    postgres_db = os.getenv("POSTGRES_DB", "sds")
-    return (
-        f"postgresql://{postgres_user}:{postgres_password}@"
-        f"{postgres_host}:{postgres_port}/{postgres_db}"
-    )
+    return resolve_operational_database_url_with_settings(cli_url)
 
 
 def safe_print(*args, sep: str = " ", end: str = "\n", flush: bool = False) -> None:
@@ -64,7 +54,7 @@ def main() -> int:
         )
     )
     parser.add_argument("--package-dir", type=Path, required=True)
-    parser.add_argument("--db-url", default=get_default_database_url())
+    parser.add_argument("--db-url", default=None)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -85,6 +75,7 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
+    args.db_url = get_default_database_url(args.db_url)
 
     if not args.package_dir.exists():
         safe_print(f"Package directory not found: {args.package_dir}")

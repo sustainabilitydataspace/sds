@@ -1,0 +1,4 @@
+"topic","total","with_esrs","with_gri","with_both","coverage_pct","source_note"
+"energy","85","85","80","80","94","Derived from e2_crosswalks_esrs_gri_full_atomized.csv on 2026-06-08"
+"ghg","154","154","146","146","95","Derived from e2_crosswalks_esrs_gri_full_atomized.csv on 2026-06-08"
+"water","53","51","45","43","81","Derived from e2_crosswalks_esrs_gri_full_atomized.csv on 2026-06-08"

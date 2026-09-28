@@ -69,9 +69,20 @@ class ObservationProvider(Protocol):
 class StoreObservationProvider:
     """Observation provider backed by the existing value store interface."""
 
-    def __init__(self, store, *, page_size: int = 1000):
+    def __init__(
+        self,
+        store,
+        *,
+        page_size: int = 1000,
+        max_observations: int = 100_000,
+    ):
+        if page_size < 1:
+            raise ValueError("page_size must be at least 1")
+        if max_observations < 1:
+            raise ValueError("max_observations must be at least 1")
         self.store = store
         self.page_size = page_size
+        self.max_observations = max_observations
 
     def get_observations(
         self,
@@ -99,10 +110,31 @@ class StoreObservationProvider:
         period_end: date,
     ) -> ObservationSnapshot:
         records: list[ObservationRecord] = []
-        for entity in entities:
-            if hasattr(self.store, "iterate"):
-                records.extend(
-                    _record_from_store_item(item, contract_input=contract_input)
+        if hasattr(self.store, "iterate_snapshot"):
+            items = list(
+                self.store.iterate_snapshot(
+                    concept=contract_input.concept,
+                    entities=entities,
+                    period_start=period_start,
+                    period_end=period_end,
+                    unit=None,
+                    changed_since=None,
+                    limit=self.max_observations + 1,
+                )
+            )
+            if len(items) > self.max_observations:
+                raise ContractExecutionError(
+                    "Calculation observation limit of "
+                    f"{self.max_observations} exceeded for "
+                    f"{contract_input.concept}"
+                )
+            records.extend(
+                _record_from_store_item(item, contract_input=contract_input)
+                for item in items
+            )
+        else:
+            for entity in entities:
+                if hasattr(self.store, "iterate"):
                     for item in self.store.iterate(
                         concept=contract_input.concept,
                         entity=entity,
@@ -110,28 +142,45 @@ class StoreObservationProvider:
                         period_end=period_end,
                         unit=None,
                         changed_since=None,
-                    )
-                )
-                continue
+                    ):
+                        if len(records) >= self.max_observations:
+                            raise ContractExecutionError(
+                                "Calculation observation limit of "
+                                f"{self.max_observations} exceeded for "
+                                f"{contract_input.concept}"
+                            )
+                        records.append(
+                            _record_from_store_item(item, contract_input=contract_input)
+                        )
+                    continue
 
-            offset = 0
-            while True:
-                page, total = self.store.list(
-                    concept=contract_input.concept,
-                    entity=entity,
-                    period_start=period_start,
-                    period_end=period_end,
-                    unit=None,
-                    limit=self.page_size,
-                    offset=offset,
-                )
-                records.extend(
-                    _record_from_store_item(item, contract_input=contract_input)
-                    for item in page
-                )
-                offset += len(page)
-                if not page or offset >= total:
-                    break
+                offset = 0
+                while True:
+                    page, total = self.store.list(
+                        concept=contract_input.concept,
+                        entity=entity,
+                        period_start=period_start,
+                        period_end=period_end,
+                        unit=None,
+                        limit=self.page_size,
+                        offset=offset,
+                    )
+                    if (
+                        len(records) + total > self.max_observations
+                        or len(records) + len(page) > self.max_observations
+                    ):
+                        raise ContractExecutionError(
+                            "Calculation observation limit of "
+                            f"{self.max_observations} exceeded for "
+                            f"{contract_input.concept}"
+                        )
+                    records.extend(
+                        _record_from_store_item(item, contract_input=contract_input)
+                        for item in page
+                    )
+                    offset += len(page)
+                    if not page or offset >= total:
+                        break
         return ObservationSnapshot(
             local_variable=contract_input.local_variable,
             concept=contract_input.concept,

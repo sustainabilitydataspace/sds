@@ -14,19 +14,14 @@ from src.api.models import (
     PaginatedResponse,
     SuccessResponse,
 )
+from src.auth.authorization import has_cross_tenant_admin_access
 from src.auth.dependencies import get_current_active_user, require_permission
-from src.auth.models import Permission, User, UserRole
+from src.auth.models import Permission, User
 from src.services.hierarchy_store import get_hierarchy_store
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
-
-
-def _is_admin_user(current_user: User) -> bool:
-    role = getattr(current_user, "role", None)
-    role_value = getattr(role, "value", role)
-    return role_value == UserRole.ADMIN.value
 
 
 def _authorized_company_id(
@@ -37,12 +32,12 @@ def _authorized_company_id(
 ) -> Optional[str]:
     """Resolve the company a hierarchy operation may touch (tenant scoping).
 
-    Admins may target any company_id; non-admins are forced to their own
+    Bearer admins may target any company_id; other callers are forced to their own
     company_id and may not specify a different one. Mirrors the values-revision
     tenant handling so the hierarchy API can no longer cross the tenant boundary
     (codex F05 M1).
     """
-    if _is_admin_user(current_user):
+    if has_cross_tenant_admin_access(current_user):
         if required and not company_id:
             raise HTTPException(status_code=400, detail="company_id is required")
         return company_id
@@ -62,7 +57,7 @@ def _authorized_company_id(
 
 def _assert_config_company(config, current_user: User) -> None:
     """404 a config outside the caller's authorized company (no existence leak)."""
-    if _is_admin_user(current_user):
+    if has_cross_tenant_admin_access(current_user):
         return
     user_company = getattr(current_user, "company_id", None)
     if not user_company or getattr(config, "company_id", None) != user_company:

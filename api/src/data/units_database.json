@@ -1,0 +1,4713 @@
+{
+  "version": "2.1.0",
+  "last_updated": "2026-05-22",
+  "description": "Source-traced unit catalog for SDS calculations, covering SI/UCUM atoms, common imperial and US customary units, sustainability CO2e scales, currency amount scales, and non-convertible reporting-unit semantics.",
+  "categories": {
+    "mass": {
+      "base_unit": "kg",
+      "units": {
+        "kg": {
+          "name": "kilogram",
+          "symbol": "kg",
+          "conversion_factor": 1,
+          "aliases": [
+            "kilogram"
+          ],
+          "metadata": {
+            "ucum_code": "kg",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass",
+            "scale": "base_si"
+          }
+        },
+        "g": {
+          "name": "gram",
+          "symbol": "g",
+          "conversion_factor": 0.001,
+          "aliases": [
+            "gram"
+          ],
+          "metadata": {
+            "ucum_code": "g",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass",
+            "scale": "base_gram"
+          }
+        },
+        "mg": {
+          "name": "milligram",
+          "symbol": "mg",
+          "conversion_factor": 1e-06,
+          "aliases": [
+            "milligram"
+          ],
+          "metadata": {
+            "ucum_code": "mg",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass",
+            "scale": "milli"
+          }
+        },
+        "t": {
+          "name": "tonne",
+          "symbol": "t",
+          "conversion_factor": 1000,
+          "aliases": [
+            "ton",
+            "metric_ton",
+            "tonne"
+          ],
+          "metadata": {
+            "ucum_code": "t",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass",
+            "scale": "mega_gram"
+          }
+        },
+        "lb": {
+          "name": "pound",
+          "symbol": "lb",
+          "conversion_factor": 0.453592,
+          "aliases": [
+            "pound",
+            "lbs"
+          ],
+          "metadata": {
+            "ucum_code": "lb",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "mass"
+          }
+        },
+        "oz": {
+          "name": "ounce",
+          "symbol": "oz",
+          "conversion_factor": 0.0283495,
+          "aliases": [
+            "ounce"
+          ],
+          "metadata": {
+            "ucum_code": "oz",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "mass"
+          }
+        },
+        "µg": {
+          "name": "microgram",
+          "symbol": "µg",
+          "conversion_factor": 1e-09,
+          "aliases": [
+            "ug",
+            "mcg",
+            "microgram"
+          ],
+          "metadata": {
+            "ucum_code": "ug",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass",
+            "scale": "micro"
+          }
+        },
+        "st": {
+          "name": "stone",
+          "symbol": "st",
+          "conversion_factor": 6.35029318,
+          "aliases": [
+            "stone"
+          ],
+          "metadata": {
+            "ucum_code": "st",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "imperial",
+            "category": "mass"
+          }
+        },
+        "short ton": {
+          "name": "short_ton",
+          "symbol": "short ton",
+          "conversion_factor": 907.18474,
+          "aliases": [
+            "ton_us",
+            "us_ton",
+            "short_ton"
+          ],
+          "metadata": {
+            "ucum_code": "[ston_av]",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "mass"
+          }
+        },
+        "long ton": {
+          "name": "long_ton",
+          "symbol": "long ton",
+          "conversion_factor": 1016.0469088,
+          "aliases": [
+            "ton_uk",
+            "imperial_ton",
+            "long_ton"
+          ],
+          "metadata": {
+            "ucum_code": "[lton_av]",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "imperial",
+            "category": "mass"
+          }
+        },
+        "pg": {
+          "name": "picogram",
+          "conversion_factor": 1e-15,
+          "aliases": [
+            "picogram"
+          ],
+          "symbol": "pg",
+          "metadata": {
+            "ucum_code": "pg",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass"
+          }
+        },
+        "ng": {
+          "name": "nanogram",
+          "conversion_factor": 1e-12,
+          "aliases": [
+            "nanogram"
+          ],
+          "symbol": "ng",
+          "metadata": {
+            "ucum_code": "ng",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass"
+          }
+        },
+        "kt": {
+          "name": "kilotonne",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "kilotonne"
+          ],
+          "symbol": "kt",
+          "metadata": {
+            "ucum_code": "kt",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass",
+            "scale": "kilo_tonne"
+          }
+        },
+        "Mt": {
+          "name": "megatonne",
+          "conversion_factor": 1000000000,
+          "aliases": [
+            "megatonne"
+          ],
+          "symbol": "Mt",
+          "metadata": {
+            "ucum_code": "Mt",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass",
+            "scale": "mega_tonne"
+          }
+        },
+        "Gt": {
+          "name": "gigatonne",
+          "conversion_factor": 1000000000000,
+          "aliases": [
+            "gigatonne"
+          ],
+          "symbol": "Gt",
+          "metadata": {
+            "ucum_code": "Gt",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass",
+            "scale": "giga_tonne"
+          }
+        },
+        "grain": {
+          "name": "grain",
+          "conversion_factor": 6.479891e-05,
+          "aliases": [
+            "gr"
+          ],
+          "symbol": "grain",
+          "metadata": {
+            "ucum_code": "grain",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "mass"
+          }
+        },
+        "slug": {
+          "name": "slug",
+          "conversion_factor": 14.59390294,
+          "aliases": [
+            "slug"
+          ],
+          "symbol": "slug",
+          "metadata": {
+            "ucum_code": "slug",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "mass"
+          }
+        },
+        "carat": {
+          "name": "carat",
+          "conversion_factor": 0.0002,
+          "aliases": [
+            "ct"
+          ],
+          "symbol": "carat",
+          "metadata": {
+            "ucum_code": "carat",
+            "dimension_vector": {
+              "mass": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "mass"
+          }
+        }
+      },
+      "description": "Mass and weight units (SI plus common imperial/customary references).",
+      "special_conversions": false
+    },
+    "energy": {
+      "base_unit": "J",
+      "units": {
+        "J": {
+          "name": "joule",
+          "symbol": "J",
+          "conversion_factor": 1,
+          "aliases": [
+            "joule"
+          ],
+          "metadata": {
+            "ucum_code": "J",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "kJ": {
+          "name": "kilojoule",
+          "symbol": "kJ",
+          "conversion_factor": 1000,
+          "aliases": [
+            "kilojoule"
+          ],
+          "metadata": {
+            "ucum_code": "kJ",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "kilo"
+          }
+        },
+        "MJ": {
+          "name": "megajoule",
+          "symbol": "MJ",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "megajoule"
+          ],
+          "metadata": {
+            "ucum_code": "MJ",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "mega"
+          }
+        },
+        "GJ": {
+          "name": "gigajoule",
+          "symbol": "GJ",
+          "conversion_factor": 1000000000,
+          "aliases": [
+            "gigajoule"
+          ],
+          "metadata": {
+            "ucum_code": "GJ",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "giga"
+          }
+        },
+        "kWh": {
+          "name": "kilowatt-hour",
+          "symbol": "kWh",
+          "conversion_factor": 3600000,
+          "aliases": [
+            "kilowatt_hour",
+            "kwh"
+          ],
+          "metadata": {
+            "ucum_code": "kWh",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "kilo"
+          }
+        },
+        "MWh": {
+          "name": "megawatt-hour",
+          "symbol": "MWh",
+          "conversion_factor": 3600000000,
+          "aliases": [
+            "megawatt_hour",
+            "mwh"
+          ],
+          "metadata": {
+            "ucum_code": "MWh",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "mega"
+          }
+        },
+        "GWh": {
+          "name": "gigawatt-hour",
+          "symbol": "GWh",
+          "conversion_factor": 3600000000000,
+          "aliases": [
+            "gigawatt_hour",
+            "gwh"
+          ],
+          "metadata": {
+            "ucum_code": "GWh",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "giga"
+          }
+        },
+        "BTU": {
+          "name": "british_thermal_unit",
+          "symbol": "BTU",
+          "conversion_factor": "1055.05585262",
+          "aliases": [
+            "btu",
+            "british_thermal_unit"
+          ],
+          "metadata": {
+            "ucum_code": "[Btu_IT]",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "cal": {
+          "name": "calorie",
+          "symbol": "cal",
+          "conversion_factor": 4.184,
+          "aliases": [
+            "calorie"
+          ],
+          "metadata": {
+            "ucum_code": "cal",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "kcal": {
+          "name": "kilocalorie",
+          "symbol": "kcal",
+          "conversion_factor": 4184,
+          "aliases": [
+            "kilocalorie"
+          ],
+          "metadata": {
+            "ucum_code": "kcal",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "Wh": {
+          "name": "watt_hour",
+          "symbol": "Wh",
+          "conversion_factor": 3600,
+          "aliases": [
+            "watt_hour",
+            "wh"
+          ],
+          "metadata": {
+            "ucum_code": "Wh",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "watt_hour"
+          }
+        },
+        "TJ": {
+          "name": "terajoule",
+          "symbol": "TJ",
+          "conversion_factor": 1000000000000.0,
+          "aliases": [
+            "terajoule"
+          ],
+          "metadata": {
+            "ucum_code": "TJ",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "tera"
+          }
+        },
+        "PJ": {
+          "name": "petajoule",
+          "symbol": "PJ",
+          "conversion_factor": 1000000000000000.0,
+          "aliases": [
+            "petajoule"
+          ],
+          "metadata": {
+            "ucum_code": "PJ",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "peta"
+          }
+        },
+        "therm": {
+          "name": "therm",
+          "symbol": "therm",
+          "conversion_factor": "105505585.262",
+          "aliases": [
+            "us_therm"
+          ],
+          "metadata": {
+            "ucum_code": "[thm_us]",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "MMBtu": {
+          "name": "million_british_thermal_unit",
+          "symbol": "MMBtu",
+          "conversion_factor": "1055055852.62",
+          "aliases": [
+            "million_btu"
+          ],
+          "metadata": {
+            "ucum_code": "10^6.[Btu_IT]",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "toe": {
+          "name": "tonne_oil_equivalent",
+          "symbol": "toe",
+          "conversion_factor": 41868000000,
+          "aliases": [
+            "tonne_oil_equivalent"
+          ],
+          "metadata": {
+            "ucum_code": "10^7.cal",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "eV": {
+          "name": "electronvolt",
+          "conversion_factor": 1.602176634e-19,
+          "aliases": [
+            "electronvolt"
+          ],
+          "symbol": "eV",
+          "metadata": {
+            "ucum_code": "eV",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "keV": {
+          "name": "kiloelectronvolt",
+          "conversion_factor": 1.602176634e-16,
+          "aliases": [
+            "kiloelectronvolt"
+          ],
+          "symbol": "keV",
+          "metadata": {
+            "ucum_code": "keV",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "MeV": {
+          "name": "megaelectronvolt",
+          "conversion_factor": 1.602176634e-13,
+          "aliases": [
+            "megaelectronvolt"
+          ],
+          "symbol": "MeV",
+          "metadata": {
+            "ucum_code": "MeV",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        },
+        "TWh": {
+          "name": "terawatt_hour",
+          "conversion_factor": 3600000000000000.0,
+          "aliases": [
+            "terawatt_hour"
+          ],
+          "symbol": "TWh",
+          "metadata": {
+            "ucum_code": "TWh",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy",
+            "scale": "tera"
+          }
+        },
+        "quad": {
+          "name": "quadrillion_btu",
+          "conversion_factor": 1.05505585262e+18,
+          "aliases": [
+            "quadrillion_btu"
+          ],
+          "symbol": "quad",
+          "metadata": {
+            "ucum_code": "quad",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "energy"
+          }
+        }
+      },
+      "description": "Energy units (joules, watt-hours, thermal units, and industry references).",
+      "special_conversions": false
+    },
+    "volume": {
+      "base_unit": "m³",
+      "units": {
+        "m³": {
+          "name": "cubic_meter",
+          "symbol": "m³",
+          "conversion_factor": 1,
+          "aliases": [
+            "m3",
+            "cubic_meter",
+            "cubic_metre"
+          ],
+          "metadata": {
+            "ucum_code": "m3",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume"
+          }
+        },
+        "L": {
+          "name": "liter",
+          "symbol": "L",
+          "conversion_factor": 0.001,
+          "aliases": [
+            "l",
+            "liter",
+            "litre"
+          ],
+          "metadata": {
+            "ucum_code": "L",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume"
+          }
+        },
+        "mL": {
+          "name": "milliliter",
+          "symbol": "mL",
+          "conversion_factor": 1e-06,
+          "aliases": [
+            "ml",
+            "milliliter",
+            "millilitre"
+          ],
+          "metadata": {
+            "ucum_code": "mL",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume",
+            "scale": "milli"
+          }
+        },
+        "gal": {
+          "name": "gallon",
+          "symbol": "gal",
+          "conversion_factor": 0.00378541,
+          "aliases": [
+            "gallon"
+          ],
+          "metadata": {
+            "ucum_code": "gal",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "ft³": {
+          "name": "cubic_foot",
+          "symbol": "ft³",
+          "conversion_factor": 0.0283168,
+          "aliases": [
+            "ft3",
+            "cubic_foot"
+          ],
+          "metadata": {
+            "ucum_code": "[ft_i]3",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "cL": {
+          "name": "centiliter",
+          "symbol": "cL",
+          "conversion_factor": 1e-05,
+          "aliases": [
+            "cl",
+            "centiliter",
+            "centilitre"
+          ],
+          "metadata": {
+            "ucum_code": "cL",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume",
+            "scale": "centi"
+          }
+        },
+        "dL": {
+          "name": "deciliter",
+          "symbol": "dL",
+          "conversion_factor": 0.0001,
+          "aliases": [
+            "dl",
+            "deciliter",
+            "decilitre"
+          ],
+          "metadata": {
+            "ucum_code": "dL",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume",
+            "scale": "deci"
+          }
+        },
+        "cm³": {
+          "name": "cubic_centimeter",
+          "symbol": "cm³",
+          "conversion_factor": 1e-06,
+          "aliases": [
+            "cm3",
+            "cc",
+            "cubic_centimeter"
+          ],
+          "metadata": {
+            "ucum_code": "cm3",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume",
+            "scale": "centi_cubed"
+          }
+        },
+        "in³": {
+          "name": "cubic_inch",
+          "symbol": "in³",
+          "conversion_factor": 1.6387064e-05,
+          "aliases": [
+            "in3",
+            "cubic_inch"
+          ],
+          "metadata": {
+            "ucum_code": "[in_i]3",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "yd³": {
+          "name": "cubic_yard",
+          "symbol": "yd³",
+          "conversion_factor": 0.764554857984,
+          "aliases": [
+            "yd3",
+            "cubic_yard"
+          ],
+          "metadata": {
+            "ucum_code": "[yd_i]3",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "qt": {
+          "name": "quart",
+          "symbol": "qt",
+          "conversion_factor": 0.000946352946,
+          "aliases": [
+            "quart",
+            "us_quart"
+          ],
+          "metadata": {
+            "ucum_code": "qt",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "pt": {
+          "name": "pint",
+          "symbol": "pt",
+          "conversion_factor": 0.000473176473,
+          "aliases": [
+            "pint",
+            "us_pint"
+          ],
+          "metadata": {
+            "ucum_code": "pt",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "fl oz": {
+          "name": "fluid_ounce",
+          "symbol": "fl oz",
+          "conversion_factor": 2.95735295625e-05,
+          "aliases": [
+            "floz",
+            "fluid_ounce",
+            "us_fluid_ounce"
+          ],
+          "metadata": {
+            "ucum_code": "[foz_us]",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "imp gal": {
+          "name": "imperial_gallon",
+          "symbol": "imp gal",
+          "conversion_factor": 0.00454609,
+          "aliases": [
+            "imperial_gallon",
+            "uk_gallon"
+          ],
+          "metadata": {
+            "ucum_code": "[gal_br]",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "imperial",
+            "category": "volume"
+          }
+        },
+        "bbl": {
+          "name": "barrel",
+          "symbol": "bbl",
+          "conversion_factor": 0.158987294928,
+          "aliases": [
+            "barrel",
+            "oil_barrel"
+          ],
+          "metadata": {
+            "ucum_code": "[bbl_us]",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "µL": {
+          "name": "microliter",
+          "conversion_factor": 1e-09,
+          "aliases": [
+            "uL",
+            "microliter"
+          ],
+          "symbol": "µL",
+          "metadata": {
+            "ucum_code": "µL",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume"
+          }
+        },
+        "dam³": {
+          "name": "cubic_decameter",
+          "conversion_factor": 1000,
+          "aliases": [
+            "cubic_decameter"
+          ],
+          "symbol": "dam³",
+          "metadata": {
+            "ucum_code": "dam³",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume"
+          }
+        },
+        "hm³": {
+          "name": "cubic_hectometer",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "cubic_hectometer"
+          ],
+          "symbol": "hm³",
+          "metadata": {
+            "ucum_code": "hm³",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume"
+          }
+        },
+        "km³": {
+          "name": "cubic_kilometer",
+          "conversion_factor": 1000000000,
+          "aliases": [
+            "cubic_kilometer"
+          ],
+          "symbol": "km³",
+          "metadata": {
+            "ucum_code": "km³",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume"
+          }
+        },
+        "cup": {
+          "name": "us_cup",
+          "conversion_factor": 0.0002365882365,
+          "aliases": [
+            "us_cup"
+          ],
+          "symbol": "cup",
+          "metadata": {
+            "ucum_code": "cup",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "tbsp": {
+          "name": "us_tablespoon",
+          "conversion_factor": 1.478676478e-05,
+          "aliases": [
+            "tablespoon"
+          ],
+          "symbol": "tbsp",
+          "metadata": {
+            "ucum_code": "tbsp",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "tsp": {
+          "name": "us_teaspoon",
+          "conversion_factor": 4.928921594e-06,
+          "aliases": [
+            "teaspoon"
+          ],
+          "symbol": "tsp",
+          "metadata": {
+            "ucum_code": "tsp",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "bushel": {
+          "name": "us_bushel",
+          "conversion_factor": 0.03523907017,
+          "aliases": [
+            "bu"
+          ],
+          "symbol": "bushel",
+          "metadata": {
+            "ucum_code": "bushel",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "acre-ft": {
+          "name": "acre_foot",
+          "conversion_factor": 1233.48183754752,
+          "aliases": [
+            "acre_foot"
+          ],
+          "symbol": "acre-ft",
+          "metadata": {
+            "ucum_code": "[acr_us].[ft_i]",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "volume"
+          }
+        },
+        "Nm3": {
+          "name": "normal_cubic_meter",
+          "conversion_factor": 1,
+          "aliases": [
+            "Nm³",
+            "normal cubic meter",
+            "normal cubic metre"
+          ],
+          "metadata": {
+            "ucum_code": "Nm3",
+            "dimension_vector": {
+              "volume": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "volume",
+            "conversion_policy": "standard-condition-volume"
+          },
+          "symbol": "Nm3"
+        }
+      },
+      "description": "Volume units (metric plus US customary and imperial liquid/solid references).",
+      "special_conversions": false
+    },
+    "area": {
+      "base_unit": "m²",
+      "units": {
+        "m²": {
+          "name": "square_meter",
+          "symbol": "m²",
+          "conversion_factor": 1,
+          "aliases": [
+            "m2",
+            "sqm",
+            "square_meter",
+            "square_metre"
+          ],
+          "metadata": {
+            "ucum_code": "m2",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "area"
+          }
+        },
+        "km²": {
+          "name": "square_kilometer",
+          "symbol": "km²",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "km2",
+            "square_kilometer",
+            "square_kilometre"
+          ],
+          "metadata": {
+            "ucum_code": "km2",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "area",
+            "scale": "kilo_squared"
+          }
+        },
+        "ha": {
+          "name": "hectare",
+          "symbol": "ha",
+          "conversion_factor": 10000,
+          "aliases": [
+            "hectare"
+          ],
+          "metadata": {
+            "ucum_code": "ha",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "area"
+          }
+        },
+        "ft²": {
+          "name": "square_foot",
+          "symbol": "ft²",
+          "conversion_factor": 0.092903,
+          "aliases": [
+            "ft2",
+            "sqft",
+            "square_foot"
+          ],
+          "metadata": {
+            "ucum_code": "[ft_i]2",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "area"
+          }
+        },
+        "acre": {
+          "name": "acre",
+          "symbol": "acre",
+          "conversion_factor": 4046.86,
+          "aliases": [
+            "acre"
+          ],
+          "metadata": {
+            "ucum_code": "acre",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "area"
+          }
+        },
+        "mm²": {
+          "name": "square_millimeter",
+          "symbol": "mm²",
+          "conversion_factor": 1e-06,
+          "aliases": [
+            "mm2",
+            "square_millimeter"
+          ],
+          "metadata": {
+            "ucum_code": "mm²",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "area",
+            "scale": "milli_squared"
+          }
+        },
+        "cm²": {
+          "name": "square_centimeter",
+          "symbol": "cm²",
+          "conversion_factor": 0.0001,
+          "aliases": [
+            "cm2",
+            "square_centimeter"
+          ],
+          "metadata": {
+            "ucum_code": "cm²",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "area",
+            "scale": "centi_squared"
+          }
+        },
+        "in²": {
+          "name": "square_inch",
+          "symbol": "in²",
+          "conversion_factor": 0.00064516,
+          "aliases": [
+            "in2",
+            "square_inch"
+          ],
+          "metadata": {
+            "ucum_code": "[in_i]2",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "area"
+          }
+        },
+        "yd²": {
+          "name": "square_yard",
+          "symbol": "yd²",
+          "conversion_factor": 0.83612736,
+          "aliases": [
+            "yd2",
+            "square_yard"
+          ],
+          "metadata": {
+            "ucum_code": "[yd_i]2",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "area"
+          }
+        },
+        "mi²": {
+          "name": "square_mile",
+          "symbol": "mi²",
+          "conversion_factor": 2589988.110336,
+          "aliases": [
+            "mi2",
+            "sq_mi",
+            "square_mile"
+          ],
+          "metadata": {
+            "ucum_code": "[mi_i]2",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "area"
+          }
+        },
+        "a": {
+          "name": "are",
+          "conversion_factor": 100,
+          "aliases": [
+            "are"
+          ],
+          "symbol": "a",
+          "metadata": {
+            "ucum_code": "a",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "area"
+          }
+        },
+        "daa": {
+          "name": "decare",
+          "conversion_factor": 1000,
+          "aliases": [
+            "decare"
+          ],
+          "symbol": "daa",
+          "metadata": {
+            "ucum_code": "daa",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "area"
+          }
+        },
+        "rood": {
+          "name": "rood",
+          "conversion_factor": 1011.7141056,
+          "aliases": [
+            "rood"
+          ],
+          "symbol": "rood",
+          "metadata": {
+            "ucum_code": "rood",
+            "dimension_vector": {
+              "area": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "area"
+          }
+        }
+      },
+      "description": "Area units (SI plus common land and building references).",
+      "special_conversions": false
+    },
+    "length": {
+      "base_unit": "m",
+      "units": {
+        "m": {
+          "name": "meter",
+          "symbol": "m",
+          "conversion_factor": 1,
+          "aliases": [
+            "meter",
+            "metre"
+          ],
+          "metadata": {
+            "ucum_code": "m",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length"
+          }
+        },
+        "km": {
+          "name": "kilometer",
+          "symbol": "km",
+          "conversion_factor": 1000,
+          "aliases": [
+            "kilometer",
+            "kilometre"
+          ],
+          "metadata": {
+            "ucum_code": "km",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length",
+            "scale": "kilo"
+          }
+        },
+        "cm": {
+          "name": "centimeter",
+          "symbol": "cm",
+          "conversion_factor": 0.01,
+          "aliases": [
+            "centimeter",
+            "centimetre"
+          ],
+          "metadata": {
+            "ucum_code": "cm",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length",
+            "scale": "centi"
+          }
+        },
+        "mm": {
+          "name": "millimeter",
+          "symbol": "mm",
+          "conversion_factor": 0.001,
+          "aliases": [
+            "millimeter",
+            "millimetre"
+          ],
+          "metadata": {
+            "ucum_code": "mm",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length",
+            "scale": "milli"
+          }
+        },
+        "ft": {
+          "name": "foot",
+          "symbol": "ft",
+          "conversion_factor": 0.3048,
+          "aliases": [
+            "foot",
+            "feet"
+          ],
+          "metadata": {
+            "ucum_code": "[ft_i]",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "length"
+          }
+        },
+        "in": {
+          "name": "inch",
+          "symbol": "in",
+          "conversion_factor": 0.0254,
+          "aliases": [
+            "inch",
+            "inches"
+          ],
+          "metadata": {
+            "ucum_code": "[in_i]",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "length"
+          }
+        },
+        "yd": {
+          "name": "yard",
+          "symbol": "yd",
+          "conversion_factor": 0.9144,
+          "aliases": [
+            "yard"
+          ],
+          "metadata": {
+            "ucum_code": "[yd_i]",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "length"
+          }
+        },
+        "mi": {
+          "name": "mile",
+          "symbol": "mi",
+          "conversion_factor": 1609.34,
+          "aliases": [
+            "mile"
+          ],
+          "metadata": {
+            "ucum_code": "[mi_i]",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "length"
+          }
+        },
+        "µm": {
+          "name": "micrometer",
+          "symbol": "µm",
+          "conversion_factor": 1e-06,
+          "aliases": [
+            "um",
+            "micrometer",
+            "micrometre"
+          ],
+          "metadata": {
+            "ucum_code": "µm",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length",
+            "scale": "micro"
+          }
+        },
+        "nm": {
+          "name": "nanometer",
+          "symbol": "nm",
+          "conversion_factor": 1e-09,
+          "aliases": [
+            "nanometer",
+            "nanometre"
+          ],
+          "metadata": {
+            "ucum_code": "nm",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length",
+            "scale": "nano"
+          }
+        },
+        "dm": {
+          "name": "decimeter",
+          "symbol": "dm",
+          "conversion_factor": 0.1,
+          "aliases": [
+            "decimeter",
+            "decimetre"
+          ],
+          "metadata": {
+            "ucum_code": "dm",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length",
+            "scale": "deci"
+          }
+        },
+        "nmi": {
+          "name": "nautical_mile",
+          "symbol": "nmi",
+          "conversion_factor": 1852,
+          "aliases": [
+            "nautical_mile",
+            "nmile"
+          ],
+          "metadata": {
+            "ucum_code": "nmi",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "imperial",
+            "category": "length"
+          }
+        },
+        "pm": {
+          "name": "picometer",
+          "conversion_factor": 1e-12,
+          "aliases": [
+            "picometer"
+          ],
+          "symbol": "pm",
+          "metadata": {
+            "ucum_code": "pm",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length"
+          }
+        },
+        "Å": {
+          "name": "angstrom",
+          "conversion_factor": 1e-10,
+          "aliases": [
+            "angstrom"
+          ],
+          "symbol": "Å",
+          "metadata": {
+            "ucum_code": "Å",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length"
+          }
+        },
+        "Mm": {
+          "name": "megameter",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "megameter"
+          ],
+          "symbol": "Mm",
+          "metadata": {
+            "ucum_code": "Mm",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length"
+          }
+        },
+        "Gm": {
+          "name": "gigameter",
+          "conversion_factor": 1000000000,
+          "aliases": [
+            "gigameter"
+          ],
+          "symbol": "Gm",
+          "metadata": {
+            "ucum_code": "Gm",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "length"
+          }
+        },
+        "mil": {
+          "name": "thou",
+          "conversion_factor": 2.54e-05,
+          "aliases": [
+            "thou"
+          ],
+          "symbol": "mil",
+          "metadata": {
+            "ucum_code": "mil",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "length"
+          }
+        },
+        "fathom": {
+          "name": "fathom",
+          "conversion_factor": 1.8288,
+          "aliases": [
+            "fathom"
+          ],
+          "symbol": "fathom",
+          "metadata": {
+            "ucum_code": "fathom",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "imperial",
+            "category": "length"
+          }
+        },
+        "chain": {
+          "name": "chain",
+          "conversion_factor": 20.1168,
+          "aliases": [
+            "ch"
+          ],
+          "symbol": "chain",
+          "metadata": {
+            "ucum_code": "chain",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "length"
+          }
+        },
+        "rod": {
+          "name": "rod",
+          "conversion_factor": 5.0292,
+          "aliases": [
+            "perch",
+            "pole"
+          ],
+          "symbol": "rod",
+          "metadata": {
+            "ucum_code": "rod",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "length"
+          }
+        },
+        "furlong": {
+          "name": "furlong",
+          "conversion_factor": 201.168,
+          "aliases": [
+            "fur"
+          ],
+          "symbol": "furlong",
+          "metadata": {
+            "ucum_code": "furlong",
+            "dimension_vector": {
+              "length": 1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "length"
+          }
+        }
+      },
+      "description": "Length units (SI scales plus imperial/customary and nautical references).",
+      "special_conversions": false
+    },
+    "time": {
+      "base_unit": "s",
+      "units": {
+        "s": {
+          "name": "second",
+          "symbol": "s",
+          "conversion_factor": 1,
+          "aliases": [
+            "second",
+            "sec"
+          ],
+          "metadata": {
+            "ucum_code": "s",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time"
+          }
+        },
+        "min": {
+          "name": "minute",
+          "symbol": "min",
+          "conversion_factor": 60,
+          "aliases": [
+            "minute"
+          ],
+          "metadata": {
+            "ucum_code": "min",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time"
+          }
+        },
+        "h": {
+          "name": "hour",
+          "symbol": "h",
+          "conversion_factor": 3600,
+          "aliases": [
+            "hour",
+            "hr"
+          ],
+          "metadata": {
+            "ucum_code": "h",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time"
+          }
+        },
+        "d": {
+          "name": "day",
+          "symbol": "d",
+          "conversion_factor": 86400,
+          "aliases": [
+            "day"
+          ],
+          "metadata": {
+            "ucum_code": "d",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time"
+          }
+        },
+        "week": {
+          "name": "week",
+          "symbol": "week",
+          "conversion_factor": 604800,
+          "aliases": [
+            "week",
+            "wk"
+          ],
+          "metadata": {
+            "ucum_code": "week",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time"
+          }
+        },
+        "month": {
+          "name": "month",
+          "symbol": "month",
+          "conversion_factor": 2629746,
+          "aliases": [
+            "month",
+            "mo"
+          ],
+          "metadata": {
+            "ucum_code": "month",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time"
+          }
+        },
+        "year": {
+          "name": "year",
+          "symbol": "year",
+          "conversion_factor": 31556952,
+          "aliases": [
+            "year",
+            "yr"
+          ],
+          "metadata": {
+            "ucum_code": "year",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time"
+          }
+        },
+        "ms": {
+          "name": "millisecond",
+          "symbol": "ms",
+          "conversion_factor": 0.001,
+          "aliases": [
+            "millisecond"
+          ],
+          "metadata": {
+            "ucum_code": "ms",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time",
+            "scale": "milli"
+          }
+        },
+        "µs": {
+          "name": "microsecond",
+          "symbol": "µs",
+          "conversion_factor": 1e-06,
+          "aliases": [
+            "us",
+            "microsecond"
+          ],
+          "metadata": {
+            "ucum_code": "µs",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time",
+            "scale": "micro"
+          }
+        },
+        "ns": {
+          "name": "nanosecond",
+          "conversion_factor": 1e-09,
+          "aliases": [
+            "nanosecond"
+          ],
+          "symbol": "ns",
+          "metadata": {
+            "ucum_code": "ns",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time",
+            "scale": "nano"
+          }
+        },
+        "quarter": {
+          "name": "calendar_quarter",
+          "conversion_factor": 7884000,
+          "aliases": [
+            "calendar_quarter"
+          ],
+          "symbol": "quarter",
+          "metadata": {
+            "ucum_code": "quarter",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time"
+          }
+        },
+        "semester": {
+          "name": "calendar_semester",
+          "conversion_factor": 15768000,
+          "aliases": [
+            "calendar_semester"
+          ],
+          "symbol": "semester",
+          "metadata": {
+            "ucum_code": "semester",
+            "dimension_vector": {
+              "time": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "time"
+          }
+        }
+      },
+      "description": "Time units used in reporting, rates, and sustainability calculations.",
+      "special_conversions": false
+    },
+    "temperature": {
+      "base_unit": "K",
+      "special_conversions": true,
+      "units": {
+        "K": {
+          "name": "kelvin",
+          "symbol": "K",
+          "conversion_factor": 1,
+          "conversion_offset": 0,
+          "aliases": [
+            "kelvin"
+          ],
+          "metadata": {
+            "ucum_code": "K",
+            "dimension_vector": {
+              "temperature": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "temperature"
+          }
+        },
+        "°C": {
+          "name": "celsius",
+          "symbol": "°C",
+          "conversion_factor": 1,
+          "conversion_offset": 273.15,
+          "aliases": [
+            "C",
+            "celsius"
+          ],
+          "metadata": {
+            "ucum_code": "Cel",
+            "dimension_vector": {
+              "temperature": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "temperature"
+          }
+        },
+        "°F": {
+          "name": "fahrenheit",
+          "symbol": "°F",
+          "conversion_factor": 0.555556,
+          "conversion_offset": 459.67,
+          "aliases": [
+            "F",
+            "fahrenheit"
+          ],
+          "metadata": {
+            "ucum_code": "[degF]",
+            "dimension_vector": {
+              "temperature": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "temperature"
+          }
+        },
+        "°R": {
+          "name": "rankine",
+          "symbol": "°R",
+          "conversion_factor": 0.5555555556,
+          "conversion_offset": 0,
+          "aliases": [
+            "R",
+            "rankine"
+          ],
+          "metadata": {
+            "ucum_code": "[degR]",
+            "dimension_vector": {
+              "temperature": 1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "temperature"
+          }
+        }
+      },
+      "description": "Absolute and relative temperature scales."
+    },
+    "emissions": {
+      "base_unit": "kg CO2e",
+      "units": {
+        "kg CO2e": {
+          "name": "kilogram_co2_equivalent",
+          "symbol": "kg CO2e",
+          "conversion_factor": 1,
+          "aliases": [
+            "kgCO2e",
+            "kg_co2e",
+            "kg_co2_equivalent"
+          ],
+          "metadata": {
+            "ucum_code": "kg CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions",
+            "scale": "kilo"
+          }
+        },
+        "t CO2e": {
+          "name": "tonne_co2_equivalent",
+          "symbol": "t CO2e",
+          "conversion_factor": 1000,
+          "aliases": [
+            "tCO2e",
+            "t_co2e",
+            "tonne_co2_equivalent"
+          ],
+          "metadata": {
+            "ucum_code": "t CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions",
+            "scale": "tonne"
+          }
+        },
+        "Mt CO2e": {
+          "name": "megatonne_co2_equivalent",
+          "symbol": "Mt CO2e",
+          "conversion_factor": 1000000000,
+          "aliases": [
+            "MtCO2e",
+            "megatonne_co2_equivalent"
+          ],
+          "metadata": {
+            "ucum_code": "Mt CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions",
+            "scale": "mega_tonne"
+          }
+        },
+        "lb CO2e": {
+          "name": "pound_co2_equivalent",
+          "symbol": "lb CO2e",
+          "conversion_factor": 0.453592,
+          "aliases": [
+            "lbCO2e",
+            "pound_co2_equivalent"
+          ],
+          "metadata": {
+            "ucum_code": "lb CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions"
+          }
+        },
+        "g CO2e": {
+          "name": "gram_co2_equivalent",
+          "symbol": "g CO2e",
+          "conversion_factor": 0.001,
+          "aliases": [
+            "gCO2e",
+            "g_co2e"
+          ],
+          "metadata": {
+            "ucum_code": "g CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions"
+          }
+        },
+        "kt CO2e": {
+          "name": "kilotonne_co2_equivalent",
+          "symbol": "kt CO2e",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "ktCO2e",
+            "kt_co2e"
+          ],
+          "metadata": {
+            "ucum_code": "kt CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions",
+            "scale": "kilo_tonne"
+          }
+        },
+        "short ton CO2e": {
+          "name": "short_ton_co2_equivalent",
+          "symbol": "short ton CO2e",
+          "conversion_factor": 907.18474,
+          "aliases": [
+            "short_ton_co2e",
+            "us_ton_co2e"
+          ],
+          "metadata": {
+            "ucum_code": "short ton CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions"
+          }
+        },
+        "µg CO2e": {
+          "name": "microgram_co2e",
+          "conversion_factor": 1e-09,
+          "aliases": [
+            "ug CO2e",
+            "microgram_co2e"
+          ],
+          "symbol": "µg CO2e",
+          "metadata": {
+            "ucum_code": "µg CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions"
+          }
+        },
+        "mg CO2e": {
+          "name": "milligram_co2e",
+          "conversion_factor": 1e-06,
+          "aliases": [
+            "milligram_co2e"
+          ],
+          "symbol": "mg CO2e",
+          "metadata": {
+            "ucum_code": "mg CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions"
+          }
+        },
+        "Gt CO2e": {
+          "name": "gigatonne_co2e",
+          "conversion_factor": 1000000000000,
+          "aliases": [
+            "gigatonne_co2e"
+          ],
+          "symbol": "Gt CO2e",
+          "metadata": {
+            "ucum_code": "Gt CO2e",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability",
+            "category": "emissions"
+          }
+        }
+      },
+      "description": "Greenhouse-gas-equivalent mass units.",
+      "special_conversions": false
+    },
+    "percentage": {
+      "base_unit": "%",
+      "units": {
+        "%": {
+          "name": "percent",
+          "symbol": "%",
+          "conversion_factor": 1,
+          "aliases": [
+            "percent",
+            "percentage"
+          ],
+          "metadata": {
+            "ucum_code": "%",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "percentage"
+          }
+        },
+        "‰": {
+          "name": "permille",
+          "symbol": "‰",
+          "conversion_factor": 0.1,
+          "aliases": [
+            "permille",
+            "per_mille"
+          ],
+          "metadata": {
+            "ucum_code": "‰",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "percentage"
+          }
+        },
+        "bp": {
+          "name": "basis_point",
+          "symbol": "bp",
+          "conversion_factor": 0.01,
+          "aliases": [
+            "bps",
+            "basis_point"
+          ],
+          "metadata": {
+            "ucum_code": "bp",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "percentage"
+          }
+        },
+        "ppm": {
+          "name": "parts_per_million",
+          "symbol": "ppm",
+          "conversion_factor": 0.0001,
+          "aliases": [
+            "parts_per_million"
+          ],
+          "metadata": {
+            "ucum_code": "ppm",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "percentage"
+          }
+        },
+        "ppb": {
+          "name": "parts_per_billion",
+          "symbol": "ppb",
+          "conversion_factor": 1e-07,
+          "aliases": [
+            "parts_per_billion"
+          ],
+          "metadata": {
+            "ucum_code": "ppb",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "percentage"
+          }
+        }
+      },
+      "description": "Percentage-style normalized ratios and concentration units.",
+      "special_conversions": false
+    },
+    "ratio": {
+      "base_unit": "ratio",
+      "units": {
+        "ratio": {
+          "name": "ratio",
+          "symbol": "ratio",
+          "conversion_factor": 1,
+          "aliases": [
+            "ratio"
+          ],
+          "metadata": {
+            "ucum_code": "ratio",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio"
+          }
+        },
+        "fraction": {
+          "name": "fraction",
+          "symbol": "fraction",
+          "conversion_factor": 1,
+          "aliases": [
+            "fraction"
+          ],
+          "metadata": {
+            "ucum_code": "fraction",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio"
+          }
+        },
+        "1": {
+          "name": "unity",
+          "symbol": "1",
+          "conversion_factor": 1,
+          "aliases": [
+            "unity",
+            "dimensionless"
+          ],
+          "metadata": {
+            "ucum_code": "1",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio"
+          }
+        },
+        "cases_per_million_hours_worked": {
+          "name": "cases_per_million_hours_worked",
+          "conversion_factor": 1,
+          "aliases": [
+            "cases per million hours worked"
+          ],
+          "metadata": {
+            "ucum_code": "cases_per_million_hours_worked",
+            "dimension_vector": {
+              "count": 1,
+              "time": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "rate_display_unit"
+          },
+          "symbol": "cases_per_million_hours_worked"
+        },
+        "hours_per_employee": {
+          "name": "hours_per_employee",
+          "conversion_factor": 1,
+          "aliases": [
+            "hours per employee"
+          ],
+          "metadata": {
+            "ucum_code": "hours_per_employee",
+            "dimension_vector": {
+              "time": 1,
+              "count": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "rate_display_unit"
+          },
+          "symbol": "hours_per_employee"
+        },
+        "count_and_percent": {
+          "name": "count_and_percent",
+          "conversion_factor": 1,
+          "aliases": [
+            "count_and_percent",
+            "number and percent"
+          ],
+          "metadata": {
+            "ucum_code": "count_and_percent",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "compound_display_unit"
+          },
+          "symbol": "count_and_percent"
+        },
+        "count_and_rate": {
+          "name": "count_and_rate",
+          "conversion_factor": 1,
+          "aliases": [
+            "count_and_rate",
+            "number and rate"
+          ],
+          "metadata": {
+            "ucum_code": "count_and_rate",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "compound_display_unit"
+          },
+          "symbol": "count_and_rate"
+        },
+        "rate": {
+          "name": "rate",
+          "conversion_factor": 1,
+          "aliases": [
+            "rate"
+          ],
+          "metadata": {
+            "ucum_code": "rate",
+            "dimension_vector": {
+              "ratio": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "rate_display_unit"
+          },
+          "symbol": "rate"
+        },
+        "m3_per_million_currency_revenue": {
+          "name": "cubic_meter_per_million_currency_revenue",
+          "conversion_factor": 1,
+          "aliases": [
+            "m3 per million EUR net revenue"
+          ],
+          "metadata": {
+            "ucum_code": "m3_per_million_currency_revenue",
+            "dimension_vector": {
+              "volume": 1,
+              "currency": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "currency_denominator_requires_reporting_context"
+          },
+          "symbol": "m3_per_million_currency_revenue"
+        },
+        "energy_per_currency": {
+          "name": "energy_per_currency",
+          "conversion_factor": 1,
+          "aliases": [
+            "MWh per currency"
+          ],
+          "metadata": {
+            "ucum_code": "energy_per_currency",
+            "dimension_vector": {
+              "energy": 1,
+              "currency": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "currency_denominator_requires_reporting_context"
+          },
+          "symbol": "energy_per_currency"
+        },
+        "currency_per_emissions": {
+          "name": "currency_per_emissions",
+          "conversion_factor": 1,
+          "aliases": [
+            "currency_per_tCO2eq"
+          ],
+          "metadata": {
+            "ucum_code": "currency_per_emissions",
+            "dimension_vector": {
+              "currency": 1,
+              "co2e": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "emissions_denominator_requires_reporting_context"
+          },
+          "symbol": "currency_per_emissions"
+        },
+        "emissions_per_activity_or_output": {
+          "name": "emissions_per_activity_or_output",
+          "conversion_factor": 1,
+          "aliases": [
+            "tCO2e/(organization-specific denominator)",
+            "tCO2eq_per_activity_or_output_unit"
+          ],
+          "metadata": {
+            "ucum_code": "emissions_per_activity_or_output",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "organization_specific_denominator"
+          },
+          "symbol": "emissions_per_activity_or_output"
+        },
+        "energy_per_organization_specific_denominator": {
+          "name": "energy_per_organization_specific_denominator",
+          "conversion_factor": 1,
+          "aliases": [
+            "Energy/(organization-specific denominator)",
+            "MWh/(organization-specific denominator)",
+            "energy per organization-specific denominator"
+          ],
+          "metadata": {
+            "ucum_code": "energy_per_organization_specific_denominator",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "organization_specific_denominator"
+          },
+          "symbol": "energy_per_organization_specific_denominator"
+        },
+        "MWh/t": {
+          "name": "megawatt_hour_per_tonne",
+          "conversion_factor": 3600000,
+          "aliases": [
+            "MWh/tonne",
+            "MWh per tonne",
+            "MWh per metric tonne"
+          ],
+          "metadata": {
+            "ucum_code": "MWh/t",
+            "dimension_vector": {
+              "energy": 1,
+              "mass": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "compound_display_unit"
+          },
+          "symbol": "MWh/t"
+        },
+        "MWh/kg": {
+          "name": "megawatt_hour_per_kilogram",
+          "conversion_factor": 3600000000,
+          "aliases": [
+            "MWh per kg",
+            "MWh per kilogram"
+          ],
+          "metadata": {
+            "ucum_code": "MWh/kg",
+            "dimension_vector": {
+              "energy": 1,
+              "mass": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "compound_display_unit"
+          },
+          "symbol": "MWh/kg"
+        },
+        "MWh/L": {
+          "name": "megawatt_hour_per_litre",
+          "conversion_factor": 3600000000000,
+          "aliases": [
+            "MWh/litre",
+            "MWh/liter",
+            "MWh per litre",
+            "MWh per liter"
+          ],
+          "metadata": {
+            "ucum_code": "MWh/L",
+            "dimension_vector": {
+              "energy": 1,
+              "volume": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "compound_display_unit"
+          },
+          "symbol": "MWh/L"
+        },
+        "MWh/Nm3": {
+          "name": "megawatt_hour_per_normal_cubic_meter",
+          "conversion_factor": 3600000000,
+          "aliases": [
+            "MWh/Nm³",
+            "MWh per Nm3",
+            "MWh per normal cubic meter",
+            "MWh per normal cubic metre"
+          ],
+          "metadata": {
+            "ucum_code": "MWh/Nm3",
+            "dimension_vector": {
+              "energy": 1,
+              "volume": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "conversion_policy": "standard-condition-volume-compound-display-unit"
+          },
+          "symbol": "MWh/Nm3"
+        },
+        "MWh/reported_semantic_unit": {
+          "name": "megawatt_hour_per_reported_semantic_unit",
+          "conversion_factor": 1,
+          "aliases": [
+            "MWh/reported quantity unit",
+            "MWh per reported quantity unit",
+            "MWh per reported semantic unit"
+          ],
+          "metadata": {
+            "ucum_code": "MWh/reported_semantic_unit",
+            "dimension_vector": {
+              "energy": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "reported_semantic_denominator"
+          },
+          "symbol": "MWh/reported_semantic_unit"
+        },
+        "g CO2e/MJ": {
+          "name": "gram_co2e_per_megajoule",
+          "conversion_factor": 1,
+          "aliases": [
+            "g CO2e per MJ",
+            "gCO2e/MJ"
+          ],
+          "metadata": {
+            "ucum_code": "g CO2e/MJ",
+            "dimension_vector": {
+              "co2e": 1,
+              "energy": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "curated_emissions_intensity_conversion_only"
+          },
+          "symbol": "g CO2e/MJ"
+        },
+        "kg CO2e/GJ": {
+          "name": "kilogram_co2e_per_gigajoule",
+          "conversion_factor": 1,
+          "aliases": [
+            "kg CO2e per GJ",
+            "kgCO2e/GJ"
+          ],
+          "metadata": {
+            "ucum_code": "kg CO2e/GJ",
+            "dimension_vector": {
+              "co2e": 1,
+              "energy": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "curated_emissions_intensity_conversion_only"
+          },
+          "symbol": "kg CO2e/GJ"
+        },
+        "kg CO2e/kWh": {
+          "name": "kilogram_co2e_per_kilowatt_hour",
+          "conversion_factor": 1,
+          "aliases": [
+            "kg CO2e per kWh",
+            "kgCO2e/kWh"
+          ],
+          "metadata": {
+            "ucum_code": "kg CO2e/kWh",
+            "dimension_vector": {
+              "co2e": 1,
+              "energy": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "curated_emissions_intensity_conversion_only"
+          },
+          "symbol": "kg CO2e/kWh"
+        },
+        "t CO2e/MWh": {
+          "name": "tonne_co2e_per_megawatt_hour",
+          "conversion_factor": 1,
+          "aliases": [
+            "t CO2e per MWh",
+            "tCO2e/MWh"
+          ],
+          "metadata": {
+            "ucum_code": "t CO2e/MWh",
+            "dimension_vector": {
+              "co2e": 1,
+              "energy": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "curated_emissions_intensity_conversion_only"
+          },
+          "symbol": "t CO2e/MWh"
+        },
+        "kg CO2e/kg": {
+          "name": "kilogram_co2e_per_kilogram",
+          "conversion_factor": 1,
+          "aliases": [
+            "kg CO2e per kg",
+            "kg CO2e per kilogram",
+            "kgCO2e/kg"
+          ],
+          "metadata": {
+            "ucum_code": "kg CO2e/kg",
+            "dimension_vector": {
+              "co2e": 1,
+              "mass": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "curated_emissions_factor_unit"
+          },
+          "symbol": "kg CO2e/kg"
+        },
+        "kg CO2e/m2/year": {
+          "name": "kilogram_co2e_per_square_meter_year",
+          "conversion_factor": 1,
+          "aliases": [
+            "kg CO2e/m²/year",
+            "kg CO2e per m2 per year",
+            "kg CO2e per square meter per year",
+            "kg CO2e per square metre per year",
+            "kgCO2e/m2/year"
+          ],
+          "metadata": {
+            "ucum_code": "kg CO2e/m2/year",
+            "dimension_vector": {
+              "co2e": 1,
+              "area": -1,
+              "time": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "curated_emissions_factor_unit"
+          },
+          "symbol": "kg CO2e/m2/year"
+        },
+        "kg CO2e/asset type/year": {
+          "name": "kilogram_co2e_per_asset_type_year",
+          "conversion_factor": 1,
+          "aliases": [
+            "kg CO2e per asset type per year",
+            "kgCO2e/asset type/year"
+          ],
+          "metadata": {
+            "ucum_code": "kg CO2e/asset type/year",
+            "dimension_vector": {
+              "co2e": 1,
+              "time": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "reported_semantic_denominator"
+          },
+          "symbol": "kg CO2e/asset type/year"
+        },
+        "kg CO2e/building or asset type/year": {
+          "name": "kilogram_co2e_per_building_or_asset_type_year",
+          "conversion_factor": 1,
+          "aliases": [
+            "kg CO2e per building or asset type per year",
+            "kgCO2e/building or asset type/year"
+          ],
+          "metadata": {
+            "ucum_code": "kg CO2e/building or asset type/year",
+            "dimension_vector": {
+              "co2e": 1,
+              "time": -1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "reported_semantic_denominator"
+          },
+          "symbol": "kg CO2e/building or asset type/year"
+        },
+        "kg CO2e/reported product quantity unit": {
+          "name": "kilogram_co2e_per_reported_product_quantity_unit",
+          "conversion_factor": 1,
+          "aliases": [
+            "kg CO2e per reported product quantity unit",
+            "kgCO2e/reported product quantity unit"
+          ],
+          "metadata": {
+            "ucum_code": "kg CO2e/reported product quantity unit",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "reported_semantic_denominator"
+          },
+          "symbol": "kg CO2e/reported product quantity unit"
+        },
+        "kg CO2e/reported energy quantity unit": {
+          "name": "kilogram_co2e_per_reported_energy_quantity_unit",
+          "conversion_factor": 1,
+          "aliases": [
+            "kg CO2e per reported energy quantity unit",
+            "kgCO2e/reported energy quantity unit"
+          ],
+          "metadata": {
+            "ucum_code": "kg CO2e/reported energy quantity unit",
+            "dimension_vector": {
+              "co2e": 1
+            },
+            "source_system": "SDS canonical sustainability unit",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "dimensionless",
+            "category": "ratio",
+            "non_convertible": true,
+            "conversion_policy": "reported_semantic_denominator"
+          },
+          "symbol": "kg CO2e/reported energy quantity unit"
+        }
+      },
+      "description": "Dimensionless ratios and fractions.",
+      "special_conversions": false
+    },
+    "power": {
+      "base_unit": "W",
+      "description": "Power units for electrical, thermal, and mechanical power.",
+      "special_conversions": false,
+      "units": {
+        "W": {
+          "name": "watt",
+          "symbol": "W",
+          "conversion_factor": 1,
+          "aliases": [
+            "watt"
+          ],
+          "metadata": {
+            "ucum_code": "W",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power"
+          }
+        },
+        "kW": {
+          "name": "kilowatt",
+          "symbol": "kW",
+          "conversion_factor": 1000,
+          "aliases": [
+            "kilowatt"
+          ],
+          "metadata": {
+            "ucum_code": "kW",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power",
+            "scale": "kilo"
+          }
+        },
+        "MW": {
+          "name": "megawatt",
+          "symbol": "MW",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "megawatt"
+          ],
+          "metadata": {
+            "ucum_code": "MW",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power",
+            "scale": "mega"
+          }
+        },
+        "GW": {
+          "name": "gigawatt",
+          "symbol": "GW",
+          "conversion_factor": 1000000000,
+          "aliases": [
+            "gigawatt"
+          ],
+          "metadata": {
+            "ucum_code": "GW",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power",
+            "scale": "giga"
+          }
+        },
+        "hp": {
+          "name": "horsepower",
+          "symbol": "hp",
+          "conversion_factor": 745.699871582,
+          "aliases": [
+            "horsepower"
+          ],
+          "metadata": {
+            "ucum_code": "[HP]",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power"
+          }
+        },
+        "BTU/h": {
+          "name": "btu_per_hour",
+          "symbol": "BTU/h",
+          "conversion_factor": "0.2930710701722222222222222222",
+          "aliases": [
+            "btu_per_hour"
+          ],
+          "metadata": {
+            "ucum_code": "[Btu_IT]/h",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power"
+          }
+        },
+        "mW": {
+          "name": "milliwatt",
+          "conversion_factor": 0.001,
+          "aliases": [
+            "milliwatt"
+          ],
+          "symbol": "mW",
+          "metadata": {
+            "ucum_code": "mW",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power"
+          }
+        },
+        "TW": {
+          "name": "terawatt",
+          "conversion_factor": 1000000000000,
+          "aliases": [
+            "terawatt"
+          ],
+          "symbol": "TW",
+          "metadata": {
+            "ucum_code": "TW",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power"
+          }
+        },
+        "VA": {
+          "name": "volt_ampere",
+          "conversion_factor": 1,
+          "aliases": [
+            "volt_ampere"
+          ],
+          "symbol": "VA",
+          "metadata": {
+            "ucum_code": "VA",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power"
+          }
+        },
+        "kVA": {
+          "name": "kilovolt_ampere",
+          "conversion_factor": 1000,
+          "aliases": [
+            "kilovolt_ampere"
+          ],
+          "symbol": "kVA",
+          "metadata": {
+            "ucum_code": "kVA",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power"
+          }
+        },
+        "MVA": {
+          "name": "megavolt_ampere",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "megavolt_ampere"
+          ],
+          "symbol": "MVA",
+          "metadata": {
+            "ucum_code": "MVA",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power"
+          }
+        },
+        "ton_refrigeration": {
+          "name": "ton_of_refrigeration",
+          "conversion_factor": 3516.8528420667,
+          "aliases": [
+            "TR"
+          ],
+          "symbol": "ton_refrigeration",
+          "metadata": {
+            "ucum_code": "ton_refrigeration",
+            "dimension_vector": {
+              "energy": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "power"
+          }
+        }
+      }
+    },
+    "pressure": {
+      "base_unit": "Pa",
+      "description": "Pressure units used in industrial, HVAC, and process reporting.",
+      "special_conversions": false,
+      "units": {
+        "Pa": {
+          "name": "pascal",
+          "symbol": "Pa",
+          "conversion_factor": 1,
+          "aliases": [
+            "pascal"
+          ],
+          "metadata": {
+            "ucum_code": "Pa",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure"
+          }
+        },
+        "kPa": {
+          "name": "kilopascal",
+          "symbol": "kPa",
+          "conversion_factor": 1000,
+          "aliases": [
+            "kilopascal"
+          ],
+          "metadata": {
+            "ucum_code": "kPa",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure",
+            "scale": "kilo"
+          }
+        },
+        "MPa": {
+          "name": "megapascal",
+          "symbol": "MPa",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "megapascal"
+          ],
+          "metadata": {
+            "ucum_code": "MPa",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure",
+            "scale": "mega"
+          }
+        },
+        "bar": {
+          "name": "bar",
+          "symbol": "bar",
+          "conversion_factor": 100000,
+          "aliases": [
+            "bar"
+          ],
+          "metadata": {
+            "ucum_code": "bar",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure"
+          }
+        },
+        "mbar": {
+          "name": "millibar",
+          "symbol": "mbar",
+          "conversion_factor": 100,
+          "aliases": [
+            "millibar"
+          ],
+          "metadata": {
+            "ucum_code": "mbar",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure",
+            "scale": "milli"
+          }
+        },
+        "psi": {
+          "name": "pounds_per_square_inch",
+          "symbol": "psi",
+          "conversion_factor": 6894.757293168,
+          "aliases": [
+            "pounds_per_square_inch"
+          ],
+          "metadata": {
+            "ucum_code": "[psi]",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "pressure"
+          }
+        },
+        "atm": {
+          "name": "standard_atmosphere",
+          "symbol": "atm",
+          "conversion_factor": 101325,
+          "aliases": [
+            "atmosphere"
+          ],
+          "metadata": {
+            "ucum_code": "atm",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure"
+          }
+        },
+        "torr": {
+          "name": "torr",
+          "symbol": "torr",
+          "conversion_factor": 133.322368421,
+          "aliases": [
+            "mmHg"
+          ],
+          "metadata": {
+            "ucum_code": "Torr",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure"
+          }
+        },
+        "GPa": {
+          "name": "gigapascal",
+          "conversion_factor": 1000000000,
+          "aliases": [
+            "gigapascal"
+          ],
+          "symbol": "GPa",
+          "metadata": {
+            "ucum_code": "GPa",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure"
+          }
+        },
+        "mmHg": {
+          "name": "millimeter_mercury",
+          "conversion_factor": 133.322387415,
+          "aliases": [
+            "millimeter_mercury"
+          ],
+          "symbol": "mmHg",
+          "metadata": {
+            "ucum_code": "mmHg",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure"
+          }
+        },
+        "inHg": {
+          "name": "inch_mercury",
+          "conversion_factor": 3386.38815789,
+          "aliases": [
+            "inch_mercury"
+          ],
+          "symbol": "inHg",
+          "metadata": {
+            "ucum_code": "[in_i'Hg]",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "pressure"
+          }
+        },
+        "cmH2O": {
+          "name": "centimeter_water",
+          "conversion_factor": 98.0665,
+          "aliases": [
+            "centimeter_water"
+          ],
+          "symbol": "cmH2O",
+          "metadata": {
+            "ucum_code": "cmH2O",
+            "dimension_vector": {
+              "mass": 1,
+              "length": -1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "pressure"
+          }
+        }
+      }
+    },
+    "speed": {
+      "base_unit": "m/s",
+      "description": "Speed and linear velocity units.",
+      "special_conversions": false,
+      "units": {
+        "m/s": {
+          "name": "meter_per_second",
+          "symbol": "m/s",
+          "conversion_factor": 1,
+          "aliases": [
+            "meter_per_second",
+            "metre_per_second"
+          ],
+          "metadata": {
+            "ucum_code": "m/s",
+            "dimension_vector": {
+              "length": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "speed"
+          }
+        },
+        "km/h": {
+          "name": "kilometer_per_hour",
+          "symbol": "km/h",
+          "conversion_factor": 0.277777777778,
+          "aliases": [
+            "kph",
+            "kilometer_per_hour"
+          ],
+          "metadata": {
+            "ucum_code": "km/h",
+            "dimension_vector": {
+              "length": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "speed"
+          }
+        },
+        "mph": {
+          "name": "mile_per_hour",
+          "symbol": "mph",
+          "conversion_factor": 0.44704,
+          "aliases": [
+            "mile_per_hour"
+          ],
+          "metadata": {
+            "ucum_code": "mph",
+            "dimension_vector": {
+              "length": 1,
+              "time": -1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "speed"
+          }
+        },
+        "knot": {
+          "name": "knot",
+          "symbol": "knot",
+          "conversion_factor": 0.514444444444,
+          "aliases": [
+            "kn"
+          ],
+          "metadata": {
+            "ucum_code": "[kn_i]",
+            "dimension_vector": {
+              "length": 1,
+              "time": -1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "imperial",
+            "category": "speed"
+          }
+        },
+        "ft/s": {
+          "name": "foot_per_second",
+          "symbol": "ft/s",
+          "conversion_factor": 0.3048,
+          "aliases": [
+            "fps",
+            "foot_per_second"
+          ],
+          "metadata": {
+            "ucum_code": "ft/s",
+            "dimension_vector": {
+              "length": 1,
+              "time": -1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "speed"
+          }
+        },
+        "m/min": {
+          "name": "meter_per_minute",
+          "conversion_factor": 0.016666666666666666,
+          "aliases": [
+            "meter_per_minute"
+          ],
+          "symbol": "m/min",
+          "metadata": {
+            "ucum_code": "m/min",
+            "dimension_vector": {
+              "length": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "speed"
+          }
+        },
+        "ft/min": {
+          "name": "foot_per_minute",
+          "conversion_factor": 0.00508,
+          "aliases": [
+            "fpm"
+          ],
+          "symbol": "ft/min",
+          "metadata": {
+            "ucum_code": "ft/min",
+            "dimension_vector": {
+              "length": 1,
+              "time": -1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "speed"
+          }
+        }
+      }
+    },
+    "force": {
+      "base_unit": "N",
+      "description": "Force units.",
+      "special_conversions": false,
+      "units": {
+        "N": {
+          "name": "newton",
+          "symbol": "N",
+          "conversion_factor": 1,
+          "aliases": [
+            "newton"
+          ],
+          "metadata": {
+            "ucum_code": "N",
+            "dimension_vector": {
+              "mass": 1,
+              "length": 1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "force"
+          }
+        },
+        "kN": {
+          "name": "kilonewton",
+          "symbol": "kN",
+          "conversion_factor": 1000,
+          "aliases": [
+            "kilonewton"
+          ],
+          "metadata": {
+            "ucum_code": "kN",
+            "dimension_vector": {
+              "mass": 1,
+              "length": 1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "force",
+            "scale": "kilo"
+          }
+        },
+        "lbf": {
+          "name": "pound_force",
+          "symbol": "lbf",
+          "conversion_factor": 4.448221615261,
+          "aliases": [
+            "pound_force"
+          ],
+          "metadata": {
+            "ucum_code": "[lbf_av]",
+            "dimension_vector": {
+              "mass": 1,
+              "length": 1,
+              "time": -2
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "force"
+          }
+        },
+        "kgf": {
+          "name": "kilogram_force",
+          "symbol": "kgf",
+          "conversion_factor": 9.80665,
+          "aliases": [
+            "kilogram_force"
+          ],
+          "metadata": {
+            "ucum_code": "kgf",
+            "dimension_vector": {
+              "mass": 1,
+              "length": 1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "force"
+          }
+        },
+        "dyn": {
+          "name": "dyne",
+          "conversion_factor": 1e-05,
+          "aliases": [
+            "dyne"
+          ],
+          "symbol": "dyn",
+          "metadata": {
+            "ucum_code": "dyn",
+            "dimension_vector": {
+              "mass": 1,
+              "length": 1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "force"
+          }
+        },
+        "kip": {
+          "name": "kilopound_force",
+          "conversion_factor": 4448.2216152605,
+          "aliases": [
+            "kip_force"
+          ],
+          "symbol": "kip",
+          "metadata": {
+            "ucum_code": "kip",
+            "dimension_vector": {
+              "mass": 1,
+              "length": 1,
+              "time": -2
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "force"
+          }
+        }
+      }
+    },
+    "density": {
+      "base_unit": "kg/m³",
+      "description": "Mass density units.",
+      "special_conversions": false,
+      "units": {
+        "kg/m³": {
+          "name": "kilogram_per_cubic_meter",
+          "symbol": "kg/m³",
+          "conversion_factor": 1,
+          "aliases": [
+            "kg/m3"
+          ],
+          "metadata": {
+            "ucum_code": "kg/m³",
+            "dimension_vector": {
+              "mass": 1,
+              "volume": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "density"
+          }
+        },
+        "g/cm³": {
+          "name": "gram_per_cubic_centimeter",
+          "symbol": "g/cm³",
+          "conversion_factor": 1000,
+          "aliases": [
+            "g/cm3"
+          ],
+          "metadata": {
+            "ucum_code": "g/cm³",
+            "dimension_vector": {
+              "mass": 1,
+              "volume": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "density"
+          }
+        },
+        "kg/L": {
+          "name": "kilogram_per_liter",
+          "symbol": "kg/L",
+          "conversion_factor": 1000,
+          "aliases": [
+            "kg_per_liter"
+          ],
+          "metadata": {
+            "ucum_code": "kg/L",
+            "dimension_vector": {
+              "mass": 1,
+              "volume": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "density"
+          }
+        },
+        "lb/ft³": {
+          "name": "pound_per_cubic_foot",
+          "symbol": "lb/ft³",
+          "conversion_factor": 16.01846337396,
+          "aliases": [
+            "lb/ft3"
+          ],
+          "metadata": {
+            "ucum_code": "lb/ft³",
+            "dimension_vector": {
+              "mass": 1,
+              "volume": -1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "density"
+          }
+        },
+        "g/L": {
+          "name": "gram_per_liter",
+          "conversion_factor": 1,
+          "aliases": [
+            "gram_per_liter"
+          ],
+          "symbol": "g/L",
+          "metadata": {
+            "ucum_code": "g/L",
+            "dimension_vector": {
+              "mass": 1,
+              "volume": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "density"
+          }
+        },
+        "mg/L": {
+          "name": "milligram_per_liter",
+          "conversion_factor": 0.001,
+          "aliases": [
+            "milligram_per_liter"
+          ],
+          "symbol": "mg/L",
+          "metadata": {
+            "ucum_code": "mg/L",
+            "dimension_vector": {
+              "mass": 1,
+              "volume": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "density"
+          }
+        },
+        "lb/gal": {
+          "name": "pound_per_us_gallon",
+          "conversion_factor": 119.826427316,
+          "aliases": [
+            "pound_per_gallon"
+          ],
+          "symbol": "lb/gal",
+          "metadata": {
+            "ucum_code": "lb/gal",
+            "dimension_vector": {
+              "mass": 1,
+              "volume": -1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "density"
+          }
+        }
+      }
+    },
+    "flow": {
+      "base_unit": "m³/s",
+      "description": "Volumetric flow rate units.",
+      "special_conversions": false,
+      "units": {
+        "m³/s": {
+          "name": "cubic_meter_per_second",
+          "symbol": "m³/s",
+          "conversion_factor": 1,
+          "aliases": [
+            "m3/s"
+          ],
+          "metadata": {
+            "ucum_code": "m³/s",
+            "dimension_vector": {
+              "volume": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "flow"
+          }
+        },
+        "m³/h": {
+          "name": "cubic_meter_per_hour",
+          "symbol": "m³/h",
+          "conversion_factor": 0.000277777777778,
+          "aliases": [
+            "m3/h"
+          ],
+          "metadata": {
+            "ucum_code": "m³/h",
+            "dimension_vector": {
+              "volume": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "flow"
+          }
+        },
+        "L/s": {
+          "name": "liter_per_second",
+          "symbol": "L/s",
+          "conversion_factor": 0.001,
+          "aliases": [
+            "l/s",
+            "liter_per_second"
+          ],
+          "metadata": {
+            "ucum_code": "L/s",
+            "dimension_vector": {
+              "volume": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "flow"
+          }
+        },
+        "L/min": {
+          "name": "liter_per_minute",
+          "symbol": "L/min",
+          "conversion_factor": 1.6666666667e-05,
+          "aliases": [
+            "l/min",
+            "liter_per_minute"
+          ],
+          "metadata": {
+            "ucum_code": "L/min",
+            "dimension_vector": {
+              "volume": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "flow"
+          }
+        },
+        "gal/min": {
+          "name": "gallon_per_minute",
+          "symbol": "gal/min",
+          "conversion_factor": 6.30901964e-05,
+          "aliases": [
+            "gpm",
+            "gallon_per_minute"
+          ],
+          "metadata": {
+            "ucum_code": "[gal_us]/min",
+            "dimension_vector": {
+              "volume": 1,
+              "time": -1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "flow"
+          }
+        },
+        "ft³/min": {
+          "name": "cubic_foot_per_minute",
+          "symbol": "ft³/min",
+          "conversion_factor": 0.0004719474432,
+          "aliases": [
+            "ft3/min",
+            "cfm"
+          ],
+          "metadata": {
+            "ucum_code": "[ft_i]3/min",
+            "dimension_vector": {
+              "volume": 1,
+              "time": -1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "flow"
+          }
+        },
+        "mL/min": {
+          "name": "milliliter_per_minute",
+          "conversion_factor": 1.6666666666666667e-08,
+          "aliases": [
+            "milliliter_per_minute"
+          ],
+          "symbol": "mL/min",
+          "metadata": {
+            "ucum_code": "mL/min",
+            "dimension_vector": {
+              "volume": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "flow"
+          }
+        },
+        "ft³/s": {
+          "name": "cubic_foot_per_second",
+          "conversion_factor": 0.028316846592,
+          "aliases": [
+            "cfs"
+          ],
+          "symbol": "ft³/s",
+          "metadata": {
+            "ucum_code": "[ft_i]3/s",
+            "dimension_vector": {
+              "volume": 1,
+              "time": -1
+            },
+            "source_system": "NIST Handbook 44 Appendix C",
+            "source_version": "current edition",
+            "source_url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+            "system": "us_customary",
+            "category": "flow"
+          }
+        },
+        "MGD": {
+          "name": "million_us_gallons_per_day",
+          "conversion_factor": 0.0438126364,
+          "aliases": [
+            "million_gallons_per_day"
+          ],
+          "symbol": "MGD",
+          "metadata": {
+            "ucum_code": "MGD",
+            "dimension_vector": {
+              "volume": 1,
+              "time": -1
+            },
+            "source_system": "SI/BIPM",
+            "source_version": "SI Brochure",
+            "source_url": "https://www.bipm.org/en/publications/si-brochure",
+            "system": "si",
+            "category": "flow"
+          }
+        }
+      }
+    },
+    "currency": {
+      "base_unit": "Currency",
+      "units": {
+        "Currency": {
+          "name": "currency_unit",
+          "conversion_factor": 1,
+          "aliases": [
+            "currency_unit",
+            "monetary_unit"
+          ],
+          "symbol": "Currency",
+          "metadata": {
+            "ucum_code": "{currency}",
+            "dimension_vector": {
+              "currency": 1
+            },
+            "source_system": "SDS currency scale",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "monetary_scale",
+            "category": "currency"
+          }
+        },
+        "CurrencyThousand": {
+          "name": "thousand_currency_units",
+          "conversion_factor": 1000,
+          "aliases": [
+            "kCurrency"
+          ],
+          "symbol": "CurrencyThousand",
+          "metadata": {
+            "ucum_code": "10^3.{currency}",
+            "dimension_vector": {
+              "currency": 1
+            },
+            "source_system": "SDS currency scale",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "monetary_scale",
+            "category": "currency",
+            "scale": "thousand"
+          }
+        },
+        "CurrencyMillion": {
+          "name": "million_currency_units",
+          "conversion_factor": 1000000,
+          "aliases": [
+            "mCurrency"
+          ],
+          "symbol": "CurrencyMillion",
+          "metadata": {
+            "ucum_code": "10^6.{currency}",
+            "dimension_vector": {
+              "currency": 1
+            },
+            "source_system": "SDS currency scale",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "monetary_scale",
+            "category": "currency",
+            "scale": "million"
+          }
+        },
+        "CurrencyBillion": {
+          "name": "billion_currency_units",
+          "conversion_factor": 1000000000,
+          "aliases": [
+            "bnCurrency"
+          ],
+          "symbol": "CurrencyBillion",
+          "metadata": {
+            "ucum_code": "10^9.{currency}",
+            "dimension_vector": {
+              "currency": 1
+            },
+            "source_system": "SDS currency scale",
+            "source_version": "2.0.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "monetary_scale",
+            "category": "currency",
+            "scale": "billion"
+          }
+        }
+      },
+      "description": "Dimensionless monetary amount scale atoms. FX rates are handled by the FX engine, not by unit factors.",
+      "special_conversions": false
+    },
+    "count": {
+      "base_unit": "count",
+      "units": {
+        "count": {
+          "name": "count",
+          "conversion_factor": 1,
+          "aliases": [
+            "Count",
+            "actions",
+            "business partners",
+            "cases",
+            "complaints",
+            "employees",
+            "employees (head count)",
+            "employees (head count or FTE)",
+            "employees and workers",
+            "fatalities",
+            "fines",
+            "governance body members",
+            "head count",
+            "incidents",
+            "injuries",
+            "instances",
+            "legal actions",
+            "non-employees (head count or FTE)",
+            "operations",
+            "recalls",
+            "species",
+            "suppliers",
+            "workers"
+          ],
+          "metadata": {
+            "ucum_code": "count",
+            "dimension_vector": {
+              "count": 1
+            },
+            "source_system": "SDS sustainability count label policy",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "sustainability_count",
+            "category": "count",
+            "conversion_policy": "same_population_count_only"
+          },
+          "symbol": "count"
+        }
+      },
+      "description": "Sustainability count labels normalized for catalog lookup; population semantics stay in dimensions and formulas.",
+      "special_conversions": false
+    },
+    "semantic": {
+      "base_unit": "reported_semantic_unit",
+      "units": {
+        "semantic_value": {
+          "name": "semantic_value",
+          "conversion_factor": 1,
+          "aliases": [
+            "Boolean",
+            "Date",
+            "Text",
+            "boolean",
+            "date",
+            "text"
+          ],
+          "metadata": {
+            "ucum_code": "semantic_value",
+            "dimension_vector": {},
+            "source_system": "SDS non-convertible reporting unit policy",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "reported_semantic_unit_policy",
+            "category": "semantic",
+            "non_convertible": true,
+            "conversion_policy": "reported_semantic_value"
+          },
+          "symbol": "semantic_value"
+        },
+        "reported_semantic_unit": {
+          "name": "reported_semantic_unit",
+          "conversion_factor": 1,
+          "aliases": [
+            "(organization-specific denominator)",
+            "mass unit",
+            "organization-specific metric",
+            "reported area unit",
+            "reported distance unit",
+            "reported product quantity unit",
+            "reported target unit",
+            "varies by denominator",
+            "weight or volume"
+          ],
+          "metadata": {
+            "ucum_code": "reported_semantic_unit",
+            "dimension_vector": {},
+            "source_system": "SDS non-convertible reporting unit policy",
+            "source_version": "2.1.0",
+            "source_url": "https://sustainabilitydataspace.com/",
+            "system": "reported_semantic_unit_policy",
+            "category": "semantic",
+            "non_convertible": true,
+            "conversion_policy": "reported_semantic_unit"
+          },
+          "symbol": "reported_semantic_unit"
+        }
+      },
+      "description": "Non-convertible reporting placeholders and data-value markers used for catalog lookup and UI policy.",
+      "special_conversions": false
+    }
+  },
+  "custom_conversion_rules": [
+    {
+      "from_unit": "kWh/kg",
+      "to_unit": "MJ/kg",
+      "formula": "value * 3.6",
+      "reverse_formula": "value / 3.6",
+      "description": "Energy intensity conversion",
+      "metadata": {
+        "source_system": "SDS conversion rule",
+        "source_version": "2.0.0",
+        "source_url": "https://sustainabilitydataspace.com/"
+      }
+    },
+    {
+      "from_unit": "BTU/lb",
+      "to_unit": "kJ/kg",
+      "formula": "value * 2.326",
+      "reverse_formula": "value / 2.326",
+      "description": "Energy intensity conversion",
+      "metadata": {
+        "source_system": "SDS conversion rule",
+        "source_version": "2.0.0",
+        "source_url": "https://sustainabilitydataspace.com/"
+      }
+    },
+    {
+      "from_unit": "kWh/m²",
+      "to_unit": "MJ/m²",
+      "formula": "value * 3.6",
+      "reverse_formula": "value / 3.6",
+      "description": "Energy intensity per area",
+      "metadata": {
+        "source_system": "SDS conversion rule",
+        "source_version": "2.0.0",
+        "source_url": "https://sustainabilitydataspace.com/"
+      }
+    },
+    {
+      "from_unit": "kg CO2e/kWh",
+      "to_unit": "g CO2e/MJ",
+      "formula": "value * 1000 / 3.6",
+      "reverse_formula": "value * 3.6 / 1000",
+      "description": "Emissions intensity conversion",
+      "metadata": {
+        "source_system": "SDS conversion rule",
+        "source_version": "2.0.0",
+        "source_url": "https://sustainabilitydataspace.com/"
+      }
+    },
+    {
+      "from_unit": "t CO2e/MWh",
+      "to_unit": "kg CO2e/GJ",
+      "formula": "value * 1000 / 3.6",
+      "reverse_formula": "value * 3.6 / 1000",
+      "description": "Emissions intensity conversion",
+      "metadata": {
+        "source_system": "SDS conversion rule",
+        "source_version": "2.0.0",
+        "source_url": "https://sustainabilitydataspace.com/"
+      }
+    },
+    {
+      "from_unit": "ppm",
+      "to_unit": "ppb",
+      "formula": "value * 1000",
+      "reverse_formula": "value / 1000",
+      "metadata": {
+        "description": "parts-per-million to parts-per-billion",
+        "source_system": "SDS conversion rule",
+        "source_version": "2.0.0",
+        "source_url": "https://sustainabilitydataspace.com/"
+      }
+    },
+    {
+      "from_unit": "bp",
+      "to_unit": "%",
+      "formula": "value * 0.01",
+      "reverse_formula": "value / 0.01",
+      "metadata": {
+        "description": "basis points to percent",
+        "source_system": "SDS conversion rule",
+        "source_version": "2.0.0",
+        "source_url": "https://sustainabilitydataspace.com/"
+      }
+    }
+  ],
+  "sources": {
+    "ucum": {
+      "name": "Unified Code for Units of Measure",
+      "url": "https://ucum.org/ucum",
+      "version": "UCUM canonical unit atoms"
+    },
+    "bipm_si": {
+      "name": "BIPM SI Brochure",
+      "url": "https://www.bipm.org/en/publications/si-brochure",
+      "version": "SI Brochure"
+    },
+    "nist_hb44": {
+      "name": "NIST Handbook 44 Appendix C",
+      "url": "https://www.nist.gov/pml/owm/nist-handbook-44-current-edition",
+      "version": "current edition"
+    },
+    "sds": {
+      "name": "SDS canonical sustainability scales and semantic units",
+      "url": "https://sustainabilitydataspace.com/",
+      "version": "2.1.0"
+    }
+  }
+}

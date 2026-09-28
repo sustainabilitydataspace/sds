@@ -55,7 +55,10 @@ async def convert_units(
 
         # Perform conversion using UnitConverter
         result = unit_converter.convert(
-            value=request.value, from_unit=request.from_unit, to_unit=request.to_unit
+            value=request.value,
+            from_unit=request.from_unit,
+            to_unit=request.to_unit,
+            as_of=request.as_of,
         )
 
         # Create response

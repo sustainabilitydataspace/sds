@@ -1,12 +1,47 @@
-name: sds-public-demo
+# Optional local quickstart stack.
+# This Compose file is public for local evaluation and human testing only.
+# It is not the required SDS API dependency-install or deployment model.
+name: sds-api
 
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # Enforce real persistence in VM deployments.
+      REQUIRE_DATABASE: "true"
+      DATABASE_URL: "postgresql://sds:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/sds"
+
+      # Bootstrap an initial admin user when the DB is empty (human testing).
+      SEED_DEFAULT_USERS: "true"
+      BOOTSTRAP_ADMIN_USERNAME: "admin"
+      BOOTSTRAP_ADMIN_PASSWORD: "${BOOTSTRAP_ADMIN_PASSWORD:?BOOTSTRAP_ADMIN_PASSWORD is required}"
+      MAPPING_SURFACE: "${MAPPING_SURFACE:-canonical}"
+      VALUE_REVISION_API_ENABLED: "${VALUE_REVISION_API_ENABLED:-true}"
+      VALUE_REVISION_PRIMARY_READ_PATH: "${VALUE_REVISION_PRIMARY_READ_PATH:-revision}"
+      VALUE_REVISION_DUAL_WRITE_ENABLED: "${VALUE_REVISION_DUAL_WRITE_ENABLED:-true}"
+      VALUE_REVISION_DEFAULT_TENANT_ID: "${VALUE_REVISION_DEFAULT_TENANT_ID:-nordhaven_components_group}"
+      PORTAL_MOUNT_ENABLED: "${PORTAL_MOUNT_ENABLED:-false}"
+
+      # Security (override in .env on the VM).
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}"
+      EXPORT_SIGNING_SECRET: "${EXPORT_SIGNING_SECRET:?EXPORT_SIGNING_SECRET is required}"
+      ALLOWED_ORIGINS: '${ALLOWED_ORIGINS:-["http://localhost:8090"]}'
+      CORS_ALLOW_CREDENTIALS: "${CORS_ALLOW_CREDENTIALS:-true}"
+    ports:
+      - "127.0.0.1:8090:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
-    image: postgres:15-alpine
+    image: docker.io/library/postgres:15-alpine
     environment:
       POSTGRES_DB: sds
       POSTGRES_USER: sds
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Run python scripts/bootstrap_public_env.py first}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -16,31 +51,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
-
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      REQUIRE_DATABASE: "${REQUIRE_DATABASE:-true}"
-      DATABASE_URL: "postgresql://sds:${POSTGRES_PASSWORD:?Run python scripts/bootstrap_public_env.py first}@postgres:5432/sds"
-      JWT_SECRET_KEY: "${JWT_SECRET_KEY:?Run python scripts/bootstrap_public_env.py first}"
-      SEED_REFERENCE_DATA_ON_STARTUP: "${SEED_REFERENCE_DATA_ON_STARTUP:-true}"
-      SEED_DEFAULT_USERS: "${SEED_DEFAULT_USERS:-false}"
-      VALUE_REVISION_PRIMARY_READ_PATH: "${VALUE_REVISION_PRIMARY_READ_PATH:-revision}"
-      ALLOWED_ORIGINS: '${ALLOWED_ORIGINS:-["http://localhost:8090"]}'
-      CORS_ALLOW_CREDENTIALS: "${CORS_ALLOW_CREDENTIALS:-false}"
-      PORTAL_MOUNT_ENABLED: "${PORTAL_MOUNT_ENABLED:-false}"
-    ports:
-      - "127.0.0.1:8090:8090"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/ready')"]
-      interval: 10s
-      timeout: 5s
-      retries: 18
+    restart: unless-stopped
 
 volumes:
   postgres_data:

@@ -25,9 +25,11 @@ from src.api.models import (
     ValueResolveRequest,
     ValueResolveResponse,
 )
+from src.auth.authorization import has_cross_tenant_admin_access
 from src.auth.dependencies import get_current_active_user, require_permission
-from src.auth.models import Permission, User, UserRole
+from src.auth.models import Permission, User
 from src.calculation.contracts import (
+    CalculationContractNotFoundError,
     ContractExecutionError,
     ContractResolutionError,
     RuntimeCalculationContractResolver,
@@ -43,7 +45,10 @@ from src.services.hierarchy_store import get_hierarchy_store
 from src.services.mapped_observation_provider import MappingAwareObservationProvider
 from src.services.runtime_execution import build_conversion_engine
 from src.services.standard_mapping_store import StandardMappingStore
-from src.services.value_resolution import resolve_value_request
+from src.services.value_resolution import (
+    CalculationContractAbsent,
+    resolve_value_request,
+)
 from src.services.value_store import (
     get_value_store,
     resolve_value_store_tenant_id,
@@ -53,6 +58,8 @@ from src.services.value_store import (
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
+
+MAX_BATCH_CALCULATION_CONCEPTS = 100
 
 SDS = Namespace("https://sustainabilitydataspace.com/ontology#")
 _EXACT_MAPPING_RELATIONSHIPS = {
@@ -71,23 +78,19 @@ def _build_value_provider(store, context, *, mapping_store: Optional[Any] = None
     return MappingAwareObservationProvider(provider, mapping_store)
 
 
-def _is_admin_user(current_user: User) -> bool:
-    role = getattr(current_user, "role", None)
-    role_value = getattr(role, "value", role)
-    return role_value == UserRole.ADMIN.value
-
-
 def _value_store_tenant_id(current_user: User) -> Optional[str]:
     if revision_value_store_needs_tenant():
         return resolve_value_store_tenant_id(current_user)
-    if not settings.require_database or _is_admin_user(current_user):
+    if not settings.require_database or has_cross_tenant_admin_access(current_user):
         return None
     return resolve_value_store_tenant_id(current_user)
 
 
 def _hierarchy_scope_company_id(current_user: User) -> Optional[str]:
-    if _is_admin_user(current_user):
+    if has_cross_tenant_admin_access(current_user):
         return None
+    if getattr(current_user, "auth_method", None) == "api_key":
+        return resolve_value_store_tenant_id(current_user)
     return getattr(current_user, "company_id", None)
 
 
@@ -282,6 +285,7 @@ async def _run_calculation(
         CalculationContext,
         CalculationEngine,
         CalculationError,
+        OntologyCalculationNotFoundError,
     )
     from src.calculation.engine import TemporalGranularity as EngineTemporalGranularity
 
@@ -311,6 +315,7 @@ async def _run_calculation(
             store, context, mapping_store=mapping_store
         )
 
+        contract = None
         try:
             contract = resolver.resolve(request.concept)
             _assert_public_calculation_target(contract)
@@ -323,6 +328,13 @@ async def _run_calculation(
                 contract_resolver=resolver,
             )
         except ContractResolutionError as e:
+            target_absent = (
+                contract is None
+                and isinstance(e, CalculationContractNotFoundError)
+                and e.concept == request.concept
+            )
+            if not target_absent:
+                raise HTTPException(status_code=404, detail=str(e)) from e
             if allow_ontology_fallback and contract_resolver is None:
                 result = None
             else:
@@ -341,6 +353,10 @@ async def _run_calculation(
                 )
                 if cross_standard is not None:
                     return cross_standard
+                if target_absent:
+                    raise CalculationContractAbsent(
+                        request.concept, detail=str(e)
+                    ) from e
                 raise HTTPException(status_code=404, detail=str(e))
         except ContractExecutionError as e:
             if _is_non_executable_contract_error(e):
@@ -375,10 +391,7 @@ async def _run_calculation(
             )
 
     if not allow_ontology_fallback:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No executable calculation contract for concept: {request.concept}",
-        )
+        raise CalculationContractAbsent(request.concept)
 
     value_provider = _build_bootstrap_scalar_value_provider(store, context)
 
@@ -389,6 +402,8 @@ async def _run_calculation(
             ontology_graph=graph,
             value_provider=value_provider,
         )
+    except OntologyCalculationNotFoundError as e:
+        raise CalculationContractAbsent(request.concept, detail=str(e)) from e
     except CalculationError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
@@ -1081,6 +1096,13 @@ async def batch_calculate_indicators(
     - **concepts**: Comma-separated concept URIs (e.g., 'urn:sds:disclosure:csrd:e3-5,gri:303-5.c')
     - **granularity**: Temporal granularity
     """
+    concept_list = [c.strip() for c in concepts.split(",")]
+    if len(concept_list) > MAX_BATCH_CALCULATION_CONCEPTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"At most {MAX_BATCH_CALCULATION_CONCEPTS} concepts are allowed",
+        )
+
     try:
         logger.info(
             "Starting batch calculation",
@@ -1090,7 +1112,6 @@ async def batch_calculate_indicators(
             granularity=granularity.value,
         )
 
-        concept_list = [c.strip() for c in concepts.split(",")]
         results: List[BatchCalculationItem] = []
         unit_converter = getattr(http_request.app.state, "unit_converter", None)
         conversion_engine = (

@@ -18,7 +18,6 @@ REPO_ROOT = API_ROOT.parent
 os.chdir(API_ROOT)
 sys.path.insert(0, str(API_ROOT))
 
-from src.config.settings import settings
 from src.database.init_db import init_db_for_engine
 from src.services.calculation_contract_import import (
     CalculationContractImportError,
@@ -28,23 +27,16 @@ from src.services.calculation_contract_import import (
 )
 
 
-def get_default_database_url() -> str:
-    if settings.database_url:
-        return settings.database_url.get_secret_value()
+def get_default_database_url(cli_url: str | None = None) -> str:
+    from scripts.operational_db_url import resolve_operational_database_url
 
-    env_database_url = os.getenv("DATABASE_URL")
-    if env_database_url:
-        return env_database_url
+    if cli_url is not None:
+        return resolve_operational_database_url(cli_url)
 
-    postgres_user = os.getenv("POSTGRES_USER", "sds")
-    postgres_password = os.getenv("POSTGRES_PASSWORD", "password")
-    postgres_host = os.getenv("POSTGRES_HOST", "localhost")
-    postgres_port = os.getenv("POSTGRES_PORT", "5432")
-    postgres_db = os.getenv("POSTGRES_DB", "sds")
-    return (
-        f"postgresql://{postgres_user}:{postgres_password}@"
-        f"{postgres_host}:{postgres_port}/{postgres_db}"
-    )
+    from src.config.settings import settings
+
+    configured = settings.database_url.get_secret_value() if settings.database_url else None
+    return resolve_operational_database_url(cli_url, configured_url=configured)
 
 
 def load_known_register_identifiers(path: Path | None) -> set[str]:
@@ -75,7 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--db-url",
         type=str,
-        default=get_default_database_url(),
+        default=None,
         help="PostgreSQL URL",
     )
     parser.add_argument(
@@ -133,6 +125,7 @@ def main(argv: list[str] | None = None) -> int:
             print("PASS")
             return 0
 
+        args.db_url = get_default_database_url(args.db_url)
         engine_kwargs = {"pool_pre_ping": True}
         if args.db_url.startswith("postgresql"):
             engine_kwargs["connect_args"] = {"connect_timeout": 10}

@@ -1,0 +1,418 @@
+{
+  "$schema": "./policy_registry_schema.json",
+  "version": "2026-01-27",
+  "effectiveDate": "2026-01-27",
+  "description": "SDS Policy Registry - Deny-by-default ODRL policies for EDC connector",
+  "denyByDefault": true,
+  "defaultDenyPolicy": "policy-deny-all",
+  "policies": [
+    {
+      "uid": "policy-deny-all",
+      "name": "Deny All (Default)",
+      "description": "Default deny policy applied when no explicit policy matches. Blocks all access.",
+      "status": "active",
+      "effectiveDate": "2026-01-27",
+      "legalBasis": "GDPR Art. 6 - No lawful basis established",
+      "odrl": {
+        "@context": "http://www.w3.org/ns/odrl.jsonld",
+        "@type": "Set",
+        "prohibition": [
+          {
+            "action": "use",
+            "target": "urn:sds:asset:any"
+          }
+        ],
+        "permission": []
+      }
+    },
+    {
+      "uid": "policy-reporting-365d-retention",
+      "name": "Reporting Policy (365-day retention)",
+      "description": "ESRS/GRI/ISSB disclosures for consolidated filings with EU geofencing",
+      "status": "active",
+      "effectiveDate": "2026-01-27",
+      "legalBasis": "GDPR Art. 6(1)(c) + Data Act obligations",
+      "purpose": ["reporting"],
+      "regions": ["EU"],
+      "retentionDays": 365,
+      "odrl": {
+        "@context": "http://www.w3.org/ns/odrl.jsonld",
+        "@type": "Set",
+        "permission": [
+          {
+            "action": "use",
+            "constraint": [
+              {
+                "leftOperand": "purpose",
+                "operator": "eq",
+                "rightOperand": "reporting"
+              },
+              {
+                "leftOperand": "spatial",
+                "operator": "eq",
+                "rightOperand": "EU"
+              }
+            ],
+            "duty": [
+              {
+                "action": {
+                  "rdf:value": { "@id": "log" },
+                  "refinement": [
+                    {
+                      "leftOperand": "event",
+                      "operator": "eq",
+                      "rightOperand": "access"
+                    }
+                  ]
+                }
+              },
+              {
+                "action": "delete",
+                "constraint": [
+                  {
+                    "leftOperand": "elapsedTime",
+                    "operator": "lteq",
+                    "rightOperand": "P365D"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "prohibition": [
+          {
+            "action": "transfer",
+            "constraint": [
+              {
+                "leftOperand": "spatial",
+                "operator": "neq",
+                "rightOperand": "EU"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "policy-supervisory-730d",
+      "name": "Supervisory Policy (730-day retention)",
+      "description": "Bilateral regulator requests (CNMV, EFRAG pilots)",
+      "status": "active",
+      "effectiveDate": "2026-01-27",
+      "legalBasis": "GDPR Art. 6(1)(e) public interest",
+      "purpose": ["supervisory"],
+      "regions": ["EU", "ES"],
+      "retentionDays": 730,
+      "odrl": {
+        "@context": "http://www.w3.org/ns/odrl.jsonld",
+        "@type": "Set",
+        "permission": [
+          {
+            "action": "use",
+            "constraint": [
+              {
+                "leftOperand": "purpose",
+                "operator": "eq",
+                "rightOperand": "supervisory"
+              },
+              {
+                "leftOperand": "spatial",
+                "operator": "isAnyOf",
+                "rightOperand": ["EU", "ES"]
+              }
+            ],
+            "duty": [
+              {
+                "action": "log"
+              },
+              {
+                "action": "notify",
+                "assignee": "urn:sds:role:regulator"
+              },
+              {
+                "action": "delete",
+                "constraint": [
+                  {
+                    "leftOperand": "elapsedTime",
+                    "operator": "lteq",
+                    "rightOperand": "P730D"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "prohibition": [
+          {
+            "action": "transfer",
+            "constraint": [
+              {
+                "leftOperand": "spatial",
+                "operator": "isNoneOf",
+                "rightOperand": ["EU", "ES"]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "policy-audit-540d-trace",
+      "name": "Audit Policy (540-day retention with hash chain)",
+      "description": "Internal/external audit, assurance, traceability",
+      "status": "active",
+      "effectiveDate": "2026-01-27",
+      "legalBasis": "GDPR Art. 6(1)(f) legitimate interest",
+      "purpose": ["audit"],
+      "regions": ["EU", "ES", "GLOBAL-ALLOWLIST"],
+      "retentionDays": 540,
+      "odrl": {
+        "@context": "http://www.w3.org/ns/odrl.jsonld",
+        "@type": "Set",
+        "permission": [
+          {
+            "action": "use",
+            "constraint": [
+              {
+                "leftOperand": "purpose",
+                "operator": "eq",
+                "rightOperand": "audit"
+              }
+            ],
+            "duty": [
+              {
+                "action": "log",
+                "refinement": [
+                  {
+                    "leftOperand": "format",
+                    "operator": "eq",
+                    "rightOperand": "hashChain"
+                  }
+                ]
+              },
+              {
+                "action": "attribute",
+                "attributedParty": "urn:sds:provenance"
+              },
+              {
+                "action": "delete",
+                "constraint": [
+                  {
+                    "leftOperand": "elapsedTime",
+                    "operator": "lteq",
+                    "rightOperand": "P540D"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "policy-research-180d",
+      "name": "Research Policy (180-day retention, aggregate only)",
+      "description": "Aggregated/non-identifying analytics aligned to contract",
+      "status": "active",
+      "effectiveDate": "2026-01-27",
+      "legalBasis": "GDPR Art. 6(1)(f) + contract",
+      "purpose": ["research"],
+      "regions": ["EU", "LATAM"],
+      "retentionDays": 180,
+      "odrl": {
+        "@context": "http://www.w3.org/ns/odrl.jsonld",
+        "@type": "Set",
+        "permission": [
+          {
+            "action": "use",
+            "constraint": [
+              {
+                "leftOperand": "purpose",
+                "operator": "eq",
+                "rightOperand": "research"
+              },
+              {
+                "leftOperand": "spatial",
+                "operator": "isAnyOf",
+                "rightOperand": ["EU", "LATAM"]
+              }
+            ],
+            "duty": [
+              {
+                "action": "aggregate"
+              },
+              {
+                "action": "anonymize"
+              },
+              {
+                "action": "delete",
+                "constraint": [
+                  {
+                    "leftOperand": "elapsedTime",
+                    "operator": "lteq",
+                    "rightOperand": "P180D"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "prohibition": [
+          {
+            "action": "derive",
+            "constraint": [
+              {
+                "leftOperand": "dataType",
+                "operator": "eq",
+                "rightOperand": "personalData"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "policy-interop-30d",
+      "name": "Interoperability Testing Policy (30-day retention)",
+      "description": "Connector conformance and latency testing",
+      "status": "active",
+      "effectiveDate": "2026-01-27",
+      "legalBasis": "Contract (B2B)",
+      "purpose": ["interop_testing"],
+      "regions": ["GLOBAL-ALLOWLIST"],
+      "retentionDays": 30,
+      "odrl": {
+        "@context": "http://www.w3.org/ns/odrl.jsonld",
+        "@type": "Set",
+        "permission": [
+          {
+            "action": "use",
+            "constraint": [
+              {
+                "leftOperand": "purpose",
+                "operator": "eq",
+                "rightOperand": "interop_testing"
+              }
+            ],
+            "duty": [
+              {
+                "action": "delete",
+                "constraint": [
+                  {
+                    "leftOperand": "elapsedTime",
+                    "operator": "lteq",
+                    "rightOperand": "P30D"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "policy-geofence-eu",
+      "name": "EU Geofence Policy (Additive)",
+      "description": "Attach alongside other policies to enforce EU-only processing",
+      "status": "active",
+      "effectiveDate": "2026-01-27",
+      "legalBasis": "GDPR Chapter V",
+      "purpose": [],
+      "regions": ["EU"],
+      "compositionMode": "additive",
+      "odrl": {
+        "@context": "http://www.w3.org/ns/odrl.jsonld",
+        "@type": "Set",
+        "prohibition": [
+          {
+            "action": "transfer",
+            "constraint": [
+              {
+                "leftOperand": "spatial",
+                "operator": "neq",
+                "rightOperand": "EU"
+              }
+            ],
+            "remedy": [
+              {
+                "action": "obtainConsent",
+                "constraint": [
+                  {
+                    "leftOperand": "mechanism",
+                    "operator": "isAnyOf",
+                    "rightOperand": ["SCC", "adequacyDecision"]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "policy-no-analytics",
+      "name": "No Analytics Policy (Additive)",
+      "description": "Prohibit ANALYZE action for reporting-only datasets",
+      "status": "active",
+      "effectiveDate": "2026-01-27",
+      "legalBasis": "Contract",
+      "purpose": [],
+      "compositionMode": "additive",
+      "odrl": {
+        "@context": "http://www.w3.org/ns/odrl.jsonld",
+        "@type": "Set",
+        "prohibition": [
+          {
+            "action": "analyze"
+          },
+          {
+            "action": "derive"
+          },
+          {
+            "action": "aggregate"
+          }
+        ]
+      }
+    }
+  ],
+  "purposeVocabulary": {
+    "reporting": {
+      "description": "ESRS/GRI/ISSB disclosures for consolidated filings",
+      "defaultPolicyId": "policy-reporting-365d-retention"
+    },
+    "supervisory": {
+      "description": "Bilateral regulator requests (CNMV, EFRAG pilots)",
+      "defaultPolicyId": "policy-supervisory-730d"
+    },
+    "audit": {
+      "description": "Internal/external audit, assurance, traceability",
+      "defaultPolicyId": "policy-audit-540d-trace"
+    },
+    "research": {
+      "description": "Aggregated/non-identifying analytics aligned to contract",
+      "defaultPolicyId": "policy-research-180d"
+    },
+    "interop_testing": {
+      "description": "Connector conformance and latency testing",
+      "defaultPolicyId": "policy-interop-30d"
+    }
+  },
+  "regionVocabulary": {
+    "EU": {
+      "description": "EEA/GDPR scope (default)",
+      "includes": ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO"]
+    },
+    "ES": {
+      "description": "Spain-only handling (AEPD guidance)",
+      "parentRegion": "EU"
+    },
+    "LATAM": {
+      "description": "Mexico, Chile, Brazil pilot nodes",
+      "includes": ["MX", "CL", "BR"]
+    },
+    "GLOBAL-ALLOWLIST": {
+      "description": "EU + trusted partners with adequacy decisions",
+      "includes": ["EU", "CA", "JP", "KR", "GB", "CH", "NZ", "AR", "IL"]
+    }
+  }
+}

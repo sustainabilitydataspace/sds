@@ -1,0 +1,306 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sustainabilitydataspace.com/schema/sds/audit-event-v1.json",
+  "title": "SDS Audit Event Schema",
+  "description": "Schema for audit events with correlation IDs and tamper-evident integrity",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "timestamp",
+    "correlationIds",
+    "actor",
+    "action",
+    "outcome",
+    "integrity"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this audit event"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "negotiation.initiated",
+        "negotiation.completed",
+        "negotiation.rejected",
+        "contract.created",
+        "contract.terminated",
+        "transfer.initiated",
+        "transfer.completed",
+        "transfer.failed",
+        "access.granted",
+        "access.denied",
+        "access.revoked",
+        "policy.evaluated",
+        "policy.enforced",
+        "obligation.triggered",
+        "obligation.fulfilled",
+        "obligation.violated",
+        "retention.expired",
+        "deletion.executed",
+        "issuer.verified",
+        "issuer.rejected",
+        "incident.detected",
+        "incident.resolved"
+      ],
+      "description": "Type of audit event"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with timezone"
+    },
+    "correlationIds": {
+      "type": "object",
+      "description": "IDs for correlating related events across the lifecycle",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "description": "User/connector session identifier"
+        },
+        "negotiationId": {
+          "type": "string",
+          "description": "Contract negotiation process ID"
+        },
+        "contractId": {
+          "type": "string",
+          "description": "Agreed contract identifier"
+        },
+        "transferId": {
+          "type": "string",
+          "description": "Data transfer process ID"
+        },
+        "accessId": {
+          "type": "string",
+          "description": "Individual access request ID"
+        },
+        "policyId": {
+          "type": "string",
+          "description": "Policy evaluated/enforced"
+        },
+        "assetId": {
+          "type": "string",
+          "description": "Data asset/product identifier"
+        },
+        "obligationId": {
+          "type": "string",
+          "description": "Specific obligation being tracked"
+        },
+        "incidentId": {
+          "type": "string",
+          "description": "Security incident identifier"
+        }
+      },
+      "required": ["sessionId"]
+    },
+    "actor": {
+      "type": "object",
+      "description": "Entity performing the action",
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["connector", "user", "service", "system", "administrator"]
+        },
+        "id": {
+          "type": "string",
+          "description": "DID or identifier of the actor"
+        },
+        "organization": {
+          "type": "string",
+          "description": "Organization the actor belongs to"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role from VC if available"
+        },
+        "credentialId": {
+          "type": "string",
+          "description": "Verifiable credential used for authentication"
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "description": "The action being audited",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Action type (use, transfer, delete, etc.)"
+        },
+        "purpose": {
+          "type": "string",
+          "description": "Declared purpose for the action"
+        },
+        "target": {
+          "type": "string",
+          "description": "Target resource identifier"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Additional action parameters",
+          "additionalProperties": true
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "description": "Result of the action",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["success", "failure", "partial", "pending"]
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for outcome, especially for failures"
+        },
+        "policyDecision": {
+          "type": "string",
+          "enum": ["permit", "deny", "indeterminate", "not_applicable"]
+        },
+        "constraints": {
+          "type": "array",
+          "description": "Constraints evaluated",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "satisfied": { "type": "boolean" },
+              "value": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "Environmental context",
+      "properties": {
+        "sourceIp": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "userAgent": {
+          "type": "string"
+        },
+        "geoLocation": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2 country code"
+        },
+        "connectorEndpoint": {
+          "type": "string",
+          "format": "uri"
+        },
+        "protocolVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "description": "Tamper-evident integrity fields",
+      "required": ["algorithm", "previousHash", "eventHash"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["SHA-256", "SHA-384", "SHA-512"],
+          "default": "SHA-256"
+        },
+        "previousHash": {
+          "type": "string",
+          "description": "Hash of previous event in chain (hex)"
+        },
+        "eventHash": {
+          "type": "string",
+          "description": "Hash of this event content (hex)"
+        },
+        "signature": {
+          "type": "string",
+          "description": "Optional digital signature of eventHash"
+        },
+        "signedBy": {
+          "type": "string",
+          "description": "DID of signing entity"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata",
+      "properties": {
+        "schemaVersion": {
+          "type": "string",
+          "default": "1.0"
+        },
+        "source": {
+          "type": "string",
+          "description": "System generating the event"
+        },
+        "retention": {
+          "type": "string",
+          "description": "ISO 8601 duration for retention"
+        },
+        "classification": {
+          "type": "string",
+          "enum": ["public", "internal", "confidential", "restricted"]
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "eventId": "550e8400-e29b-41d4-a716-446655440000",
+      "eventType": "access.granted",
+      "timestamp": "2026-01-27T10:30:00Z",
+      "correlationIds": {
+        "sessionId": "session-abc123",
+        "contractId": "contract-xyz789",
+        "accessId": "access-001",
+        "policyId": "policy-reporting-365d-retention",
+        "assetId": "asset-esrs-e1-indicators"
+      },
+      "actor": {
+        "type": "connector",
+        "id": "did:web:acme.example.com:connector",
+        "organization": "ACME Corporation",
+        "role": "data_consumer",
+        "credentialId": "vc:abc123"
+      },
+      "action": {
+        "type": "use",
+        "purpose": "reporting",
+        "target": "urn:sds:asset:esrs-e1-indicators"
+      },
+      "outcome": {
+        "status": "success",
+        "policyDecision": "permit",
+        "constraints": [
+          { "name": "purpose", "satisfied": true, "value": "reporting" },
+          { "name": "spatial", "satisfied": true, "value": "EU" }
+        ]
+      },
+      "context": {
+        "sourceIp": "192.168.1.100",
+        "geoLocation": "ES",
+        "connectorEndpoint": "https://acme.example.com/edc"
+      },
+      "integrity": {
+        "algorithm": "SHA-256",
+        "previousHash": "a1b2c3d4e5f6...",
+        "eventHash": "f6e5d4c3b2a1..."
+      },
+      "metadata": {
+        "schemaVersion": "1.0",
+        "source": "sds-connector-01",
+        "retention": "P730D",
+        "classification": "internal"
+      }
+    }
+  ]
+}

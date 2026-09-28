@@ -29,15 +29,14 @@ class _StoredUser:
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime]
+    auth_version: int = 0
 
 
 class InMemoryUserStore:
     """Offline-safe user store (ephemeral, per-process)."""
 
-    def __init__(self, *, seed_defaults: bool = True):
+    def __init__(self):
         self._users: Dict[str, _StoredUser] = {}
-        if seed_defaults:
-            self._seed_defaults()
 
     def authenticate(self, *, username: str, password: str) -> Optional[User]:
         stored = self._users.get(username)
@@ -80,6 +79,7 @@ class InMemoryUserStore:
             created_at=now,
             updated_at=now,
             last_login=None,
+            auth_version=0,
         )
         self._users[user.username] = stored
         return self._to_user(stored)
@@ -97,12 +97,18 @@ class InMemoryUserStore:
             stored.full_name = update.full_name
 
         if allow_admin_fields:
+            security_changed = False
             if update.company_id:
                 stored.company_id = update.company_id
+                security_changed = True
             if update.role:
                 stored.role = update.role
+                security_changed = True
             if update.is_active is not None:
                 stored.is_active = update.is_active
+                security_changed = True
+            if security_changed:
+                stored.auth_version += 1
 
         stored.updated_at = datetime.now(timezone.utc)
         return self._to_user(stored)
@@ -116,74 +122,17 @@ class InMemoryUserStore:
         if not jwt_handler.verify_password(current_password, stored.password_hash):
             return False
         stored.password_hash = jwt_handler.hash_password(new_password)
+        stored.auth_version += 1
         stored.updated_at = datetime.now(timezone.utc)
         return True
 
-    def _seed_defaults(self) -> None:
-        # Mirror the previous MOCK_USERS so the offline test suite remains stable.
-        now = datetime.now(timezone.utc)
-
-        def add(
-            *,
-            user_id: str,
-            username: str,
-            password: str,
-            email: str,
-            full_name: str,
-            role: UserRole,
-            company_id: str,
-            is_active: bool = True,
-        ) -> None:
-            self._users[username] = _StoredUser(
-                id=user_id,
-                username=username,
-                email=email,
-                full_name=full_name,
-                company_id=company_id,
-                role=role,
-                is_active=is_active,
-                password_hash=jwt_handler.hash_password(password),
-                created_at=now,
-                updated_at=now,
-                last_login=None,
-            )
-
-        add(
-            user_id="admin-001",
-            username="admin",
-            password="admin123",
-            email="admin@sustainabilitydata.space",
-            full_name="System Administrator",
-            role=UserRole.ADMIN,
-            company_id="sds_company",
-        )
-        add(
-            user_id="dm-001",
-            username="data_manager",
-            password="manager123",
-            email="manager@sustainabilitydata.space",
-            full_name="Data Manager",
-            role=UserRole.DATA_MANAGER,
-            company_id="sds_company",
-        )
-        add(
-            user_id="analyst-001",
-            username="analyst",
-            password="analyst123",
-            email="analyst@sustainabilitydata.space",
-            full_name="ESG Analyst",
-            role=UserRole.ANALYST,
-            company_id="sds_company",
-        )
-        add(
-            user_id="viewer-001",
-            username="viewer",
-            password="viewer123",
-            email="viewer@sustainabilitydata.space",
-            full_name="Data Viewer",
-            role=UserRole.VIEWER,
-            company_id="sds_company",
-        )
+    def invalidate_sessions(self, *, username: str) -> bool:
+        stored = self._users.get(username)
+        if not stored:
+            return False
+        stored.auth_version += 1
+        stored.updated_at = datetime.now(timezone.utc)
+        return True
 
     @staticmethod
     def _to_user(stored: _StoredUser) -> User:
@@ -199,6 +148,7 @@ class InMemoryUserStore:
             updated_at=stored.updated_at,
             last_login=stored.last_login,
             permissions=ROLE_PERMISSIONS.get(stored.role, []),
+            auth_version=stored.auth_version,
         )
 
 
@@ -216,9 +166,15 @@ class DatabaseUserStore:
             return None
 
         now = datetime.now(timezone.utc)
-        self._repo.set_last_login(record.id, last_login=now)
-        record.last_login = now
-        return self._to_user(record)
+        current_record = self._repo.record_successful_login_if_current(
+            user_id=record.id,
+            observed_password_hash=record.password_hash,
+            observed_auth_version=int(getattr(record, "auth_version", 0)),
+            last_login=now,
+        )
+        if current_record is None:
+            return None
+        return self._to_user(current_record)
 
     def get_user(self, *, username: str) -> Optional[User]:
         record = self._repo.get_user_by_username(username)
@@ -262,14 +218,27 @@ class DatabaseUserStore:
         if update.full_name is not None:
             updates["full_name"] = update.full_name
         if allow_admin_fields:
+            security_changed = False
             if update.company_id:
                 updates["company_id"] = update.company_id
+                security_changed = True
             if update.role:
                 updates["role"] = update.role.value
+                security_changed = True
             if update.is_active is not None:
                 updates["is_active"] = update.is_active
+                security_changed = True
+        else:
+            security_changed = False
 
-        record = self._repo.update_user(record.id, **updates) or record
+        record = (
+            self._repo.update_user(
+                record.id,
+                increment_auth_version=security_changed,
+                **updates,
+            )
+            or record
+        )
         return self._to_user(record)
 
     def change_password(
@@ -280,9 +249,18 @@ class DatabaseUserStore:
             return False
         if not jwt_handler.verify_password(current_password, record.password_hash):
             return False
-        return self._repo.update_password_hash(
-            record.id, jwt_handler.hash_password(new_password)
+        return self._repo.update_password_hash_if_current(
+            user_id=record.id,
+            observed_password_hash=record.password_hash,
+            observed_auth_version=int(getattr(record, "auth_version", 0)),
+            password_hash=jwt_handler.hash_password(new_password),
         )
+
+    def invalidate_sessions(self, *, username: str) -> bool:
+        record = self._repo.get_user_by_username(username)
+        if not record:
+            return False
+        return self._repo.invalidate_sessions(record.id)
 
     @staticmethod
     def _to_user(record) -> User:
@@ -299,6 +277,7 @@ class DatabaseUserStore:
             updated_at=record.updated_at,
             last_login=getattr(record, "last_login", None),
             permissions=ROLE_PERMISSIONS.get(role, []),
+            auth_version=int(getattr(record, "auth_version", 0)),
         )
 
 

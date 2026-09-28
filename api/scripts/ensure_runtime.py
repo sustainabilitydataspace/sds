@@ -7,7 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 API_ROOT = Path(__file__).resolve().parents[1]
 VENV_DIR = API_ROOT / ".venv"
 
@@ -72,7 +71,9 @@ def ensure_runtime() -> Path:
         raise SystemExit(1)
 
     if not _has_uvicorn(python_path):
-        print(f"Missing runtime packages in {python_path}; installing requirements.txt...")
+        print(
+            f"Missing runtime packages in {python_path}; installing requirements.txt..."
+        )
         _run([str(python_path), "-m", "pip", "install", "--upgrade", "pip"])
         _run([str(python_path), "-m", "pip", "install", "-r", "requirements.txt"])
 
@@ -81,8 +82,14 @@ def ensure_runtime() -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--start", action="store_true", help="Start uvicorn after ensuring runtime dependencies.")
-    parser.add_argument("--reload", action="store_true", help="Pass --reload to uvicorn.")
+    parser.add_argument(
+        "--start",
+        action="store_true",
+        help="Start uvicorn after ensuring runtime dependencies.",
+    )
+    parser.add_argument(
+        "--reload", action="store_true", help="Pass --reload to uvicorn."
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default="8090")
     args = parser.parse_args()
@@ -92,7 +99,13 @@ def main() -> int:
     if not args.start:
         return 0
 
-    command = [str(python_path), "-m", "uvicorn", "src.api.main:app"]
+    command = [
+        str(python_path),
+        "-m",
+        "uvicorn",
+        "src.api.main:app",
+        "--no-proxy-headers",
+    ]
     if args.reload:
         command.append("--reload")
     command.extend(["--host", args.host, "--port", str(args.port)])

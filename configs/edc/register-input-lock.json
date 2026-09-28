@@ -1,0 +1,27 @@
+{
+  "schema_version": "sds-e6-register-input-lock-v1",
+  "contract_version": "atomizer-sds-register-package-v1",
+  "source_project": "atomizer",
+  "source_version": "b75c9d43",
+  "row_count": 1805,
+  "manifest_sha256": "0be17a4474c09e4bc6287ea1a101757784abd81609da0b5e998c7274b7c1a4fa",
+  "manifest_size_bytes": 3867,
+  "checksum_sha256": "1fe6c51c4574753cf0e0b870a4cd9e7c4a5080796db970c606b954b0045d8611",
+  "checksum_size_bytes": 185,
+  "payloads": {
+    "sds_dataset_register.csv": {
+      "sha256": "2da599059431b9348980d714e5b7821592e263bcd2fa8cd1cc4f59477942b938",
+      "size_bytes": 1045283
+    },
+    "sds_dataset_register.json": {
+      "sha256": "d169d670f4cf774027b9ef619eadf02eb4d628350243e2e8e7a076a389c746df",
+      "size_bytes": 1877711
+    }
+  },
+  "ancillary_payloads": {
+    "summary.json": {
+      "sha256": "38b5a5a7cbcef44ae2c24c1bffc19207aaf2843ec2b7eafc5d73a21714d9ea56",
+      "size_bytes": 4705
+    }
+  }
+}

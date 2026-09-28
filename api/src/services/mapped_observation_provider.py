@@ -9,7 +9,10 @@ from typing import Any
 
 from src.calculation.contracts import ContractExecutionError
 from src.calculation.value_provider import ObservationSnapshot
-from src.services.value_resolution import find_mapping_routes
+from src.services.value_resolution import (
+    _has_conflicting_transfer_authority,
+    find_mapping_routes,
+)
 
 
 class MappingAwareObservationProvider:
@@ -61,6 +64,12 @@ class MappingAwareObservationProvider:
         )
         if not routes:
             return direct
+
+        if _has_conflicting_transfer_authority(routes):
+            raise ContractExecutionError(
+                f"{contract_input.local_variable}: contradictory mapping authority for "
+                f"{contract_input.concept}; numeric transfer is refused"
+            )
 
         eligible_routes = _eligible_routes(contract_input, routes)
         if not eligible_routes:
@@ -128,7 +137,10 @@ def _eligible_routes(contract_input: Any, routes: list[Any]) -> list[Any]:
         route
         for route in routes
         if route.is_equivalent
-        or _normalize_relationship(route.relationship_type) in allowed
+        or (
+            route.direction == "forward"
+            and _normalize_relationship(route.relationship_type) in allowed
+        )
     ]
 
 

@@ -4,9 +4,10 @@ Authentication and authorization models.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic.json_schema import SkipJsonSchema
 
 
 class UserRole(str, Enum):
@@ -100,6 +101,15 @@ class User(UserBase):
     updated_at: datetime
     last_login: Optional[datetime] = None
     permissions: List[Permission] = Field(default_factory=list)
+    auth_version: SkipJsonSchema[int] = Field(0, exclude=True, repr=False)
+    # Request-local provenance, never persisted or returned as user data.
+    # A store-loaded user has no authentication method until auth binds a copy.
+    auth_method: SkipJsonSchema[Optional[Literal["bearer", "api_key"]]] = Field(
+        None, frozen=True, exclude=True, repr=False
+    )
+    api_key_id: SkipJsonSchema[Optional[str]] = Field(
+        None, frozen=True, exclude=True, repr=False
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -154,7 +164,13 @@ class TokenData(BaseModel):
     role: UserRole
     company_id: Optional[str] = None
     permissions: List[Permission] = Field(default_factory=list)
-    auth_method: str = "bearer"
+    auth_version: SkipJsonSchema[int] = Field(0, exclude=True, repr=False)
+    auth_method: SkipJsonSchema[Literal["bearer", "api_key"]] = Field(
+        "bearer", frozen=True, exclude=True, repr=False
+    )
+    api_key_id: SkipJsonSchema[Optional[str]] = Field(
+        None, frozen=True, exclude=True, repr=False
+    )
     exp: Optional[datetime] = None
     iat: Optional[datetime] = None
 

@@ -1,0 +1,153 @@
+name: Docker Quickstart Smoke
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/docker-quickstart-smoke.yml"
+      - "api/.dockerignore"
+      - "api/Dockerfile"
+      - "api/compose.yml"
+      - "api/.env.example"
+      - "api/requirements.txt"
+      - "api/requirements.lock"
+      - "api/scripts/smoke_stack.sh"
+      - "api/scripts/demo_runtime.py"
+      - "api/scripts/gate_value_import_performance.py"
+      - "api/demo/**"
+      - "api/src/**"
+      - "api/ontologies/**"
+      - "api/alembic.ini"
+      - "api/alembic/**"
+  pull_request:
+    paths:
+      - ".github/workflows/docker-quickstart-smoke.yml"
+      - "api/.dockerignore"
+      - "api/Dockerfile"
+      - "api/compose.yml"
+      - "api/.env.example"
+      - "api/requirements.txt"
+      - "api/requirements.lock"
+      - "api/scripts/smoke_stack.sh"
+      - "api/scripts/demo_runtime.py"
+      - "api/scripts/gate_value_import_performance.py"
+      - "api/demo/**"
+      - "api/src/**"
+      - "api/ontologies/**"
+      - "api/alembic.ini"
+      - "api/alembic/**"
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-quickstart-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-docker-quickstart-smoke:
+    name: API Docker quickstart smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare quickstart environment
+        working-directory: api
+        run: |
+          JWT_SECRET_KEY="$(openssl rand -hex 32)"
+          EXPORT_SIGNING_SECRET="$(openssl rand -hex 32)"
+          POSTGRES_PASSWORD="$(openssl rand -hex 32)"
+          BOOTSTRAP_ADMIN_PASSWORD="$(openssl rand -hex 32)"
+          cat > .env <<EOF
+          JWT_SECRET_KEY=${JWT_SECRET_KEY}
+          EXPORT_SIGNING_SECRET=${EXPORT_SIGNING_SECRET}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}
+          PORTAL_MOUNT_ENABLED=false
+          POSTGRES_PORT=55432
+          ALLOWED_ORIGINS=["http://localhost:8090"]
+          EOF
+          DATABASE_URL="postgresql://sds:${POSTGRES_PASSWORD}@127.0.0.1:55432/sds"
+          printf 'DATABASE_URL=%s\n' "$DATABASE_URL" >> "$GITHUB_ENV"
+
+      - name: Start quickstart stack
+        working-directory: api
+        run: docker compose --env-file .env -f compose.yml up -d --build
+
+      - name: Set up Python for demo qualification
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+
+      - name: Install demo qualification dependencies
+        working-directory: api
+        run: python -m pip install -r requirements.txt
+
+      - name: Run functional quickstart smoke
+        working-directory: api
+        run: NO_START=1 bash scripts/smoke_stack.sh minimal
+
+      - name: Qualify public synthetic demo, API conversions, and 1k regression tripwire
+        working-directory: api
+        env:
+          VALUE_REVISION_API_ENABLED: "true"
+          VALUE_REVISION_DUAL_WRITE_ENABLED: "true"
+          VALUE_REVISION_PRIMARY_READ_PATH: revision
+          PYTHON: ${{ env.pythonLocation }}/bin/python
+        run: |
+          make demo-manifest
+          make demo-install
+          export DEMO_CI_BOOTSTRAP_ADMIN_PASSWORD="$(sed -n 's/^BOOTSTRAP_ADMIN_PASSWORD=//p' .env)"
+          make demo-verify DEMO_VERIFY_ARGS="--ci-api-principal --api-url http://127.0.0.1:8090"
+          make demo-benchmark
+          make demo-reset
+
+      - name: Show quickstart diagnostics on failure
+        if: failure()
+        working-directory: api
+        run: |
+          docker compose --env-file .env -f compose.yml ps
+
+      - name: Capture quickstart evidence
+        if: always()
+        working-directory: api
+        run: |
+          mkdir -p artifacts/docker-quickstart
+          printf 'captured_at_utc=%s\ncommit=%s\nrun_id=%s\nrun_attempt=%s\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            "$(git rev-parse HEAD)" \
+            "${GITHUB_RUN_ID}" \
+            "${GITHUB_RUN_ATTEMPT}" \
+            > artifacts/docker-quickstart/run-metadata.txt
+          docker compose --env-file .env -f compose.yml ps --format json \
+            > artifacts/docker-quickstart/compose-ps.json 2>&1 || true
+          curl -sS -D artifacts/docker-quickstart/healthz.headers \
+            -o artifacts/docker-quickstart/healthz.body \
+            http://127.0.0.1:8090/healthz || true
+          curl -sS -D artifacts/docker-quickstart/ready.headers \
+            -o artifacts/docker-quickstart/ready.body \
+            http://127.0.0.1:8090/ready || true
+
+
+      - name: Upload quickstart evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-quickstart-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: api/artifacts/docker-quickstart/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Stop quickstart stack
+        if: always()
+        working-directory: api
+        run: docker compose --env-file .env -f compose.yml down -v --remove-orphans
