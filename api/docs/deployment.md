@@ -371,6 +371,68 @@ credentialed API smoke checks only from a private operator environment; never
 write passwords, tokens, authentication headers, or production environment
 values into this repository.
 
+### Application-user provisioning for CI
+
+For an existing database, provision application users with the generic
+`scripts/provision_application_user.py` command. It uses the application's
+configured database session and intentionally has no password option. Supply
+the password only through standard input; Jenkins Credentials must be the
+secret source, and the pipeline must not echo the binding, put it in an
+argument, or persist it in build output.
+
+```powershell
+<private-credential-binding> | python scripts/provision_application_user.py `
+  --username <application-username> `
+  --email <application-email> `
+  --full-name <application-full-name> `
+  --company-id <optional-company-id> `
+  --role <existing-role> `
+  --active true
+```
+
+The command emits only one machine-readable JSON result. It creates a missing
+account with the supplied exact fields, or verifies an existing account only
+when its non-secret profile and supplied password already match. A password
+mismatch, profile/role/active-state drift, duplicate write, or database failure
+is fail-closed and does not disclose credentials, hashes, database details, or
+the requested account fields.
+
+Password rotation is deliberate and one-time: add `--rotate-password` only to
+the approved rotation invocation. Rotation changes the password credential and
+increments its session version, invalidating existing sessions. Subsequent
+deployments must omit that flag and remain verify-only; they must never rotate a
+password implicitly.
+
+After a successful CI step, perform the private operator smoke check with the
+intended analyst account. Verify these concrete A2.3 authorization checks:
+
+- `GET /auth/me` returns `200` and identifies an active analyst profile.
+- `GET /api/v1/indicators?limit=1` returns `200`.
+- `GET /api/v1/values` returns `200` using query parameters
+  `entity=nh_group`, `period_start=2024-01-01`, `period_end=2024-12-31`, and
+  `limit=10`.
+- `POST /api/v1/calculate` with `concept=urn:sds:reg:esrs:e1_5_02`,
+  `entity=nh_group`, `period=2024`, and `include_trace=true` returns `200`
+  and includes `trace` in the response.
+- `GET /api/v1/mappings/search?source_standard=ESRS&target_standard=GRI&target_code=GRI%20305&limit=10`
+  returns `200`.
+- `GET /api/v1/calculate/dependencies/urn:sds:reg:esrs:e1_5_02` returns
+  `200`.
+- `POST /api/v1/values` with an otherwise valid value request returns `403`.
+
+Do not add a crosswalk endpoint check: no crosswalk router is registered. Keep
+credentials, tokens, request headers, and account-specific response bodies out
+of Jenkins logs and this repository.
+
+This CLI cannot deactivate or repair a drifted account; that is intentional.
+Use the separately approved administrative procedure for deactivation or
+profile changes, then run this command in verify-only mode. A database rollback
+that restores a pre-rotation user row or `auth_version` can make unexpired old
+access or refresh tokens valid again. Fail closed: before reopening access,
+reapply or advance the credential epoch and the approved current password, or
+rotate and revoke credentials through the approved procedure. Never assume an
+old session remains invalid after rollback.
+
 ### Native hosted release helper
 
 For the native hosted API, use the checked-in helper
