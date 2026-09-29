@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-29
+
+- Añadido `api/scripts/provision_application_user.py` para que Jenkins cree,
+  verifique o rote explícitamente usuarios de aplicación en PostgreSQL. La
+  contraseña solo entra por entrada estándar; los desajustes de perfil fallan
+  sin elevar privilegios ni aplicar cambios parciales; una rotación avanza
+  `auth_version`; y los despliegues ordinarios verifican sin rotar.
+- Documentado el primer aprovisionamiento de `admin` y `analyst`, la custodia en
+  Jenkins Credentials, la recuperación segura tras restaurar una base de datos
+  y las comprobaciones funcionales del rol `analyst`, incluida la denegación de
+  escritura con HTTP 403.
+- La CI pública de la versión publicada aprobó compatibilidad con Python 3.11 y
+  3.12, lint, seguridad y cobertura completa. La configuración de credenciales
+  y la ejecución en producción continúan pendientes del responsable de Jenkins.
+
 ## 2026-09-28
 
 - Incorporado el código completo de la API, migraciones, CLI, contratos,
