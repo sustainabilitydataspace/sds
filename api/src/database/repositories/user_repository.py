@@ -53,6 +53,42 @@ class UserRepository:
     def get_user_by_id(self, user_id: str) -> Optional[UserAccount]:
         return self.db.query(UserAccount).filter(UserAccount.id == user_id).first()
 
+    def get_user_by_email(self, email: str) -> Optional[UserAccount]:
+        """Exact match, the same semantics as the unique email constraint."""
+        return self.db.query(UserAccount).filter(UserAccount.email == email).first()
+
+    def set_password_hash_if_version(
+        self,
+        *,
+        user_id: str,
+        observed_auth_version: int,
+        password_hash: str,
+    ) -> Optional[UserAccount]:
+        """Replace a password and revoke sessions only if no concurrent change won."""
+        updated = (
+            self.db.query(UserAccount)
+            .filter(
+                UserAccount.id == user_id,
+                func.coalesce(UserAccount.auth_version, 0) == observed_auth_version,
+            )
+            .update(
+                {
+                    "password_hash": password_hash,
+                    "auth_version": func.coalesce(UserAccount.auth_version, 0) + 1,
+                },
+                synchronize_session=False,
+            )
+        )
+        if updated != 1:
+            self.db.rollback()
+            return None
+        self.db.commit()
+        record = self.get_user_by_id(user_id)
+        if record is None:
+            return None
+        self.db.refresh(record)
+        return record
+
     def update_user(
         self, user_id: str, *, increment_auth_version: bool = False, **kwargs
     ) -> Optional[UserAccount]:

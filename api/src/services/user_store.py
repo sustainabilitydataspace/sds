@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from fastapi import Depends, HTTPException, Request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.auth.jwt_handler import jwt_handler
@@ -85,19 +86,33 @@ class InMemoryUserStore:
         return self._to_user(stored)
 
     def update_user(
-        self, *, username: str, update: UserUpdate, allow_admin_fields: bool
+        self,
+        *,
+        username: str,
+        update: UserUpdate,
+        allow_admin_fields: bool,
+        revoke_sessions: bool = False,
     ) -> Optional[User]:
         stored = self._users.get(username)
         if not stored:
             return None
 
+        if update.email and any(
+            other.email == str(update.email) and other.username != username
+            for other in self._users.values()
+        ):
+            raise ValueError("email already in use")
+
+        changed = False
         if update.email:
             stored.email = str(update.email)
+            changed = True
         if update.full_name is not None:
             stored.full_name = update.full_name
+            changed = True
 
+        security_changed = False
         if allow_admin_fields:
-            security_changed = False
             if update.company_id:
                 stored.company_id = update.company_id
                 security_changed = True
@@ -107,9 +122,18 @@ class InMemoryUserStore:
             if update.is_active is not None:
                 stored.is_active = update.is_active
                 security_changed = True
-            if security_changed:
-                stored.auth_version += 1
+        if security_changed or (revoke_sessions and changed):
+            stored.auth_version += 1
 
+        stored.updated_at = datetime.now(timezone.utc)
+        return self._to_user(stored)
+
+    def admin_set_password(self, *, username: str, new_password: str) -> Optional[User]:
+        stored = self._users.get(username)
+        if not stored:
+            return None
+        stored.password_hash = jwt_handler.hash_password(new_password)
+        stored.auth_version += 1
         stored.updated_at = datetime.now(timezone.utc)
         return self._to_user(stored)
 
@@ -206,7 +230,12 @@ class DatabaseUserStore:
         return self._to_user(record)
 
     def update_user(
-        self, *, username: str, update: UserUpdate, allow_admin_fields: bool
+        self,
+        *,
+        username: str,
+        update: UserUpdate,
+        allow_admin_fields: bool,
+        revoke_sessions: bool = False,
     ) -> Optional[User]:
         record = self._repo.get_user_by_username(username)
         if not record:
@@ -214,11 +243,15 @@ class DatabaseUserStore:
 
         updates: dict[str, object] = {}
         if update.email:
-            updates["email"] = str(update.email)
+            email = str(update.email)
+            owner = self._repo.get_user_by_email(email)
+            if owner is not None and owner.id != record.id:
+                raise ValueError("email already in use")
+            updates["email"] = email
         if update.full_name is not None:
             updates["full_name"] = update.full_name
+        security_changed = False
         if allow_admin_fields:
-            security_changed = False
             if update.company_id:
                 updates["company_id"] = update.company_id
                 security_changed = True
@@ -228,18 +261,33 @@ class DatabaseUserStore:
             if update.is_active is not None:
                 updates["is_active"] = update.is_active
                 security_changed = True
-        else:
-            security_changed = False
 
-        record = (
-            self._repo.update_user(
+        try:
+            updated = self._repo.update_user(
                 record.id,
-                increment_auth_version=security_changed,
+                increment_auth_version=security_changed
+                or (revoke_sessions and bool(updates)),
                 **updates,
             )
-            or record
+        except IntegrityError:
+            # The unique email constraint is the race-safe backstop.
+            self._repo.db.rollback()
+            raise ValueError("email already in use") from None
+        # The repository rolled back; never report the pre-update record as saved.
+        if updated is None:
+            return None
+        return self._to_user(updated)
+
+    def admin_set_password(self, *, username: str, new_password: str) -> Optional[User]:
+        record = self._repo.get_user_by_username(username)
+        if not record:
+            return None
+        updated = self._repo.set_password_hash_if_version(
+            user_id=record.id,
+            observed_auth_version=int(getattr(record, "auth_version", 0)),
+            password_hash=jwt_handler.hash_password(new_password),
         )
-        return self._to_user(record)
+        return self._to_user(updated) if updated is not None else None
 
     def change_password(
         self, *, username: str, current_password: str, new_password: str

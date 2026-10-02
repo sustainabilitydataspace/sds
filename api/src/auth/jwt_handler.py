@@ -291,7 +291,8 @@ class JWTHandler:
             if user_lookup is not None:
                 user = user_lookup(user_id)
                 if user is None or not getattr(user, "is_active", False):
-                    if require_user:
+                    # A known but deactivated user is rejected in every mode.
+                    if require_user or user is not None:
                         self.logger.warning(
                             "Refresh token user invalid or inactive", user_id=user_id
                         )

@@ -6,6 +6,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Callable, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials
 
 import structlog
@@ -19,6 +23,8 @@ from src.auth.dependencies import (
 )
 from src.auth.jwt_handler import jwt_handler
 from src.auth.models import (
+    AdminPasswordReset,
+    AdminUserUpdate,
     APIKeyCreate,
     APIKeyInfoResponse,
     APIKeyResponse,
@@ -340,11 +346,17 @@ async def update_current_user(
                 detail="Administrative user fields require manage_users permission",
             )
 
-        updated = store.update_user(
-            username=current_user.username,
-            update=user_update,
-            allow_admin_fields=allow_admin_fields,
-        )
+        try:
+            updated = store.update_user(
+                username=current_user.username,
+                update=user_update,
+                allow_admin_fields=allow_admin_fields,
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already in use",
+            )
 
         updated_user = updated or current_user
 
@@ -506,6 +518,251 @@ async def create_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="User creation failed",
         )
+
+
+class _SecretSafeValidationRoute(APIRoute):
+    """Return 422 details without echoing submitted values (e.g. passwords)."""
+
+    def get_route_handler(self) -> Callable:
+        handler = super().get_route_handler()
+
+        async def secret_safe_handler(request: Request):
+            try:
+                return await handler(request)
+            except RequestValidationError as exc:
+                errors = [
+                    {k: v for k, v in error.items() if k not in ("input", "ctx")}
+                    for error in exc.errors()
+                ]
+                return JSONResponse(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    content={"detail": jsonable_encoder(errors)},
+                )
+
+        return secret_safe_handler
+
+
+admin_users_router = APIRouter(route_class=_SecretSafeValidationRoute)
+
+
+def _require_admin_bearer(current_user: User) -> None:
+    require_bearer_authentication(current_user)
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrative user fields require manage_users permission",
+        )
+
+
+def _deny(event: str, reason: str, current_user: User, username: str) -> None:
+    logger.warning(
+        event,
+        reason=reason,
+        actor_user_id=current_user.id,
+        target_username=username,
+    )
+
+
+@admin_users_router.put(
+    "/users/{username}",
+    response_model=UserResponse,
+    summary="Update another user's profile, tenant, role or active state",
+    description=(
+        "Set email, full_name, company_id (tenant), role or is_active of another "
+        "existing user (Admin bearer only). Revokes the target's existing "
+        "sessions. Use /auth/me for your own account and "
+        "/auth/users/{username}/reset-password for passwords."
+    ),
+    dependencies=[Depends(require_permission(Permission.MANAGE_USERS))],
+)
+@limiter.limit("5/minute")
+async def admin_update_user(
+    request: Request,
+    username: str,
+    user_update: AdminUserUpdate,
+    current_user: User = Depends(get_current_active_user),
+    store=Depends(get_user_store),
+) -> UserResponse:
+    """
+    Update profile, tenant, role or active state of another user (Admin only).
+    """
+    requested_fields = sorted(user_update.model_fields_set)
+    try:
+        _require_admin_bearer(current_user)
+        logger.info(
+            "admin_user_update_attempt",
+            actor_user_id=current_user.id,
+            target_username=username,
+            requested_fields=requested_fields,
+        )
+
+        if username == current_user.username:
+            _deny("admin_user_update_denied", "self_target", current_user, username)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Use /auth/me to update your own account",
+            )
+
+        not_found = HTTPException(status_code=404, detail="User not found")
+        if store.get_user(username=username) is None:
+            _deny("admin_user_update_denied", "not_found", current_user, username)
+            raise not_found
+
+        try:
+            updated = store.update_user(
+                username=username,
+                update=UserUpdate(**user_update.model_dump(exclude_unset=True)),
+                allow_admin_fields=True,
+                revoke_sessions=True,
+            )
+        except ValueError:
+            _deny("admin_user_update_denied", "email_conflict", current_user, username)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already in use",
+            )
+        if updated is None:
+            if store.get_user(username=username) is None:
+                _deny("admin_user_update_denied", "not_found", current_user, username)
+                raise not_found
+            raise RuntimeError("user update was not persisted")
+
+        # Email and full_name values are personal data: log field names only.
+        logger.info(
+            "admin_user_updated",
+            actor_user_id=current_user.id,
+            target_user_id=updated.id,
+            changed_fields=requested_fields,
+            company_id=updated.company_id,
+            role=updated.role.value,
+            is_active=updated.is_active,
+            auth_version=updated.auth_version,
+        )
+
+        return UserResponse(
+            id=updated.id,
+            username=updated.username,
+            email=updated.email,
+            full_name=updated.full_name,
+            company_id=updated.company_id,
+            role=updated.role,
+            is_active=updated.is_active,
+            created_at=updated.created_at,
+            last_login=updated.last_login,
+            permissions=updated.permissions,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "admin_user_update_failed",
+            actor_user_id=current_user.id,
+            target_username=username,
+            error_type=type(e).__name__,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="User update failed",
+        )
+
+
+@admin_users_router.post(
+    "/users/{username}/reset-password",
+    summary="Reset another user's password",
+    description=(
+        "Set a new password for another existing user (Admin bearer only). The "
+        "password must meet the application policy and is never returned. "
+        "Revokes the target's existing sessions; an inactive user stays inactive. "
+        "Use /auth/change-password for your own password."
+    ),
+    dependencies=[Depends(require_permission(Permission.MANAGE_USERS))],
+)
+@limiter.limit("5/minute")
+async def admin_reset_password(
+    request: Request,
+    username: str,
+    password_reset: AdminPasswordReset,
+    current_user: User = Depends(get_current_active_user),
+    store=Depends(get_user_store),
+) -> Dict[str, str]:
+    """
+    Reset the password of another user (Admin only).
+    """
+    try:
+        _require_admin_bearer(current_user)
+        logger.info(
+            "admin_user_password_reset_attempt",
+            actor_user_id=current_user.id,
+            target_username=username,
+        )
+
+        if username == current_user.username:
+            _deny(
+                "admin_user_password_reset_denied",
+                "self_target",
+                current_user,
+                username,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Use /auth/change-password to change your own password",
+            )
+
+        not_found = HTTPException(status_code=404, detail="User not found")
+        if store.get_user(username=username) is None:
+            _deny(
+                "admin_user_password_reset_denied", "not_found", current_user, username
+            )
+            raise not_found
+
+        updated = store.admin_set_password(
+            username=username, new_password=password_reset.new_password
+        )
+        if updated is None:
+            if store.get_user(username=username) is None:
+                _deny(
+                    "admin_user_password_reset_denied",
+                    "not_found",
+                    current_user,
+                    username,
+                )
+                raise not_found
+            _deny(
+                "admin_user_password_reset_denied",
+                "concurrent_update",
+                current_user,
+                username,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Concurrent update, retry",
+            )
+
+        logger.info(
+            "admin_user_password_reset_succeeded",
+            actor_user_id=current_user.id,
+            target_user_id=updated.id,
+            auth_version=updated.auth_version,
+        )
+        return {"message": "Password reset"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "admin_user_password_reset_failed",
+            actor_user_id=current_user.id,
+            target_username=username,
+            error_type=type(e).__name__,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Password reset failed",
+        )
+
+
+router.include_router(admin_users_router)
 
 
 @router.post(

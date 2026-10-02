@@ -433,6 +433,40 @@ reapply or advance the credential epoch and the approved current password, or
 rotate and revoke credentials through the approved procedure. Never assume an
 old session remains invalid after rollback.
 
+### Managing another user's profile, tenant, role, state and password
+
+An administrator manages other accounts through two endpoints. Both accept only
+a bearer token of an `admin` holding `manage_users`; API keys and other roles
+receive `403`, targeting yourself returns `400` (use `/auth/me` or
+`/auth/change-password`), an unknown user returns `404`, and each is limited to
+5 requests per minute per client. Validation errors (`422`) never echo the
+submitted values.
+
+- `PUT /auth/users/{username}` sets any of `email`, `full_name`, `company_id`
+  (tenant), `role` and `is_active`. At least one field is required; `username`
+  cannot be changed; blank or placeholder tenants are rejected. An email already
+  used by another account (exact match, as enforced by the database) returns
+  `409` without changes.
+- `POST /auth/users/{username}/reset-password` with `{"new_password": "..."}`
+  sets a password that meets the application policy (at least 12 characters,
+  three of lowercase/uppercase/digits/symbols, at most 72 UTF-8 bytes, no
+  placeholder words). The response never contains the password. An inactive
+  user stays inactive; a concurrent change returns `409`.
+
+```powershell
+curl.exe -X PUT https://<api-host>/auth/users/analyst `
+  -H "Authorization: Bearer <admin-access-token>" `
+  -H "Content-Type: application/json" `
+  -d '{"company_id": "<tenant-id>"}'
+```
+
+Every successful change advances the target's `auth_version`, so the target's
+existing access and refresh tokens stop working and the user must log in
+again. There is no tenant registry: confirm the exact `company_id` that owns the
+data before assigning it. Run these calls only from a private operator
+environment, deliver reset passwords through an approved secure channel, and
+keep admin tokens and passwords out of logs and this repository.
+
 ### Native hosted release helper
 
 For the native hosted API, use the checked-in helper

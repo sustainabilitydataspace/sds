@@ -6,7 +6,15 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StrictBool,
+    field_validator,
+    model_validator,
+)
 from pydantic.json_schema import SkipJsonSchema
 
 
@@ -91,6 +99,76 @@ class UserUpdate(BaseModel):
     company_id: Optional[str] = Field(None, max_length=50)
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
+
+
+class AdminUserUpdate(BaseModel):
+    """Administrative change of another user's profile, tenant, role or state."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    company_id: Optional[str] = None
+    role: Optional[UserRole] = None
+    is_active: Optional[StrictBool] = None
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+
+    @field_validator("full_name")
+    @classmethod
+    def _valid_full_name(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("full_name must not be blank")
+        if len(value) > 100:
+            raise ValueError("full_name must be at most 100 characters")
+        return value
+
+    @field_validator("company_id")
+    @classmethod
+    def _valid_company_id(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        # Imported lazily: value_store depends on the API layer.
+        from src.services.value_store import _is_placeholder_company_id
+
+        value = value.strip()
+        if not value:
+            raise ValueError("company_id must not be blank")
+        # Same limit as the stored column, applied to the normalized value.
+        if len(value) > 50:
+            raise ValueError("company_id must be at most 50 characters")
+        if _is_placeholder_company_id(value):
+            raise ValueError("company_id must not be a placeholder value")
+        return value
+
+    @model_validator(mode="after")
+    def _requested_fields_are_set(self) -> "AdminUserUpdate":
+        if not self.model_fields_set:
+            raise ValueError(
+                "at least one of company_id, role, is_active, email or full_name "
+                "is required"
+            )
+        for field in self.model_fields_set:
+            if getattr(self, field) is None:
+                raise ValueError(f"{field} must not be null")
+        return self
+
+
+class AdminPasswordReset(BaseModel):
+    """Write-only new password an administrator sets for another user."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _policy_compliant(cls, value: str) -> str:
+        from src.auth.login_policy import validate_password
+
+        validate_password(value)
+        return value
 
 
 class User(UserBase):

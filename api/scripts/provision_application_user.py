@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,7 +23,13 @@ if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
 from src.auth.jwt_handler import jwt_handler  # noqa: E402
-from src.auth.models import UserBase, UserCreate, UserRole  # noqa: E402
+from src.auth.login_policy import (  # noqa: E402
+    password_maximum_length as _password_maximum_length,
+)
+from src.auth.login_policy import (  # noqa: E402
+    validate_password as validate_application_password,
+)
+from src.auth.models import UserBase, UserRole  # noqa: E402
 from src.database.models import UserAccount  # noqa: E402
 from src.database.session import SessionLocal  # noqa: E402
 
@@ -63,29 +68,6 @@ class ProvisionResult:
         return result
 
 
-_PASSWORD_MINIMUM_LENGTH = 12
-_BCRYPT_MAXIMUM_BYTES = 72
-_PLACEHOLDER_PASSWORD_MARKERS = frozenset(
-    {
-        "changeme",
-        "placeholder",
-        "password",
-        "replace",
-        "replacepassword",
-        "secret",
-    }
-)
-
-
-def _password_maximum_length() -> int:
-    """Read the maximum from the existing application password model."""
-    for metadata in UserCreate.model_fields["password"].metadata:
-        maximum = getattr(metadata, "max_length", None)
-        if isinstance(maximum, int):
-            return maximum
-    raise RuntimeError("application password maximum is unavailable")
-
-
 def _password_from_single_stdin_record(value: str) -> str:
     """Accept at most one terminal newline and reject every other record marker."""
     if value.endswith("\r\n"):
@@ -99,25 +81,10 @@ def _password_from_single_stdin_record(value: str) -> str:
 
 def validate_password(password: str) -> None:
     """Reject unusable secrets before any database session is opened."""
-    normalized_placeholder = re.sub(r"[\s_-]+", "", password.casefold())
-    character_classes = sum(
-        (
-            any(character.islower() for character in password),
-            any(character.isupper() for character in password),
-            any(character.isdigit() for character in password),
-            any(not character.isalnum() for character in password),
-        )
-    )
-    if (
-        len(password) < _PASSWORD_MINIMUM_LENGTH
-        or len(password) > _password_maximum_length()
-        or len(password.encode("utf-8")) > _BCRYPT_MAXIMUM_BYTES
-        or any(
-            marker in normalized_placeholder for marker in _PLACEHOLDER_PASSWORD_MARKERS
-        )
-        or character_classes < 3
-    ):
-        raise ProvisioningInputError("PASSWORD_INVALID")
+    try:
+        validate_application_password(password)
+    except ValueError:
+        raise ProvisioningInputError("PASSWORD_INVALID") from None
 
 
 def read_password_from_stdin(stdin: TextIO) -> str:

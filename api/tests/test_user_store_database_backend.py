@@ -109,6 +109,7 @@ def test_database_user_store_update_user_respects_admin_fields_flag():
 
     record = _record(company_id="company_001", role=UserRole.ADMIN.value)
     store._repo.get_user_by_username.return_value = record
+    store._repo.get_user_by_email.return_value = None
     store._repo.update_user.return_value = record
 
     store.update_user(

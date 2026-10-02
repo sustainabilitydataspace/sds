@@ -104,6 +104,7 @@ _SUMMARY_ES: Dict[str, str] = {
     "Create a new value": "Crear un nuevo valor",
     "Create hierarchy configuration": "Crear configuración de jerarquía",
     "Create user": "Crear usuario",
+    "Reset another user's password": "Restablecer la contraseña de otro usuario",
     "Delete hierarchy configuration": "Eliminar configuración de jerarquía",
     "Delete value by ID": "Eliminar valor por ID",
     "Execute SPARQL query": "Ejecutar consulta SPARQL",
@@ -196,6 +197,9 @@ _SUMMARY_ES: Dict[str, str] = {
         "Enviar un trabajo asíncrono de importación de valores"
     ),
     "Update current user": "Actualizar usuario actual",
+    "Update another user's profile, tenant, role or active state": (
+        "Actualizar perfil, tenant, rol o estado activo de otro usuario"
+    ),
     "Update hierarchy configuration": "Actualizar configuración de jerarquía",
     "User login": "Inicio de sesión",
     "User logout": "Cierre de sesión",

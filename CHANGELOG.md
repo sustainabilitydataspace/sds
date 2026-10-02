@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-02
+
+- Añadido `PUT /auth/users/{username}` para que un administrador con token
+  bearer y `manage_users` cambie `email`, `full_name`, `company_id`, `role` o
+  `is_active` de otro usuario existente, y `POST
+  /auth/users/{username}/reset-password` para restablecer su contraseña con la
+  política de la aplicación. Ambos rechazan claves API, otros roles, la
+  autoedición y campos ajenos, limitan a 5 peticiones por minuto, no devuelven
+  los valores enviados en errores de validación e invalidan las sesiones del
+  usuario afectado. El `username` no es editable.
+- La política de contraseñas del aprovisionamiento pasa a
+  `src/auth/login_policy.py`; el script delega en ella sin cambiar su
+  comportamiento.
+- Un email ya usado por otra cuenta devuelve `409` también en `PUT /auth/me`.
+- `DatabaseUserStore.update_user` ya no devuelve el registro anterior cuando la
+  actualización no se persiste, y `/auth/refresh` rechaza el refresh token de un
+  usuario desactivado también sin base de datos (`REQUIRE_DATABASE=false`).
+
 ## 2026-09-29
 
 - Añadido `api/scripts/provision_application_user.py` para que Jenkins cree,

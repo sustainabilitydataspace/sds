@@ -415,6 +415,9 @@ class _FakeUserRepo:
     def get_user_by_id(self, user_id):
         return self.record if self.record and self.record.id == user_id else None
 
+    def get_user_by_email(self, email):
+        return self.record if self.record and self.record.email == email else None
+
     def record_successful_login_if_current(self, **kwargs):
         self.login_cas_calls.append(kwargs)
         return self.login_cas_result
