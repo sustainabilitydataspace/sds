@@ -61,6 +61,14 @@ class RepairCommitRequest(BaseModel):
     plan_digest: str = Field(..., pattern=r"^[0-9a-f]{64}$")
 
 
+class FactorCorrectionPreviewRequest(RepairPreviewRequest):
+    acknowledgement: str = Field(..., min_length=1, max_length=1000)
+
+
+class FactorCorrectionCommitRequest(RepairCommitRequest):
+    acknowledgement: str = Field(..., min_length=1, max_length=1000)
+
+
 def _admin_actor(current_user: User, request: Request) -> admin_catalog.Actor:
     require_bearer_authentication(current_user)
     if current_user.role != UserRole.ADMIN:
@@ -97,12 +105,20 @@ def _raise(exc: admin_catalog.AdminCatalogError) -> None:
 
 
 def _refresh_converter(request: Request) -> None:
-    """Reload this process's converter now; other processes follow the revision."""
+    """Best-effort local reload; every process also follows the revision guard.
+
+    Verification already happened inside the committed transaction, so a
+    failure here never reverts the catalog change.
+    """
     converter = getattr(request.app.state, "unit_converter", None)
     if converter is None:
         return
-    converter.reload_from_storage()
-    converter.get_physical_converter()
+    try:
+        converter.reload_from_storage()
+    except Exception as exc:
+        logger.warning(
+            "admin_unit_catalog_local_reload_failed", error_type=type(exc).__name__
+        )
 
 
 @router.post(
@@ -277,21 +293,7 @@ async def commit_unit_catalog_repair(
     except admin_catalog.AdminCatalogError as exc:
         db.rollback()
         _raise(exc)
-    try:
-        _refresh_converter(request)
-    except Exception as exc:
-        logger.error(
-            "admin_unit_repair_health_gate_failed",
-            actor_user_id=actor.user_id,
-            repair_id=result["repair_id"],
-            error_type=type(exc).__name__,
-        )
-        admin_catalog.reverse_repair(db, repair_id=result["repair_id"], actor=actor)
-        _refresh_converter(request)
-        raise HTTPException(
-            status_code=500,
-            detail="Repair reverted: the unit converter could not be rebuilt",
-        )
+    _refresh_converter(request)
     logger.info(
         "admin_unit_repair_committed",
         actor_user_id=actor.user_id,
@@ -333,3 +335,106 @@ async def reverse_unit_catalog_repair(
         catalog_revision=result["catalog_revision"],
     )
     return dict(result, propagation_seconds=1)
+
+
+@router.post(
+    "/unit-catalog/factor-corrections/preview",
+    summary="Preview a unit factor correction",
+    description=(
+        "Check every precondition for deactivating a unit whose conversion factor "
+        "contradicts the category base, in favour of the unit the bundled "
+        "reference catalog confirms. Requires the exact acknowledgement text and "
+        "returns a signed plan plus a read-only impact report. Changes nothing."
+    ),
+)
+@limiter.limit("20/minute")
+async def preview_unit_factor_correction(
+    request: Request,
+    body: FactorCorrectionPreviewRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Optional[Session] = Depends(get_db_optional),
+) -> Dict[str, Any]:
+    _admin_actor(current_user, request)
+    db = _require_db(db)
+    try:
+        return admin_catalog.preview_factor_correction(
+            db,
+            conflict_id=body.conflict_id,
+            deactivate_unit_id=body.deactivate_unit_id,
+            retain_unit_id=body.retain_unit_id,
+            reason=body.reason,
+            acknowledgement=body.acknowledgement,
+        )
+    except admin_catalog.AdminCatalogError as exc:
+        db.rollback()
+        _raise(exc)
+
+
+@router.post(
+    "/unit-catalog/factor-corrections/commit",
+    summary="Apply a previewed unit factor correction",
+    description=(
+        "Apply an unexpired, unmodified factor-correction plan (confirm=true) "
+        "with the same acknowledgement text. Reverse it with the repair reverse "
+        "endpoint."
+    ),
+)
+@limiter.limit("5/minute")
+async def commit_unit_factor_correction(
+    request: Request,
+    body: FactorCorrectionCommitRequest,
+    confirm: bool = Query(False),
+    current_user: User = Depends(get_current_active_user),
+    db: Optional[Session] = Depends(get_db_optional),
+) -> Dict[str, Any]:
+    actor = _admin_actor(current_user, request)
+    _require_confirm(confirm)
+    db = _require_db(db)
+    try:
+        result = admin_catalog.commit_factor_correction(
+            db,
+            plan=body.plan,
+            digest=body.plan_digest,
+            acknowledgement=body.acknowledgement,
+            actor=actor,
+        )
+    except admin_catalog.AdminCatalogError as exc:
+        db.rollback()
+        _raise(exc)
+    _refresh_converter(request)
+    logger.info(
+        "admin_unit_factor_correction_committed",
+        actor_user_id=actor.user_id,
+        repair_id=result["repair_id"],
+        catalog_revision=result["catalog_revision"],
+    )
+    return dict(result, propagation_seconds=1)
+
+
+@router.get(
+    "/unit-catalog/units/{unit_id}/impact",
+    summary="Report stored values possibly affected by a unit",
+    description=(
+        "Read-only counts of stored values and value revisions whose unit text "
+        "matches the unit's symbol, aliases or name, split by conversion signal, "
+        "plus opaque row ids (keyset paging). Never returns values or metadata."
+    ),
+)
+@limiter.limit("20/minute")
+async def unit_catalog_impact(
+    request: Request,
+    unit_id: int = Path(..., ge=1),
+    cursor: Optional[str] = Query(None, max_length=600),
+    limit: int = Query(admin_catalog.IMPACT_PAGE_LIMIT, ge=1, le=50),
+    current_user: User = Depends(get_current_active_user),
+    db: Optional[Session] = Depends(get_db_optional),
+) -> Dict[str, Any]:
+    _admin_actor(current_user, request)
+    db = _require_db(db)
+    try:
+        return admin_catalog.unit_impact(
+            db, unit_id=unit_id, cursor=cursor, limit=limit
+        )
+    except admin_catalog.AdminCatalogError as exc:
+        db.rollback()
+        _raise(exc)

@@ -22,6 +22,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    if op.get_bind().dialect.name == "postgresql":
+        # 048 runs SET LOCAL search_path = pg_catalog, ...; when the upgrade
+        # continues in the same transaction the new table must still land in
+        # the default schema, not pg_catalog.
+        op.execute("SET LOCAL search_path TO DEFAULT")
     op.create_table(
         "admin_catalog_operations",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),

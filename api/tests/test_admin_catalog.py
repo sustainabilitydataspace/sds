@@ -322,6 +322,52 @@ class TestContractService:
         assert exc.value.status_code == 422
         db.query.assert_not_called()
 
+    def test_plans_never_cross_signing_domains(self):
+        db = MagicMock()
+        plan = self._signed(operation="factor_correction", acknowledgement="I confirm")
+        actor = admin_catalog.Actor("a", "bearer")
+        with pytest.raises(admin_catalog.AdminCatalogError) as exc:
+            admin_catalog.commit_factor_correction(
+                db,
+                plan=plan,
+                digest=admin_catalog.plan_digest(plan),
+                acknowledgement="I confirm",
+                actor=actor,
+            )
+        assert exc.value.status_code == 422
+        with pytest.raises(admin_catalog.AdminCatalogError) as exc:
+            admin_catalog.commit_repair(
+                db,
+                plan=plan,
+                digest=admin_catalog.factor_plan_digest(plan),
+                actor=actor,
+            )
+        assert exc.value.status_code == 422
+        db.query.assert_not_called()
+
+    def test_factor_commit_requires_the_signed_acknowledgement(self):
+        db = MagicMock()
+        plan = self._signed(operation="factor_correction", acknowledgement="I confirm")
+        with pytest.raises(admin_catalog.AdminCatalogError) as exc:
+            admin_catalog.commit_factor_correction(
+                db,
+                plan=plan,
+                digest=admin_catalog.factor_plan_digest(plan),
+                acknowledgement="I confirm ",
+                actor=admin_catalog.Actor("a", "bearer"),
+            )
+        assert exc.value.status_code == 422
+        assert "acknowledgement" in exc.value.message
+        db.query.assert_not_called()
+
+    def test_impact_cursor_is_validated(self):
+        db = MagicMock()
+        for cursor in ("%%%", "W10", admin_catalog._encode_cursor("users", "1")):
+            with pytest.raises(admin_catalog.AdminCatalogError) as exc:
+                admin_catalog.impact_report(db, identifiers=["kgco2e"], cursor=cursor)
+            assert exc.value.status_code == 422
+        db.execute.assert_not_called()
+
     def test_unparseable_import_is_audited_without_values(self):
         session = _fixture_session()
         with pytest.raises(admin_catalog.AdminCatalogError):
@@ -366,6 +412,23 @@ ROUTES = [
         f"/api/v1/admin/unit-catalog/repairs/{'a' * 32}/reverse?confirm=true",
         None,
     ),
+    (
+        "post",
+        "/api/v1/admin/unit-catalog/factor-corrections/preview",
+        {
+            "conflict_id": "a" * 64,
+            "deactivate_unit_id": 2,
+            "retain_unit_id": 1,
+            "reason": "legacy factor",
+            "acknowledgement": "I confirm",
+        },
+    ),
+    (
+        "post",
+        "/api/v1/admin/unit-catalog/factor-corrections/commit?confirm=true",
+        {"plan": {}, "plan_digest": "a" * 64, "acknowledgement": "I confirm"},
+    ),
+    ("get", "/api/v1/admin/unit-catalog/units/2/impact", None),
 ]
 
 
@@ -441,6 +504,13 @@ def service_stub():
         reverse_repair=MagicMock(
             return_value={"repair_id": "r", "catalog_revision": 2}
         ),
+        preview_factor_correction=MagicMock(
+            return_value={"plan": {}, "plan_digest": "d", "impact": {}}
+        ),
+        commit_factor_correction=MagicMock(
+            return_value={"repair_id": "r", "catalog_revision": 3}
+        ),
+        unit_impact=MagicMock(return_value={"unit_id": 2, "counts": None}),
     ):
         yield
 
@@ -491,11 +561,14 @@ class TestInputHandling:
             "/api/v1/admin/calculation-contracts/imports",
             "/api/v1/admin/unit-catalog/repairs/commit",
             f"/api/v1/admin/unit-catalog/repairs/{'a' * 32}/reverse",
+            "/api/v1/admin/unit-catalog/factor-corrections/commit",
         ],
     )
     def test_writes_require_confirm(self, client, stores, service_stub, url):
         users, _, _ = stores
         body = {"plan": {}, "plan_digest": "a" * 64} if "commit" in url else None
+        if "factor" in url:
+            body["acknowledgement"] = "I confirm"
         response = _call(client, "post", url, body, _bearer(users, "admin"))
         assert response.status_code == 400
 

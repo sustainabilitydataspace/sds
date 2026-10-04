@@ -503,6 +503,57 @@ class AdminCatalogOperation(Base):
     )
 
 
+ERROR_DIAGNOSTIC_CLASSIFICATIONS = (
+    "db_unique_violation",
+    "db_foreign_key_violation",
+    "db_not_null_violation",
+    "db_check_violation",
+    "db_trigger_exception",
+    "db_serialization_failure",
+    "db_statement_timeout",
+    "db_connection_error",
+    "db_other",
+    "unit_conversion_error",
+    "value_ingest_error",
+    "validation_error",
+    "timeout",
+    "unknown",
+)
+
+
+class AdminErrorDiagnostic(Base):
+    """Sanitized server-error record, keyed by the client-visible request id.
+
+    Never holds exception messages, request data, SQL text or parameters.
+    """
+
+    __tablename__ = "admin_error_diagnostics"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    request_id = Column(String(100), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    method = Column(String(10))
+    route_template = Column(String(300))
+    status_code = Column(Integer, nullable=False)
+    classification = Column(String(40), nullable=False)
+    exception_types = Column(JSONB, nullable=False)
+    frames = Column(JSONB, nullable=False)
+    db = Column(JSONB)
+
+    __table_args__ = (
+        sa.UniqueConstraint("request_id", name="uq_admin_error_diagnostics_request_id"),
+        Index("ix_admin_error_diagnostics_created_id", "created_at", "id"),
+        CheckConstraint(
+            "classification IN ("
+            + ", ".join(f"'{name}'" for name in ERROR_DIAGNOSTIC_CLASSIFICATIONS)
+            + ")",
+            name="ck_admin_error_diagnostics_classification",
+        ),
+    )
+
+
 class Currency(Base):
     __tablename__ = "currencies"
 

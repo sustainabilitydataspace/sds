@@ -495,9 +495,63 @@ role receive `403`; validation errors never echo submitted values; bodies above
   refused); `POST .../repairs/{repair_id}/reverse?confirm=true` restores the exact
   previous row when no later unit-catalog operation exists.
 
+Commits and reversals verify the catalog inside the same transaction, while
+holding the catalog lock and before `COMMIT`: the active-unit conflicts after
+the change must be exactly the set the plan predicted (for a reversal, the set
+recorded before the repair), and when that set is empty the physical converter
+must build. Other unrelated conflicts may remain, so duplicates can be repaired
+one at a time. Any mismatch returns `409` and nothing is persisted.
+
+- `POST /api/v1/admin/unit-catalog/factor-corrections/preview` handles two
+  colliding units whose factors differ (for example a legacy `kgCO2e` with
+  factor `0.001` against the `kg CO2e` base). The body adds an
+  `acknowledgement` that must be exactly `I confirm unit <target> (factor
+  <F>) is incorrect and unit <retained> (factor <F>) is correct relative to
+  base <base>`; a mismatch returns `422` with the expected text. Besides the
+  duplicate-repair checks (except equal factors) it requires zero offsets, an
+  active category base unit with factor 1, and proof from the bundled
+  `src/data/units_database.json`: the retained unit exists there in a category
+  with the same name and base, with the same factor, lists the target symbol
+  as an alias, and the target symbol is not a unit of its own. The response
+  includes the signed plan (separate signing domain, bound to the reference
+  catalog SHA-256) and an impact report. `POST
+  .../factor-corrections/commit?confirm=true` needs the plan, `plan_digest` and
+  the same acknowledgement; it soft-deactivates the target only (no factor is
+  rewritten) and is reversed with the repair reverse endpoint.
+- `GET /api/v1/admin/unit-catalog/units/{unit_id}/impact` reports, in a
+  read-only transaction with a 5 s statement timeout, how many stored values
+  (`esg_values`) and value revisions use any identifier of the unit (symbol,
+  aliases, name; case-insensitive) in `unit` or `original_unit`, split by
+  conversion signal, plus opaque row ids (at most 50 per page,
+  `next_cursor`). Rows are only "possibly affected"; values, metadata, traces,
+  entities and concepts are never returned. `truncated` and `timed_out` are
+  explicit.
+
 Stored values keep their unit text. Every operation is recorded in
-`admin_catalog_operations` (migration `049`); each API process reloads its unit
-catalog within one second of a committed repair or reversal.
+`admin_catalog_operations` (migration `049`; factor corrections carry
+`operation`, old/new factor and offset, base, impact counts and the reference
+SHA-256);
+each API process reloads its unit catalog within one second of a committed
+repair or reversal.
+
+### Admin error diagnostics
+
+Server errors (`500`) keep their generic response with a `request_id`. The API
+also records a sanitized diagnostic for that `request_id` in
+`admin_error_diagnostics` (migration `050`) and logs the same record: exception
+types along the cause chain, file/line/function of frames under `api/src`, the
+route template, a fixed `classification` (for example `db_unique_violation`,
+`db_trigger_exception`, `unit_conversion_error`, `unknown`) and the PostgreSQL
+`pgcode`, constraint, table and column. A trigger message is kept only when it
+equals a static `RAISE EXCEPTION` text from the migrations. Exception messages
+and arguments, headers, bodies, query values, SQL text and parameters are never
+stored or logged. Capture is fail-open and uses its own short transaction.
+
+Retention is 14 days and the newest 500 records, enforced under an advisory
+lock by every capture and before every read; expired rows are never returned.
+Bearer `admin` tokens holding `manage_system` read them with `GET
+/api/v1/admin/diagnostics/errors/{request_id}` (uniform `404` when absent) or
+`GET /api/v1/admin/diagnostics/errors?limit=20` (newest first, at most 50).
 
 ### Native hosted release helper
 

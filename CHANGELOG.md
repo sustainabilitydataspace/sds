@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-04
+
+- Las reparaciones del catálogo de unidades verifican el resultado dentro de la
+  misma transacción, con el bloqueo del catálogo y antes del `COMMIT`: los
+  conflictos restantes deben ser exactamente los previstos por el plan. Una
+  reparación ya no se revierte porque queden otros conflictos sin relación;
+  una discrepancia devuelve `409` sin persistir nada.
+- Nuevas correcciones de factor (`/api/v1/admin/unit-catalog/factor-corrections`)
+  para unidades heredadas como `kgCO2e` o `tCO2e` cuyo factor contradice la
+  base `kg CO2e`: exigen un texto de reconocimiento exacto, una unidad base
+  activa con factor 1 y la confirmación del catálogo de referencia incluido;
+  desactivan la unidad errónea de forma auditada y reversible.
+- Informe de impacto de solo lectura por unidad
+  (`GET /api/v1/admin/unit-catalog/units/{unit_id}/impact`): recuentos de
+  valores y revisiones posiblemente afectados e identificadores opacos.
+- Migración `050`: diagnóstico saneado de errores `500` por `request_id`
+  (tipos de excepción, ubicaciones de código, clasificación y campos
+  permitidos de PostgreSQL; nunca mensajes, cuerpos, SQL ni parámetros), con
+  retención de 14 días y 500 registros, legible por administradores en
+  `/api/v1/admin/diagnostics/errors`. Las ramas genéricas `500` del router de
+  valores registran el diagnóstico y dejan de escribir el mensaje de la
+  excepción en el log.
+- Las migraciones `049` y `050` restablecen `search_path` antes de crear sus
+  tablas; una instalación desde cero en una sola transacción ya no intenta
+  crearlas en `pg_catalog`.
+
 ## 2026-10-03
 
 - Añadidos endpoints de administración (`/api/v1/admin`, admin con token

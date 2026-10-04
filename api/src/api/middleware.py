@@ -11,10 +11,12 @@ from typing import Callable
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Histogram
+from starlette.concurrency import run_in_threadpool
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 import structlog
 from src.config.settings import settings
+from src.services.error_diagnostics import record_error_diagnostic
 
 logger = structlog.get_logger(__name__)
 
@@ -502,6 +504,8 @@ def setup_error_handling(app: FastAPI):
             request_id=request_id,
             error_type=type(exc).__name__,
         )
+        # Sanitized, durable record for admins (fail-open, never raises).
+        await run_in_threadpool(record_error_diagnostic, request, exc, status_code=500)
 
         return JSONResponse(
             status_code=500,

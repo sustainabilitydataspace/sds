@@ -26,6 +26,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from rdflib import Graph
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 import structlog
 from src.api.csv_security import spreadsheet_safe_cell
@@ -67,6 +68,7 @@ from src.services.change_feed import (
     encode_change_feed_cursor,
 )
 from src.services.dataset_manifest import build_dataset_manifest
+from src.services.error_diagnostics import record_error_diagnostic
 from src.services.hierarchy_store import get_hierarchy_store
 from src.services.indicator_store import IndicatorStore
 from src.services.parquet_export import parquet_bytes_from_rows
@@ -306,6 +308,7 @@ async def create_value(
     graph: Graph = Depends(get_ontology_graph),
     current_user: User = Depends(get_current_active_user),
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    request: Request = None,
 ) -> ValueResponse:
     """
     Create a new value with automatic unit conversion.
@@ -438,12 +441,8 @@ async def create_value(
             idempotency_key=idempotency_key,
             claim=claim,
         )
-        logger.error(
-            "Failed to create value",
-            error=str(e),
-            concept=value_data.concept,
-            entity=value_data.entity,
-        )
+        logger.error("Failed to create value", error_type=type(e).__name__)
+        await run_in_threadpool(record_error_diagnostic, request, e, status_code=500)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -884,6 +883,7 @@ async def get_values(
     ),
     store=Depends(get_authenticated_value_store),
     current_user: User = Depends(get_current_active_user),
+    request: Request = None,
 ) -> PaginatedResponse:
     """
     Get values with optional filtering.
@@ -1002,7 +1002,8 @@ async def get_values(
     except Exception as e:
         if isinstance(e, ValueError):
             raise HTTPException(status_code=400, detail=str(e)) from e
-        logger.error("Failed to retrieve values", error=str(e))
+        logger.error("Failed to retrieve values", error_type=type(e).__name__)
+        await run_in_threadpool(record_error_diagnostic, request, e, status_code=500)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -1099,6 +1100,7 @@ async def get_value_changes(
     ),
     store=Depends(get_authenticated_value_store),
     current_user: User = Depends(get_current_active_user),
+    request: Request = None,
 ) -> ChangeFeedResponse:
     decoded_cursor = _decode_value_changes_cursor(cursor)
     try:
@@ -1115,7 +1117,8 @@ async def get_value_changes(
     except Exception as exc:
         if isinstance(exc, ValueError):
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        logger.error("Failed to retrieve value changes", error=str(exc))
+        logger.error("Failed to retrieve value changes", error_type=type(exc).__name__)
+        await run_in_threadpool(record_error_diagnostic, request, exc, status_code=500)
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     items = []
@@ -1424,6 +1427,7 @@ async def get_value_by_id(
     value_id: str,
     store=Depends(get_authenticated_value_store),
     current_user: User = Depends(get_current_active_user),
+    request: Request = None,
 ) -> ValueResponse:
     """
     Get a specific value by ID.
@@ -1447,7 +1451,10 @@ async def get_value_by_id(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Failed to retrieve value", error=str(e), value_id=value_id)
+        logger.error(
+            "Failed to retrieve value", error_type=type(e).__name__, value_id=value_id
+        )
+        await run_in_threadpool(record_error_diagnostic, request, e, status_code=500)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -1462,6 +1469,7 @@ async def delete_value(
     value_id: str,
     store=Depends(get_authenticated_value_store),
     current_user: User = Depends(get_current_active_user),
+    request: Request = None,
 ) -> SuccessResponse:
     """
     Delete a specific value by ID.
@@ -1488,7 +1496,10 @@ async def delete_value(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Failed to delete value", error=str(e), value_id=value_id)
+        logger.error(
+            "Failed to delete value", error_type=type(e).__name__, value_id=value_id
+        )
+        await run_in_threadpool(record_error_diagnostic, request, e, status_code=500)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
