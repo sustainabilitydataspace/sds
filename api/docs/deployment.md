@@ -467,6 +467,38 @@ data before assigning it. Run these calls only from a private operator
 environment, deliver reset passwords through an approved secure channel, and
 keep admin tokens and passwords out of logs and this repository.
 
+### Admin catalog operations (calculation contracts and unit catalog)
+
+Bearer `admin` tokens holding `manage_system` can maintain calculation
+semantics and the unit catalog without server access. API keys and every other
+role receive `403`; validation errors never echo submitted values; bodies above
+`REQUEST_MAX_BODY_BYTES` (10 MiB by default) receive `413`.
+
+- `POST /api/v1/admin/calculation-contracts/validations` dry-runs an
+  `sds_calculation_contract.json` package (sent as the raw JSON body) against
+  the live indicator catalog and writes no contract rows.
+- `POST /api/v1/admin/calculation-contracts/imports?confirm=true` imports it in
+  one transaction under a per-package advisory lock. The same package hash
+  returns `already_imported` without new rows. `retirement_scope` accepts
+  `incoming_keys` (default) or `incoming_models`.
+- `GET /api/v1/admin/unit-catalog/conflicts` lists active-unit conflicts exactly
+  as the calculation converter detects them (for example a separate `m3` unit
+  colliding with the `m3` alias of `m³`).
+- `POST /api/v1/admin/unit-catalog/repairs/preview` checks a deactivation of one
+  duplicate in favour of another unit and returns a plan plus `plan_digest`.
+  It refuses different categories, factors, offsets or dimensions, a category
+  base unit, active conversion rules that reference the duplicate, any symbol
+  or alias of the duplicate the retained unit does not cover, and a unit name
+  the retained unit does not cover when stored values or active conversion
+  rules still use it (names are resolved case-insensitively). `POST .../repairs/commit?confirm=true` applies an unexpired, unmodified
+  plan signed by the server (`plan_digest` is an HMAC; edited plans are
+  refused); `POST .../repairs/{repair_id}/reverse?confirm=true` restores the exact
+  previous row when no later unit-catalog operation exists.
+
+Stored values keep their unit text. Every operation is recorded in
+`admin_catalog_operations` (migration `049`); each API process reloads its unit
+catalog within one second of a committed repair or reversal.
+
 ### Native hosted release helper
 
 For the native hosted API, use the checked-in helper

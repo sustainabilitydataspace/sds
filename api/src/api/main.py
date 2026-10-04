@@ -44,6 +44,7 @@ from src.api.openapi_localization import (
 )
 from src.api.rate_limit import limiter
 from src.api.routers import (
+    admin_catalog,
     auth,
     calculations,
     fx,
@@ -515,6 +516,9 @@ app.include_router(
     semantic_dimensions.router, prefix="/api/v1", tags=["Semantic Dimensions"]
 )
 app.include_router(units.router, prefix="/api/v1", tags=["Units"])
+app.include_router(
+    admin_catalog.router, prefix="/api/v1/admin", tags=["Catalog administration"]
+)
 app.include_router(fx.router, prefix="/api/v1", tags=["FX"])
 app.include_router(
     interoperability.router,

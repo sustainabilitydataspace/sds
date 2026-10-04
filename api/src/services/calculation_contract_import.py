@@ -274,11 +274,45 @@ def import_calculation_contract_file(
     """
 
     contract_path = contract_path.resolve()
+    if not contract_path.exists():
+        raise CalculationContractImportError(
+            f"calculation contract not found: {contract_path}"
+        )
+    return import_calculation_contract_bytes(
+        contract_path.read_bytes(),
+        db=db,
+        dry_run=dry_run,
+        created_by=created_by,
+        known_indicator_identifiers=known_indicator_identifiers,
+        retirement_scope=retirement_scope,
+        source_label=str(contract_path),
+    )
+
+
+def import_calculation_contract_bytes(
+    raw: bytes,
+    *,
+    db: Session,
+    dry_run: bool = False,
+    created_by: str = DEFAULT_CREATED_BY,
+    known_indicator_identifiers: set[str] | None = None,
+    retirement_scope: str = "incoming_keys",
+    source_label: str = "api-upload",
+    commit: bool = True,
+) -> CalculationContractImportReport:
+    """Validate and import a calculation contract from its exact JSON bytes.
+
+    Shared by the CLI (file bytes) and the admin API (request bytes) so both
+    compute the same contract SHA-256, package hash and validation. With
+    ``commit=False`` the caller owns the transaction: rows are flushed but
+    neither committed nor rolled back here.
+    """
+
     if retirement_scope not in RETIREMENT_SCOPES:
         raise CalculationContractImportError(
             "retirement_scope must be one of: " + ", ".join(sorted(RETIREMENT_SCOPES))
         )
-    payload, contract_sha256 = load_calculation_contract_payload(contract_path)
+    payload, contract_sha256 = load_calculation_contract_bytes(raw)
     indicator_by_identifier = _active_indicator_lookup(db)
     validation_indicator_identifiers = set(indicator_by_identifier)
     validation_indicator_identifiers.update(known_indicator_identifiers or set())
@@ -289,7 +323,7 @@ def import_calculation_contract_file(
     package_hash = package_hash_for_payload(payload, contract_sha256)
 
     base_report = CalculationContractImportReport(
-        contract_path=str(contract_path),
+        contract_path=source_label,
         package_hash=package_hash,
         contract_sha256=contract_sha256,
         dry_run=dry_run,
@@ -416,10 +450,14 @@ def import_calculation_contract_file(
         base_report.committed = True
         base_report.status = "completed"
         package_import.result_json = base_report.as_dict()
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
         return base_report
     except Exception:
-        db.rollback()
+        if commit:
+            db.rollback()
         raise
 
 
@@ -428,7 +466,12 @@ def load_calculation_contract_payload(path: Path) -> tuple[dict[str, Any], str]:
 
     if not path.exists():
         raise CalculationContractImportError(f"calculation contract not found: {path}")
-    raw = path.read_bytes()
+    return load_calculation_contract_bytes(path.read_bytes())
+
+
+def load_calculation_contract_bytes(raw: bytes) -> tuple[dict[str, Any], str]:
+    """Parse strict JSON bytes and return the payload with their SHA-256."""
+
     try:
         payload = loads_strict_json(raw)
     except StrictJsonError as exc:

@@ -414,7 +414,7 @@ def test_populated_upgrade_backfills_runtime_compatible_event_hash(
         occurred_by=row["occurred_by"],
         previous_event_hash=row["previous_event_hash"],
     )
-    assert version == "048_harden_value_revision_integrity"
+    assert version == "049_add_admin_catalog_operations"
     assert row["event_hash"] == expected
     assert effects == [
         ("event-a1", "current_pointer"),

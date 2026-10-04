@@ -6,14 +6,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Callable, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials
 
 import structlog
 from src.api.rate_limit import limiter
+from src.api.safe_validation_route import SecretSafeValidationRoute
 from src.auth.authorization import require_bearer_authentication
 from src.auth.dependencies import (
     get_current_active_user,
@@ -520,29 +517,7 @@ async def create_user(
         )
 
 
-class _SecretSafeValidationRoute(APIRoute):
-    """Return 422 details without echoing submitted values (e.g. passwords)."""
-
-    def get_route_handler(self) -> Callable:
-        handler = super().get_route_handler()
-
-        async def secret_safe_handler(request: Request):
-            try:
-                return await handler(request)
-            except RequestValidationError as exc:
-                errors = [
-                    {k: v for k, v in error.items() if k not in ("input", "ctx")}
-                    for error in exc.errors()
-                ]
-                return JSONResponse(
-                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    content={"detail": jsonable_encoder(errors)},
-                )
-
-        return secret_safe_handler
-
-
-admin_users_router = APIRouter(route_class=_SecretSafeValidationRoute)
+admin_users_router = APIRouter(route_class=SecretSafeValidationRoute)
 
 
 def _require_admin_bearer(current_user: User) -> None:

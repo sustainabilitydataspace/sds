@@ -58,6 +58,134 @@ class PhysicalConversionResult:
     trace: list[dict]
 
 
+@dataclass(frozen=True)
+class UnitConflict:
+    """One catalog ambiguity that makes the expression registry unbuildable."""
+
+    kind: str  # expression_token | canonical_symbol | alias
+    token: str
+    symbols: tuple[str, ...]
+    message: str
+
+
+@dataclass(frozen=True)
+class ExpressionRegistryAnalysis:
+    expression_units: dict[str, PhysicalUnit]
+    aliases: dict[str, str]
+    conflicts: tuple[UnitConflict, ...]
+
+
+def expression_symbol_for(unit: PhysicalUnit) -> str | None:
+    """Return a catalog unit's safe atomic expression token, if any."""
+    candidates = (re.sub(r"\s+", "", unit.symbol), *unit.aliases)
+    for candidate in candidates:
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", candidate):
+            return candidate
+    return None
+
+
+def analyze_expression_registry(
+    units: dict[str, PhysicalUnit],
+) -> ExpressionRegistryAnalysis:
+    """Derive the expression registry and report every catalog ambiguity.
+
+    This is the single source of truth for both PhysicalUnitConverter (which
+    fails closed on the first conflict, in catalog order) and the admin
+    unit-catalog diagnostics. A conflicting entry never overwrites the first
+    owner, so later conflicts are reported against the same registry the
+    converter would have built up to that point.
+    """
+    # The database catalog retains display-safe canonical symbols such as
+    # ``kg CO2e`` and ``m³``.  The expression grammar deliberately uses
+    # identifier-safe tokens, so derive a lossless expression registry and
+    # map catalog symbols/aliases into it before parsing.
+    expression_units: dict[str, PhysicalUnit] = {}
+    conflicts: list[UnitConflict] = []
+    # Catalog symbols always take precedence over aliases.  This is a
+    # deliberate exception to the usual alias conflict rule: the catalog
+    # can describe a historical alias (for example ``torr`` -> ``mmHg``)
+    # that is also a separately catalogued canonical symbol.
+    canonical_aliases: dict[str, str] = {}
+    for unit in units.values():
+        expression_symbol = expression_symbol_for(unit)
+        if expression_symbol is None:
+            continue
+        existing = expression_units.get(expression_symbol)
+        if existing is not None and existing.symbol != unit.symbol:
+            conflicts.append(
+                UnitConflict(
+                    kind="expression_token",
+                    token=expression_symbol,
+                    symbols=(existing.symbol, unit.symbol),
+                    message=(
+                        "ambiguous expression unit token: "
+                        f"{expression_symbol} maps to both {existing.symbol!r} "
+                        f"and {unit.symbol!r}"
+                    ),
+                )
+            )
+            continue
+        expression_units[expression_symbol] = unit
+
+        for canonical_symbol in (unit.symbol, expression_symbol):
+            existing_canonical = canonical_aliases.get(canonical_symbol)
+            if (
+                existing_canonical is not None
+                and existing_canonical != expression_symbol
+            ):
+                conflicts.append(
+                    UnitConflict(
+                        kind="canonical_symbol",
+                        token=canonical_symbol,
+                        symbols=(existing_canonical, expression_symbol),
+                        message=(
+                            "ambiguous catalog canonical symbol: "
+                            f"{canonical_symbol!r} maps to both "
+                            f"{existing_canonical!r} and {expression_symbol!r}"
+                        ),
+                    )
+                )
+                continue
+            canonical_aliases[canonical_symbol] = expression_symbol
+
+    aliases = dict(canonical_aliases)
+    alias_owners: dict[str, str] = {}
+    for unit in units.values():
+        expression_symbol = expression_symbol_for(unit)
+        if expression_symbol is None:
+            continue
+        if expression_units.get(expression_symbol) is not unit:
+            continue
+        for alias in unit.aliases:
+            canonical_target = canonical_aliases.get(alias)
+            if canonical_target is not None:
+                # Canonical catalog symbols win regardless of catalog order.
+                continue
+            existing_target = alias_owners.get(alias)
+            if existing_target is not None and existing_target != expression_symbol:
+                conflicts.append(
+                    UnitConflict(
+                        kind="alias",
+                        token=alias,
+                        symbols=(existing_target, expression_symbol),
+                        message=(
+                            "ambiguous expression unit alias: "
+                            f"{alias!r} maps to both {existing_target!r} "
+                            f"and {expression_symbol!r}"
+                        ),
+                    )
+                )
+                continue
+            alias_owners[alias] = expression_symbol
+            aliases[alias] = expression_symbol
+
+    return ExpressionRegistryAnalysis(
+        expression_units=expression_units,
+        aliases=aliases,
+        conflicts=tuple(conflicts),
+    )
+
+
 class PhysicalUnitConverter:
     def __init__(
         self,
@@ -75,58 +203,11 @@ class PhysicalUnitConverter:
         # map catalog symbols/aliases into it before parsing.  Keeping the
         # original catalog symbols in ``self.units`` preserves public/API
         # output and direct-rule matching.
-        expression_units: dict[str, PhysicalUnit] = {}
-        # Catalog symbols always take precedence over aliases.  This is a
-        # deliberate exception to the usual alias conflict rule: the catalog
-        # can describe a historical alias (for example ``torr`` -> ``mmHg``)
-        # that is also a separately catalogued canonical symbol.
-        canonical_aliases: dict[str, str] = {}
-        for unit in units.values():
-            expression_symbol = self._expression_symbol_for(unit)
-            if expression_symbol is None:
-                continue
-            existing = expression_units.get(expression_symbol)
-            if existing is not None and existing.symbol != unit.symbol:
-                raise ValueError(
-                    "ambiguous expression unit token: "
-                    f"{expression_symbol} maps to both {existing.symbol!r} "
-                    f"and {unit.symbol!r}"
-                )
-            expression_units[expression_symbol] = unit
-
-            for canonical_symbol in (unit.symbol, expression_symbol):
-                existing_canonical = canonical_aliases.get(canonical_symbol)
-                if (
-                    existing_canonical is not None
-                    and existing_canonical != expression_symbol
-                ):
-                    raise ValueError(
-                        "ambiguous catalog canonical symbol: "
-                        f"{canonical_symbol!r} maps to both "
-                        f"{existing_canonical!r} and {expression_symbol!r}"
-                    )
-                canonical_aliases[canonical_symbol] = expression_symbol
-
-        aliases = dict(canonical_aliases)
-        alias_owners: dict[str, str] = {}
-        for unit in units.values():
-            expression_symbol = self._expression_symbol_for(unit)
-            if expression_symbol is None:
-                continue
-            for alias in unit.aliases:
-                canonical_target = canonical_aliases.get(alias)
-                if canonical_target is not None:
-                    # Canonical catalog symbols win regardless of catalog order.
-                    continue
-                existing_target = alias_owners.get(alias)
-                if existing_target is not None and existing_target != expression_symbol:
-                    raise ValueError(
-                        "ambiguous expression unit alias: "
-                        f"{alias!r} maps to both {existing_target!r} "
-                        f"and {expression_symbol!r}"
-                    )
-                alias_owners[alias] = expression_symbol
-                aliases[alias] = expression_symbol
+        analysis = analyze_expression_registry(units)
+        if analysis.conflicts:
+            raise ValueError(analysis.conflicts[0].message)
+        expression_units = analysis.expression_units
+        aliases = analysis.aliases
 
         self._expression_units = expression_units
         dimensions = {
@@ -137,11 +218,7 @@ class PhysicalUnitConverter:
     @staticmethod
     def _expression_symbol_for(unit: PhysicalUnit) -> str | None:
         """Return this catalog unit's safe atomic expression token, if any."""
-        candidates = (re.sub(r"\s+", "", unit.symbol), *unit.aliases)
-        for candidate in candidates:
-            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", candidate):
-                return candidate
-        return None
+        return expression_symbol_for(unit)
 
     def convert(
         self, value, from_unit: str, to_unit: str, *, as_of: date | None = None

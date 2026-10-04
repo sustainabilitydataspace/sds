@@ -441,6 +441,68 @@ class ConversionRule(Base):
     __table_args__ = (Index("ix_conversion_rules_from_to", "from_unit", "to_unit"),)
 
 
+ADMIN_CATALOG_SCOPES = ("calculation_contracts", "unit_catalog")
+ADMIN_CATALOG_ACTIONS = (
+    "contract_validate",
+    "contract_import",
+    "unit_repair_commit",
+    "unit_repair_reverse",
+)
+ADMIN_CATALOG_RESULTS = ("ok", "already_imported", "rejected", "failed")
+
+
+class AdminCatalogOperation(Base):
+    """Append-only audit of admin contract imports and unit-catalog repairs.
+
+    The highest ``ok`` row id in scope ``unit_catalog`` is the unit-catalog
+    revision every UnitConverter process compares before serving lookups.
+    """
+
+    __tablename__ = "admin_catalog_operations"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    actor_user_id = Column(String(200), nullable=False)
+    auth_method = Column(String(30), nullable=False)
+    action = Column(String(40), nullable=False)
+    scope = Column(String(40), nullable=False)
+    result = Column(String(30), nullable=False)
+    request_id = Column(String(100))
+    package_hash = Column(String(64))
+    repair_id = Column(String(64))
+    unit_ids = Column(JSONB)
+    catalog_revision_before = Column(BigInteger)
+    catalog_revision_after = Column(BigInteger)
+    counts = Column(JSONB)
+    detail = Column(String(500))
+    unit_snapshot = Column(JSONB)
+
+    __table_args__ = (
+        Index("ix_admin_catalog_operations_scope_result_id", "scope", "result", "id"),
+        Index("ix_admin_catalog_operations_repair_id", "repair_id"),
+        CheckConstraint(
+            "scope IN ('calculation_contracts', 'unit_catalog')",
+            name="ck_admin_catalog_operations_scope",
+        ),
+        CheckConstraint(
+            "action IN ('contract_validate', 'contract_import', "
+            "'unit_repair_commit', 'unit_repair_reverse')",
+            name="ck_admin_catalog_operations_action",
+        ),
+        CheckConstraint(
+            "result IN ('ok', 'already_imported', 'rejected', 'failed')",
+            name="ck_admin_catalog_operations_result",
+        ),
+        CheckConstraint(
+            "action NOT IN ('unit_repair_commit', 'unit_repair_reverse') "
+            "OR result <> 'ok' OR unit_snapshot IS NOT NULL",
+            name="ck_admin_catalog_operations_snapshot_required",
+        ),
+    )
+
+
 class Currency(Base):
     __tablename__ = "currencies"
 

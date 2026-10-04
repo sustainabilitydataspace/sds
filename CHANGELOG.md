@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-03
+
+- Añadidos endpoints de administración (`/api/v1/admin`, admin con token
+  bearer y `manage_system`) para validar e importar paquetes de contratos de
+  cálculo en una única transacción idempotente con bloqueo por paquete, listar
+  conflictos del catálogo de unidades con el mismo análisis que el conversor y
+  reparar de forma previsualizada, firmada, auditada y reversible un duplicado
+  como `m3` frente a `m³`.
+- Migración `049`: tabla de solo inserción `admin_catalog_operations`, cuya
+  revisión hace que cada proceso de la API recargue su catálogo de unidades en
+  un segundo como máximo tras una reparación.
+- El servicio de importación de contratos acepta los bytes del paquete y puede
+  dejar la transacción al llamador; la CLI conserva su comportamiento.
+
 ## 2026-10-02
 
 - Añadido `PUT /auth/users/{username}` para que un administrador con token

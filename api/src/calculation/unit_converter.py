@@ -1,5 +1,7 @@
 """Unit conversion system for sustainability metrics."""
 
+import functools
+import time
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
@@ -95,6 +97,27 @@ class UnitConversionError(Exception):
     pass
 
 
+CATALOG_REVISION_SQL = (
+    "SELECT COALESCE(MAX(id), 0) FROM admin_catalog_operations "
+    "WHERE scope = 'unit_catalog' AND result = 'ok'"
+)
+CATALOG_REVISION_CHECK_SECONDS = 1.0
+# Public methods that rebuild the registry themselves are not guarded.
+CATALOG_RELOAD_METHODS = frozenset(
+    {"reload_from_storage", "reload_database", "refresh_units_cache"}
+)
+
+
+def _catalog_fresh(method):
+    @functools.wraps(method)
+    def guarded(self, *args, **kwargs):
+        self._ensure_catalog_fresh()
+        return method(self, *args, **kwargs)
+
+    guarded.__catalog_fresh__ = True
+    return guarded
+
+
 class UnitConverter:
     """System for converting between different units."""
 
@@ -129,6 +152,11 @@ class UnitConverter:
 
         # Cached physical converter (invalidated on registry mutation)
         self._physical_converter: PhysicalUnitConverter | None = None
+
+        # Unit-catalog revision this registry was loaded at (DB-backed only).
+        self._catalog_revision: int | None = None
+        self._catalog_refreshing = False
+        self._last_revision_check = 0.0
 
         # Initialize storage strategy
         self._storage_strategy = storage_strategy or self._auto_detect_strategy(
@@ -215,6 +243,56 @@ class UnitConverter:
         raise UnitConversionError(error_msg)
 
     def _load_from_storage(self):
+        """Load the registry and remember the unit-catalog revision it reflects.
+
+        The revision is read before loading, so a repair committed while the
+        load runs is picked up by the next freshness check.
+        """
+        self._catalog_refreshing = True
+        try:
+            revision = (
+                self._read_catalog_revision() if self._revision_tracked() else None
+            )
+            self._load_units_and_rules()
+            self._catalog_revision = revision
+            self._last_revision_check = time.monotonic()
+        finally:
+            self._catalog_refreshing = False
+
+    def _revision_tracked(self) -> bool:
+        from src.calculation.postgres_strategy import PostgresStrategy
+
+        return isinstance(self._storage_strategy, PostgresStrategy)
+
+    def _read_catalog_revision(self) -> int:
+        """Return the durable unit-catalog revision; raise if unavailable."""
+        from sqlalchemy import text
+
+        session = self._storage_strategy._ensure_session()
+        try:
+            return int(session.execute(text(CATALOG_REVISION_SQL)).scalar() or 0)
+        except Exception as exc:
+            session.rollback()
+            raise UnitConversionError("unit catalog revision unavailable") from exc
+
+    def _ensure_catalog_fresh(self) -> None:
+        """Reload when another process changed the unit catalog (fail closed)."""
+        if self._catalog_refreshing or not self._revision_tracked():
+            return
+        now = time.monotonic()
+        if now - self._last_revision_check < CATALOG_REVISION_CHECK_SECONDS:
+            return
+        self._last_revision_check = now
+        revision = self._read_catalog_revision()
+        if revision != self._catalog_revision:
+            self.logger.info(
+                "Unit catalog revision changed; reloading",
+                loaded_revision=self._catalog_revision,
+                current_revision=revision,
+            )
+            self.reload_from_storage()
+
+    def _load_units_and_rules(self):
         """Load units and conversion rules from storage strategy."""
         try:
             # Load unit definitions
@@ -784,6 +862,15 @@ class UnitConverter:
         """
         if self._physical_converter is not None:
             return self._physical_converter
+        physical_units = self.physical_units_snapshot()
+        physical_rules = self._physical_rules_snapshot()
+        self._physical_converter = PhysicalUnitConverter(
+            units=physical_units, rules=physical_rules, precision=self.precision
+        )
+        return self._physical_converter
+
+    def physical_units_snapshot(self) -> dict[str, PhysicalUnit]:
+        """Return the physical-unit view the expression registry is built from."""
         physical_units: dict[str, PhysicalUnit] = {}
         for symbol, unit in self.units.items():
             dimension = self._dimension_for_unit(unit)
@@ -795,7 +882,10 @@ class UnitConverter:
                 offset_to_base=unit.conversion_offset,
                 aliases=tuple(unit.aliases),
             )
-        physical_rules = [
+        return physical_units
+
+    def _physical_rules_snapshot(self) -> list[PhysicalConversionRule]:
+        return [
             PhysicalConversionRule(
                 from_unit=from_unit,
                 to_unit=to_unit,
@@ -808,10 +898,6 @@ class UnitConverter:
             for (from_unit, to_unit), rules in self._conversion_rule_history.items()
             for rule in rules
         ]
-        self._physical_converter = PhysicalUnitConverter(
-            units=physical_units, rules=physical_rules, precision=self.precision
-        )
-        return self._physical_converter
 
     def get_physical_converter(self) -> PhysicalUnitConverter:
         """Return the cached PhysicalUnitConverter for the current unit registry."""
@@ -1680,3 +1766,22 @@ class UnitConverter:
             self.refresh_units_cache()
 
         return success
+
+
+# Every public UnitConverter method observes a current unit catalog (DB mode).
+CATALOG_FRESH_METHODS = tuple(
+    sorted(
+        name
+        for name, value in vars(UnitConverter).items()
+        if callable(value)
+        and not name.startswith("_")
+        and name not in CATALOG_RELOAD_METHODS
+    )
+)
+for _method_name in CATALOG_FRESH_METHODS:
+    setattr(
+        UnitConverter,
+        _method_name,
+        _catalog_fresh(getattr(UnitConverter, _method_name)),
+    )
+del _method_name
