@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-05 — Guía documental
+
+- Nueva guía de organización impersonal de anexos en
+  `docs/deliverable-annex-organization.md`: asociaciones entre actividades y
+  entregables, conservación de fuentes y Word manual, índice con verificación
+  de integridad y vínculos relativos de evidencia.
+- Distingue registros históricos de pruebas, ejecuciones operativas,
+  comunicación enviada, recepción, propagación cloud y decisiones de
+  aceptación. La guía no publica ni importa anexos controlados ni acredita
+  recepción o nuevas decisiones administrativas.
+
 ## 2026-10-05
 
 - Paquete de demostración A2.3 versionado en `api/demo/a23` (`sds-demo-a23-v1`)
