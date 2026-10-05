@@ -125,6 +125,7 @@ def materialize_pairwise_mappings(
     approval_statuses: tuple[str, ...] = DEFAULT_APPROVAL_STATUSES,
     allow_operational_subset: bool = False,
     installed_standard_releases: set[StandardReleaseKey] | None = None,
+    commit: bool = True,
 ) -> PairwiseMaterializationReport:
     """Generate current pairwise mappings from Sygris canonical footprints.
 
@@ -132,7 +133,15 @@ def materialize_pairwise_mappings(
     ``standard_mappings`` table is not touched, but the public mapping store is
     now canonical-backed, so committed materialization changes the rows visible
     through ``/api/v1/mappings``.
+
+    Profiles coexist: a run only stales current rows derived from its own
+    ``mapping_profile`` and, for a pair already current from another profile,
+    the default profile takes precedence (see ``_upsert_pairwise_candidate``).
+    With ``commit=False`` the caller owns the transaction (no commit or
+    rollback here); it cannot be combined with ``dry_run``.
     """
+    if dry_run and not commit:
+        raise ValueError("dry_run requires commit=True (it rolls back the session)")
     _acquire_materialization_lock(db)
 
     (
@@ -177,7 +186,8 @@ def materialize_pairwise_mappings(
         )
         for relationship_type, count in non_operational_counts.items():
             report.counts[f"non_operational_relationship_{relationship_type}"] = count
-        db.rollback()
+        if commit:
+            db.rollback()
         return report
 
     candidates = _derive_pairwise_candidates(groups, mapping_profile=mapping_profile)
@@ -221,23 +231,31 @@ def materialize_pairwise_mappings(
 
     try:
         for candidate in candidates:
-            _upsert_pairwise_candidate(db, candidate, report)
+            if _upsert_pairwise_candidate(
+                db, candidate, report, mapping_profile=mapping_profile
+            ):
+                continue
+            candidate_keys.discard(
+                (candidate.source_datapoint.id, candidate.target_datapoint.id)
+            )
         db.flush()
         _mark_missing_current_rows_stale(
             db,
             candidate_keys,
             report,
             installed_standard_releases=installed_standard_releases,
+            mapping_profile=mapping_profile,
         )
         db.flush()
         if dry_run:
             db.rollback()
-        else:
+        elif commit:
             db.commit()
             report.committed = True
         return report
     except Exception:
-        db.rollback()
+        if commit:
+            db.rollback()
         raise
 
 
@@ -546,11 +564,27 @@ def _hash_payload(payload: Any) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
+def _profile_rank(profile: str | None) -> int:
+    """Lower wins: the default profile takes precedence over any other."""
+    return 0 if profile in (None, DEFAULT_MAPPING_PROFILE) else 1
+
+
+def _row_profile(db: Session, row: MaterializedPairwiseMapping) -> str | None:
+    group_id = getattr(row, "source_assertion_group_id", None)
+    if group_id is None:
+        return None  # rows predating profiles belong to the default profile
+    group = db.get(MappingAssertionGroup, group_id)
+    return group.mapping_profile if group is not None else None
+
+
 def _upsert_pairwise_candidate(
     db: Session,
     candidate: PairwiseCandidate,
     report: PairwiseMaterializationReport,
-) -> None:
+    *,
+    mapping_profile: str = DEFAULT_MAPPING_PROFILE,
+) -> bool:
+    """Write one candidate; False when another profile's current row wins."""
     existing = (
         db.query(MaterializedPairwiseMapping)
         .filter(
@@ -562,9 +596,22 @@ def _upsert_pairwise_candidate(
         )
         .first()
     )
+    if existing is not None:
+        existing_profile = _row_profile(db, existing) or DEFAULT_MAPPING_PROFILE
+        if existing_profile != mapping_profile:
+            if _profile_rank(mapping_profile) >= _profile_rank(existing_profile):
+                _count(report, "pairwise_covered_by_precedence")
+                return False
+            existing.is_current = False
+            existing.stale_reason = f"superseded_by_profile:{mapping_profile}"
+            db.flush()
+            _count(report, "pairwise_superseded_other_profile")
+            db.add(_mapping_from_candidate(candidate))
+            _count(report, "pairwise_created")
+            return True
     if existing and existing.generated_from_hash == candidate.generated_from_hash:
         _count(report, "pairwise_unchanged")
-        return
+        return True
     if existing:
         existing.is_current = False
         existing.stale_reason = "replaced_by_new_sygris_footprint_materialization"
@@ -573,6 +620,7 @@ def _upsert_pairwise_candidate(
 
     db.add(_mapping_from_candidate(candidate))
     _count(report, "pairwise_created")
+    return True
 
 
 def _mapping_from_candidate(
@@ -604,11 +652,26 @@ def _mark_missing_current_rows_stale(
     report: PairwiseMaterializationReport,
     *,
     installed_standard_releases: set[StandardReleaseKey] | None = None,
+    mapping_profile: str = DEFAULT_MAPPING_PROFILE,
 ) -> None:
     query = db.query(MaterializedPairwiseMapping).filter(
         MaterializedPairwiseMapping.derivation_method == DERIVATION_METHOD,
         MaterializedPairwiseMapping.is_current.is_(True),
     )
+    # Only rows derived from this run's profile may be staled (rows without a
+    # source group predate profiles and belong to the default profile).
+    source_group = aliased(MappingAssertionGroup)
+    query = query.outerjoin(
+        source_group,
+        MaterializedPairwiseMapping.source_assertion_group_id == source_group.id,
+    )
+    if mapping_profile == DEFAULT_MAPPING_PROFILE:
+        query = query.filter(
+            (source_group.mapping_profile == mapping_profile)
+            | (MaterializedPairwiseMapping.source_assertion_group_id.is_(None))
+        )
+    else:
+        query = query.filter(source_group.mapping_profile == mapping_profile)
 
     if installed_standard_releases is not None:
         if not installed_standard_releases:

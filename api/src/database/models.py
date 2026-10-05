@@ -521,6 +521,47 @@ ERROR_DIAGNOSTIC_CLASSIFICATIONS = (
 )
 
 
+DEMO_PACKAGE_INSTALL_STATES = (
+    "installed",
+    "verified",
+    "installed_unverified",
+    "failed",
+)
+
+
+class AdminDemoPackageInstall(Base):
+    """Append-only ledger of bundled demo package install attempts."""
+
+    __tablename__ = "admin_demo_package_installs"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    package_id = Column(String(64), nullable=False)
+    package_digest = Column(String(64), nullable=False)
+    actor_user_id = Column(String(200), nullable=False)
+    auth_method = Column(String(30), nullable=False)
+    request_id = Column(String(100))
+    state = Column(String(30), nullable=False)
+    failed_step = Column(String(40))
+    error_class = Column(String(80))
+    counts = Column(JSONB)
+    checks = Column(JSONB)
+    materialization_hash_before = Column(String(64))
+    materialization_hash_after = Column(String(64))
+
+    __table_args__ = (
+        Index("ix_admin_demo_package_installs_package_id", "package_id", "id"),
+        CheckConstraint(
+            "state IN ("
+            + ", ".join(f"'{state}'" for state in DEMO_PACKAGE_INSTALL_STATES)
+            + ")",
+            name="ck_admin_demo_package_installs_state",
+        ),
+    )
+
+
 class AdminErrorDiagnostic(Base):
     """Sanitized server-error record, keyed by the client-visible request id.
 

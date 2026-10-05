@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-10-05
+
+- Paquete de demostración A2.3 versionado en `api/demo/a23` (`sds-demo-a23-v1`)
+  con lo necesario para la verificación V1–V5 de la instancia pública:
+  22 indicadores ESRS E1-5 (textos de EFRAG con atribución), el contrato de
+  cálculo del modelo E1-5, la jerarquía `nh_group`, los 9 valores sintéticos
+  NordHaven 2024 y tres correspondencias ESRS E1-6 → GRI 305 aprobadas por el
+  operador en un perfil propio.
+- Endpoints de administración `GET /api/v1/admin/demo-packages/a23` (estado,
+  comprobaciones V1–V5 e historial) y `POST .../install?confirm=true`:
+  verifican el paquete contra un digest fijado en el código, lo instalan en una
+  única transacción y, si algo difiere de lo que es de la demo, devuelven `409`
+  sin escribir nada. Los datos compartidos existentes se reutilizan sin
+  modificarlos.
+- Migración `051`: registro `admin_demo_package_installs`.
+- La materialización de correspondencias respeta perfiles: solo marca como
+  obsoletas filas de su propio perfil y el perfil `default` prevalece en un par
+  compartido. La importación de correspondencias admite
+  `reference_data_mode="insert_only"` y, sin `commit`, trabaja en un
+  `SAVEPOINT`; importación de indicadores, creación de jerarquías y
+  materialización aceptan `commit=False`.
+
 ## 2026-10-04
 
 - Las reparaciones del catálogo de unidades verifican el resultado dentro de la

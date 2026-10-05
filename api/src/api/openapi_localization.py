@@ -115,6 +115,8 @@ _SUMMARY_ES: Dict[str, str] = {
     "Report stored values possibly affected by a unit": "Informar de los valores almacenados posiblemente afectados por una unidad",
     "Get a sanitized server error diagnostic": "Obtener el diagnóstico saneado de un error del servidor",
     "List recent sanitized server error diagnostics": "Listar los diagnósticos saneados recientes de errores del servidor",
+    "Get the demo A2.3 package status": "Consultar el estado del paquete de demostración A2.3",
+    "Install the demo A2.3 package": "Instalar el paquete de demostración A2.3",
     "Reset another user's password": "Restablecer la contraseña de otro usuario",
     "Delete hierarchy configuration": "Eliminar configuración de jerarquía",
     "Delete value by ID": "Eliminar valor por ID",

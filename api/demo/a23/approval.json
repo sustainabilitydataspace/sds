@@ -1,0 +1,128 @@
+{
+  "package_id": "sds-demo-a23-v1",
+  "scope": "SDS A2.3 demonstration: ESRS E1-6 gross Scope 1, location-based Scope 2 and Scope 3 GHG emissions to GRI 305-1.a, 305-2.a and 305-3.a.",
+  "approver_role": "SDS operator (Sygris)",
+  "approved_at": "2026-10-05",
+  "assertions": [
+    {
+      "source_standard_id": "ESRS",
+      "source_standard_version": "ESRS_Set1_2023-12-22_OJ",
+      "source_code": "E1-6_07",
+      "mapping_profile": "demo_a23",
+      "relationship_type": "equivalent",
+      "coverage_status": "complete",
+      "confidence": "0.94",
+      "approval_status": "approved",
+      "publication_status": "internal",
+      "assertion_hash": "8871acd371105f41825fd1c7028cec938ce1aae6a2ab8e08d1280b10beed40f8",
+      "components": [
+        {
+          "component_order": 1,
+          "sygris_canonical_uri": "syg:GrossScope1GreenhouseGasEmissions",
+          "component_role": "primary",
+          "coverage_fraction": "1.0000"
+        }
+      ]
+    },
+    {
+      "source_standard_id": "GRI",
+      "source_standard_version": "GRI_SRS_2025-06-23",
+      "source_code": "GRI 305-1.a",
+      "mapping_profile": "demo_a23",
+      "relationship_type": "equivalent",
+      "coverage_status": "complete",
+      "confidence": "0.96",
+      "approval_status": "approved",
+      "publication_status": "internal",
+      "assertion_hash": "fac5ee675bccdfe8b282740822336a6f6969c2b86ce1370e2b273d20040a5bf0",
+      "components": [
+        {
+          "component_order": 1,
+          "sygris_canonical_uri": "syg:GrossScope1GreenhouseGasEmissions",
+          "component_role": "primary",
+          "coverage_fraction": "1.0000"
+        }
+      ]
+    },
+    {
+      "source_standard_id": "ESRS",
+      "source_standard_version": "ESRS_Set1_2023-12-22_OJ",
+      "source_code": "E1-6_09",
+      "mapping_profile": "demo_a23",
+      "relationship_type": "equivalent",
+      "coverage_status": "complete",
+      "confidence": "0.94",
+      "approval_status": "approved",
+      "publication_status": "internal",
+      "assertion_hash": "ede2ad96b3573a986007d4333739e37ae573b880e02e94217f0d9f3573107a84",
+      "components": [
+        {
+          "component_order": 1,
+          "sygris_canonical_uri": "syg:GrossLocationBasedScope2GreenhouseGasEmissions",
+          "component_role": "primary",
+          "coverage_fraction": "1.0000"
+        }
+      ]
+    },
+    {
+      "source_standard_id": "GRI",
+      "source_standard_version": "GRI_SRS_2025-06-23",
+      "source_code": "GRI 305-2.a",
+      "mapping_profile": "demo_a23",
+      "relationship_type": "equivalent",
+      "coverage_status": "complete",
+      "confidence": "0.96",
+      "approval_status": "approved",
+      "publication_status": "internal",
+      "assertion_hash": "4b0b35ba43591bd012e4ceff44ae6e7208fd1b3acd4a14ad2ca5dc45dad9dee5",
+      "components": [
+        {
+          "component_order": 1,
+          "sygris_canonical_uri": "syg:GrossLocationBasedScope2GreenhouseGasEmissions",
+          "component_role": "primary",
+          "coverage_fraction": "1.0000"
+        }
+      ]
+    },
+    {
+      "source_standard_id": "ESRS",
+      "source_standard_version": "ESRS_Set1_2023-12-22_OJ",
+      "source_code": "E1-6_11",
+      "mapping_profile": "demo_a23",
+      "relationship_type": "equivalent",
+      "coverage_status": "complete",
+      "confidence": "0.94",
+      "approval_status": "approved",
+      "publication_status": "internal",
+      "assertion_hash": "03a086cccbc0e49df8628e4241ff4b22521f04b0aa0c586ce01ac997f6ce44be",
+      "components": [
+        {
+          "component_order": 1,
+          "sygris_canonical_uri": "syg:GrossScope3GreenhouseGasEmissions",
+          "component_role": "primary",
+          "coverage_fraction": "1.0000"
+        }
+      ]
+    },
+    {
+      "source_standard_id": "GRI",
+      "source_standard_version": "GRI_SRS_2025-06-23",
+      "source_code": "GRI 305-3.a",
+      "mapping_profile": "demo_a23",
+      "relationship_type": "equivalent",
+      "coverage_status": "complete",
+      "confidence": "0.91",
+      "approval_status": "approved",
+      "publication_status": "internal",
+      "assertion_hash": "498f5d7d32f712abfb836be375beee20af9ee5cf093d372223be869d66d1d1c6",
+      "components": [
+        {
+          "component_order": 1,
+          "sygris_canonical_uri": "syg:GrossScope3GreenhouseGasEmissions",
+          "component_role": "primary",
+          "coverage_fraction": "1.0000"
+        }
+      ]
+    }
+  ]
+}

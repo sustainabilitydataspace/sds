@@ -1,0 +1,16 @@
+{
+  "company_id": "nordhaven_components_group",
+  "hierarchy_type": "organizational",
+  "name": "NordHaven Components Group",
+  "description": "Synthetic NordHaven UC-01 demo group (root entity nh_group).",
+  "levels": [
+    {
+      "id": "nh_group",
+      "name": "NordHaven Components Group",
+      "parent": null,
+      "level": 0,
+      "metadata": null
+    }
+  ],
+  "active": true
+}

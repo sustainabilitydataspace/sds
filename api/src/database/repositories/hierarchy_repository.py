@@ -55,8 +55,9 @@ class HierarchyRepository:
         configuration: str,
         description: str = None,
         created_by: str = None,
+        commit: bool = True,
     ) -> HierarchyConfiguration:
-        """Create a new hierarchy configuration."""
+        """Create a new hierarchy configuration (``commit=False``: flush only)."""
         config = HierarchyConfiguration(
             id=config_id,
             company_id=company_id,
@@ -67,8 +68,11 @@ class HierarchyRepository:
             created_by=created_by,
         )
         self.db.add(config)
-        self.db.commit()
-        self.db.refresh(config)
+        if commit:
+            self.db.commit()
+            self.db.refresh(config)
+        else:
+            self.db.flush()
         return config
 
     def update_hierarchy_configuration(

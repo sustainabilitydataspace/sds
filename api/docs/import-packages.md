@@ -60,6 +60,15 @@ estos mismos activos cargados: valores operativos, contratos/fórmulas de cálcu
 mappings exactos/equivalentes materializados y catálogo de unidades. La guía de
 uso está en [Runtime Interoperability Guide](interoperability-runtime.md).
 
+## Paquete de demostración A2.3
+
+`api/demo/a23` contiene el subconjunto mínimo que reproduce la verificación
+pública A2.3 (indicadores E1-5, contrato de cálculo E1-5, jerarquía `nh_group`,
+9 valores sintéticos y tres correspondencias ESRS E1-6 → GRI 305). Se instala
+desde la API con `POST /api/v1/admin/demo-packages/a23/install?confirm=true`
+(véase [Despliegue](deployment.md#demo-a23-package)); no requiere acceso al
+servidor ni a la base de datos.
+
 ## Importar la base de datos de indicadores
 
 La validación síncrona del catálogo está disponible por API; usa el CLI soportado para importar. La admisión asíncrona por API en modo DB está bloqueada pendiente de H15.

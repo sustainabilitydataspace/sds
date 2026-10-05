@@ -1,0 +1,56 @@
+{
+  "format": "sds-demo-a23-v1",
+  "package_id": "sds-demo-a23-v1",
+  "synthetic_public_data": true,
+  "tenant": "nordhaven_components_group",
+  "files": {
+    "NOTICE.md": {
+      "sha256": "c38de4e8885d1c0fd449bd12917c8744ca9e53128dc87740a5c1b5e0dd96d79b",
+      "size_bytes": 863
+    },
+    "approval.json": {
+      "sha256": "0bb3712391d12bd7a1685387fd82f84ab6e0d6b6acec98f0fb761657ec6e1bfe",
+      "size_bytes": 4438
+    },
+    "calculation_contract.json": {
+      "sha256": "b0486e5ccf3b24931754eb6f06423fb1fdbda3aeb632d63c18bec002763a924d",
+      "size_bytes": 44508
+    },
+    "hierarchy.json": {
+      "sha256": "c0e08c7a6e5e1bdee72ebcfafd6e0698025213687822301dd44cad8d09a2f525",
+      "size_bytes": 388
+    },
+    "indicators.csv": {
+      "sha256": "8029555c2209f09e52b88cb847c1c1fbc84eb657d151304733585996ab1bfed8",
+      "size_bytes": 9050
+    },
+    "mappings/MANIFEST.sha256": {
+      "sha256": "7b917218c795389840546a6b38aea4b93c8acc6f688508a1cf1479780f90666d",
+      "size_bytes": 388
+    },
+    "mappings/manifest.json": {
+      "sha256": "54986453e22c7fcaaf528b86282a8311ff95da3a0d6564435966b9d79a12969f",
+      "size_bytes": 4649
+    },
+    "mappings/sds_mapping_assertion_components.csv": {
+      "sha256": "b3bd358fa9f283853f93c2c7cf44a0069a2a5976d9862e231f5d51c60ef92cc9",
+      "size_bytes": 1058
+    },
+    "mappings/sds_mapping_assertion_groups.csv": {
+      "sha256": "8dc7e5cab39b2560bc8a42858ef013bcf1b6eeeaf28fc99e043fbd36eacab714",
+      "size_bytes": 3012
+    },
+    "mappings/sds_standard_datapoints.csv": {
+      "sha256": "bc81850ea08ad48002f0c8108672a7e6b4b17ef96a4240eefe9ae7cf4c61e827",
+      "size_bytes": 1248
+    },
+    "mappings/sds_standard_releases.csv": {
+      "sha256": "398b0a5f4043db72c8d25efc948d5df43ce1d7c48f35099ad5a52d55ea212aea",
+      "size_bytes": 439
+    },
+    "values.csv": {
+      "sha256": "0cb9a2b8f22cbd49fc51a2d9cfba5cc36d34d8cdbad2a973d4174b4df5429f14",
+      "size_bytes": 2129
+    }
+  }
+}

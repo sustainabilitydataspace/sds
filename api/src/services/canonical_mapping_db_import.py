@@ -45,6 +45,9 @@ DEFAULT_CREATED_BY = "canonical_mapping_shadow_import"
 _CAMEL_BOUNDARY_RE = re.compile(r"(?<!^)(?=[A-Z])")
 
 
+REFERENCE_DATA_MODES = frozenset({"upsert", "insert_only"})
+
+
 @dataclass
 class CanonicalMappingDbImportReport:
     """Outcome of a DB-backed canonical mapping package import."""
@@ -93,10 +96,27 @@ def import_canonical_mapping_package_to_db(
     installed_standard_releases: set[StandardReleaseKey] | None = None,
     allow_partial_installed_standards: bool = False,
     commit: bool = True,
+    reference_data_mode: str = "upsert",
 ) -> CanonicalMappingDbImportReport:
-    """Snapshot one external package, then validate and import only those bytes."""
+    """Snapshot one external package, then validate and import only those bytes.
+
+    ``reference_data_mode="insert_only"`` creates missing standard releases and
+    datapoints but never modifies existing ones (shared reference data).
+
+    With ``commit=False`` on PostgreSQL the caller owns the transaction: the
+    import runs in a SAVEPOINT that is released on success and rolled back on a
+    refused, blocked or failed import, so only this import's rows are
+    discarded. Other dialects keep the historical whole-session rollback.
+    """
+    if reference_data_mode not in REFERENCE_DATA_MODES:
+        raise ValueError("reference_data_mode must be 'upsert' or 'insert_only'")
 
     reported_package_dir = str(Path(package_dir).absolute())
+    savepoint = (
+        db.begin_nested()
+        if not commit and not dry_run and db.get_bind().dialect.name == "postgresql"
+        else None
+    )
     try:
         with canonical_mapping_package_snapshot(package_dir) as snapshot:
             report = _import_canonical_mapping_package_snapshot_to_db(
@@ -108,9 +128,14 @@ def import_canonical_mapping_package_to_db(
                 installed_standard_releases=installed_standard_releases,
                 allow_partial_installed_standards=allow_partial_installed_standards,
                 commit=commit,
+                reference_data_mode=reference_data_mode,
             )
     except CanonicalMappingPackageSecurityError as exc:
-        db.rollback()
+        if savepoint is not None:
+            if savepoint.is_active:
+                savepoint.rollback()
+        else:
+            db.rollback()
         validation = CanonicalMappingImportReport(
             package_dir=reported_package_dir,
             package_schema_version=None,
@@ -133,6 +158,17 @@ def import_canonical_mapping_package_to_db(
             committed=False,
             validation=validation,
         )
+    except Exception:
+        if savepoint is not None and savepoint.is_active:
+            savepoint.rollback()
+        raise
+    if savepoint is not None and savepoint.is_active:
+        if report.valid and not report.blocked:
+            savepoint.commit()
+        else:
+            savepoint.rollback()
+    elif savepoint is None and not commit and report.blocked:
+        db.rollback()
     report.package_dir = reported_package_dir
     report.validation = replace(report.validation, package_dir=reported_package_dir)
     return report
@@ -148,6 +184,7 @@ def _import_canonical_mapping_package_snapshot_to_db(
     installed_standard_releases: set[StandardReleaseKey] | None = None,
     allow_partial_installed_standards: bool = False,
     commit: bool = True,
+    reference_data_mode: str = "upsert",
 ) -> CanonicalMappingDbImportReport:
     """Validate and import a package into canonical shadow tables only.
 
@@ -194,7 +231,8 @@ def _import_canonical_mapping_package_snapshot_to_db(
             report.mode = "shadow_db_import_blocked"
             report.blocked = True
             report.blockers = compatibility.blockers
-            db.rollback()
+            if commit or dry_run:
+                db.rollback()
             return report
         rows = filter_rows_for_installed_standard_compatibility(rows, compatibility)
 
@@ -214,7 +252,8 @@ def _import_canonical_mapping_package_snapshot_to_db(
                 non_operational_counts
             )
             report.counts["non_operational_assertion_groups_blocked"] = blocked_count
-            db.rollback()
+            if commit or dry_run:
+                db.rollback()
             return report
 
     release_by_key: dict[tuple[str, str], StandardRelease] = {}
@@ -230,6 +269,7 @@ def _import_canonical_mapping_package_snapshot_to_db(
                 report,
                 created_by=created_by,
                 package_manifest_hash=validation.manifest_hash,
+                insert_only=reference_data_mode == "insert_only",
             )
             release_by_key[(release.standard_id, release.version)] = release
         db.flush()
@@ -242,6 +282,7 @@ def _import_canonical_mapping_package_snapshot_to_db(
                 release_by_key[key],
                 report,
                 created_by=created_by,
+                insert_only=reference_data_mode == "insert_only",
             )
             datapoint_by_key[(*key, datapoint.code)] = datapoint
         db.flush()
@@ -307,7 +348,8 @@ def _import_canonical_mapping_package_snapshot_to_db(
             report.committed = True
         return report
     except Exception:
-        db.rollback()
+        if commit or dry_run:
+            db.rollback()
         raise
 
 
@@ -318,6 +360,7 @@ def _upsert_standard_release(
     *,
     created_by: str,
     package_manifest_hash: str | None,
+    insert_only: bool = False,
 ) -> StandardRelease:
     release = (
         db.query(StandardRelease)
@@ -345,6 +388,9 @@ def _upsert_standard_release(
         db.add(release)
         _count(report, "standard_releases", "created")
         return release
+    if insert_only:
+        _count(report, "standard_releases", "reused")
+        return release
 
     if _apply_values(release, values):
         _count(report, "standard_releases", "updated")
@@ -360,6 +406,7 @@ def _upsert_standard_datapoint(
     report: CanonicalMappingDbImportReport,
     *,
     created_by: str,
+    insert_only: bool = False,
 ) -> StandardDatapoint:
     datapoint = (
         db.query(StandardDatapoint)
@@ -383,6 +430,9 @@ def _upsert_standard_datapoint(
         datapoint = StandardDatapoint(**values, created_by=created_by)
         db.add(datapoint)
         _count(report, "standard_datapoints", "created")
+        return datapoint
+    if insert_only:
+        _count(report, "standard_datapoints", "reused")
         return datapoint
 
     if _apply_values(datapoint, values):

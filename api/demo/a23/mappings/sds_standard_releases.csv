@@ -1,0 +1,3 @@
+"standard_id","name","version","release_date","source_url","lifecycle_status","provenance"
+"ESRS","European Sustainability Reporting Standards Set 1","ESRS_Set1_2023-12-22_OJ","2023-12-22","https://eur-lex.europa.eu/eli/reg_del/2023/2772/oj","active","{""package_id"":""sds-demo-a23-v1""}"
+"GRI","GRI Standards","GRI_SRS_2025-06-23","2025-06-23","https://www.globalreporting.org/standards/","active","{""package_id"":""sds-demo-a23-v1""}"

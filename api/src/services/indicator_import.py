@@ -434,8 +434,13 @@ def apply_indicator_import_transactional(
     source_hash: Optional[str],
     created_by: Optional[str],
     max_rows: int = DEFAULT_MAX_ROWS,
+    commit: bool = True,
 ) -> IndicatorImportPlan:
-    """Validate and apply an indicator register import as one DB transaction."""
+    """Validate and apply an indicator register import as one DB transaction.
+
+    With ``commit=False`` the caller owns the transaction: nothing is committed
+    or rolled back here.
+    """
     source_size_bytes = len(csv_text.encode("utf-8"))
     plan = validate_indicator_import_text(
         csv_text,
@@ -445,7 +450,8 @@ def apply_indicator_import_transactional(
         max_rows=max_rows,
     )
     if not plan.valid:
-        db.rollback()
+        if commit:
+            db.rollback()
         raise IndicatorImportValidationError(plan)
 
     try:
@@ -481,18 +487,22 @@ def apply_indicator_import_transactional(
             created_by=created_by,
             commit=False,
         )
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
 
         plan.accepted_rows = affected
         plan.migrated_legacy_ids = migrated
         plan.removed_legacy_duplicates = removed
-        plan.committed = True
+        plan.committed = commit
         plan.snapshot_id = snapshot.id
         plan.manifest_hash = manifest.manifest_hash
         plan.semantic_projection = projection_result.as_dict()
         return plan
     except Exception:
-        db.rollback()
+        if commit:
+            db.rollback()
         raise
 
 

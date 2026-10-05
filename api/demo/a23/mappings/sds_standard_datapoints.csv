@@ -1,0 +1,7 @@
+"standard_id","standard_version","code","label","disclosure_text","datapoint_type","unit","lifecycle_status","metadata_json"
+"ESRS","ESRS_Set1_2023-12-22_OJ","E1-6_07","Gross Scope 1 greenhouse gas emissions","Disclosure datapoint as defined in IG3 (ESRS E1-6, paragraph 48.a).","narrative","Text","active","{""package_id"":""sds-demo-a23-v1""}"
+"GRI","GRI_SRS_2025-06-23","GRI 305-1.a","Scope 1 GHG emissions, gross","","numeric","t CO2e","active","{""package_id"":""sds-demo-a23-v1""}"
+"ESRS","ESRS_Set1_2023-12-22_OJ","E1-6_09","Gross location-based Scope 2 greenhouse gas emissions","Disclosure datapoint as defined in IG3 (ESRS E1-6, paragraph 49.a.52.a).","narrative","Text","active","{""package_id"":""sds-demo-a23-v1""}"
+"GRI","GRI_SRS_2025-06-23","GRI 305-2.a","Scope 2 GHG emissions, gross, location-based","","numeric","t CO2e","active","{""package_id"":""sds-demo-a23-v1""}"
+"ESRS","ESRS_Set1_2023-12-22_OJ","E1-6_11","Gross Scope 3 greenhouse gas emissions","Disclosure datapoint as defined in IG3 (ESRS E1-6, paragraph 51).","narrative","Text","active","{""package_id"":""sds-demo-a23-v1""}"
+"GRI","GRI_SRS_2025-06-23","GRI 305-3.a","Scope 3 GHG emissions, gross","","numeric","t CO2e","active","{""package_id"":""sds-demo-a23-v1""}"

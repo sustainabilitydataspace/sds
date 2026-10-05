@@ -1,0 +1,1390 @@
+{
+  "contract_version": "atomizer-sds-calculation-contract-v1",
+  "filename": "sds_calculation_contract.json",
+  "generated_at": "2026-10-05T00:00:00Z",
+  "source_version": "sds-demo-a23-v1",
+  "model_count": 1,
+  "node_count": 22,
+  "executable_node_count": 6,
+  "model_provenance": [
+    {
+      "model_key": "model_0001",
+      "standard_id": "ESRS E1",
+      "requirement_id": "E1-5",
+      "title": "E1-5 Energy consumption and mix",
+      "source_model": "hybrid",
+      "source_kind": "hybrid",
+      "source_version": "sds-demo-a23-v1",
+      "canonical_model": ""
+    }
+  ],
+  "nodes": [
+    {
+      "node_id": "model_0001#E1-5_01",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_01",
+      "canonical_datapoint_id": "E1-5_01",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_01",
+      "label": "Total energy consumption related to own operations",
+      "description": "Disclose total energy consumption related to own operations in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "aggregate",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "sum",
+        "operation_kind": "sum",
+        "semantic_expression": "E1-5_02 + E1-5_03 + E1-5_05",
+        "runtime_expression": "e1_5_02 + e1_5_03 + e1_5_05",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [
+          "E1-5_02",
+          "E1-5_03",
+          "E1-5_05"
+        ],
+        "component_refs": [
+          {
+            "component_id": "E1-5_02",
+            "local_variable": "e1_5_02",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_02",
+            "datapoint_id": "E1-5_02",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_02",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "executable"
+          },
+          {
+            "component_id": "E1-5_03",
+            "local_variable": "e1_5_03",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_03",
+            "datapoint_id": "E1-5_03",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_03",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          },
+          {
+            "component_id": "E1-5_05",
+            "local_variable": "e1_5_05",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_05",
+            "datapoint_id": "E1-5_05",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_05",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "executable"
+          }
+        ],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_02",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_02",
+      "canonical_datapoint_id": "E1-5_02",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_02",
+      "label": "Total energy consumption from fossil sources",
+      "description": "Disclose total energy consumption from fossil sources in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "aggregate",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "sum",
+        "operation_kind": "sum",
+        "semantic_expression": "E1-5_10 + E1-5_11 + E1-5_12 + E1-5_13 + E1-5_14",
+        "runtime_expression": "e1_5_10 + e1_5_11 + e1_5_12 + e1_5_13 + e1_5_14",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [
+          "E1-5_10",
+          "E1-5_11",
+          "E1-5_12",
+          "E1-5_13",
+          "E1-5_14"
+        ],
+        "component_refs": [
+          {
+            "component_id": "E1-5_10",
+            "local_variable": "e1_5_10",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_10",
+            "datapoint_id": "E1-5_10",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_10",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          },
+          {
+            "component_id": "E1-5_11",
+            "local_variable": "e1_5_11",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_11",
+            "datapoint_id": "E1-5_11",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_11",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          },
+          {
+            "component_id": "E1-5_12",
+            "local_variable": "e1_5_12",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_12",
+            "datapoint_id": "E1-5_12",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_12",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          },
+          {
+            "component_id": "E1-5_13",
+            "local_variable": "e1_5_13",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_13",
+            "datapoint_id": "E1-5_13",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_13",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          },
+          {
+            "component_id": "E1-5_14",
+            "local_variable": "e1_5_14",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_14",
+            "datapoint_id": "E1-5_14",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_14",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          }
+        ],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_03",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_03",
+      "canonical_datapoint_id": "E1-5_03",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_03",
+      "label": "Total energy consumption from nuclear sources",
+      "description": "Disclose total energy consumption from nuclear sources in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_04",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_04",
+      "canonical_datapoint_id": "E1-5_04",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_04",
+      "label": "Percentage of energy consumption from nuclear sources in total energy consumption",
+      "description": "Disclose the percentage of nuclear energy consumption in total energy consumption.",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "primary",
+      "value_kind": "ratio",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "percent",
+      "unit_type": "Percentage",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "ratio",
+        "operation_kind": "percentage",
+        "semantic_expression": "E1-5_03 / E1-5_01 * 100",
+        "runtime_expression": "e1_5_03 / e1_5_01 * 100",
+        "division_by_zero": "fail_closed",
+        "scale": {
+          "kind": "percentage",
+          "factor": "100"
+        },
+        "component_ids": [
+          "E1-5_03",
+          "E1-5_01"
+        ],
+        "component_refs": [
+          {
+            "component_id": "E1-5_03",
+            "local_variable": "e1_5_03",
+            "weight_hint": "",
+            "numerator_denominator_role": "numerator",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_03",
+            "datapoint_id": "E1-5_03",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_03",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          },
+          {
+            "component_id": "E1-5_01",
+            "local_variable": "e1_5_01",
+            "weight_hint": "",
+            "numerator_denominator_role": "denominator",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_01",
+            "datapoint_id": "E1-5_01",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_01",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "executable"
+          }
+        ],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_05",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_05",
+      "canonical_datapoint_id": "E1-5_05",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_05",
+      "label": "Total energy consumption from renewable sources",
+      "description": "Disclose total energy consumption from renewable sources in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "aggregate",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "sum",
+        "operation_kind": "sum",
+        "semantic_expression": "E1-5_06 + E1-5_07 + E1-5_08",
+        "runtime_expression": "e1_5_06 + e1_5_07 + e1_5_08",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [
+          "E1-5_06",
+          "E1-5_07",
+          "E1-5_08"
+        ],
+        "component_refs": [
+          {
+            "component_id": "E1-5_06",
+            "local_variable": "e1_5_06",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_06",
+            "datapoint_id": "E1-5_06",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_06",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          },
+          {
+            "component_id": "E1-5_07",
+            "local_variable": "e1_5_07",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_07",
+            "datapoint_id": "E1-5_07",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_07",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          },
+          {
+            "component_id": "E1-5_08",
+            "local_variable": "e1_5_08",
+            "weight_hint": "",
+            "numerator_denominator_role": "",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_08",
+            "datapoint_id": "E1-5_08",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_08",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "semantic_only"
+          }
+        ],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_06",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_06",
+      "canonical_datapoint_id": "E1-5_06",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_06",
+      "label": "Fuel consumption from renewable sources",
+      "description": "Disclose fuel consumption from renewable sources in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [
+        {
+          "dimension_id": "fuel_type",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "Paragraph 37(c)(i) lists renewable fuel examples and leaves the reported renewable fuel type open."
+        }
+      ],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_07",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_07",
+      "canonical_datapoint_id": "E1-5_07",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_07",
+      "label": "Consumption of purchased or acquired electricity, heat, steam, and cooling from renewable sources",
+      "description": "Disclose consumption of purchased or acquired electricity, heat, steam and cooling from renewable sources in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_08",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_08",
+      "canonical_datapoint_id": "E1-5_08",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_08",
+      "label": "Consumption of self-generated non-fuel renewable energy",
+      "description": "Disclose consumption of self-generated non-fuel renewable energy in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_09",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_09",
+      "canonical_datapoint_id": "E1-5_09",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_09",
+      "label": "Percentage of renewable sources in total energy consumption",
+      "description": "Disclose the percentage of renewable sources in total energy consumption.",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "primary",
+      "value_kind": "ratio",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "percent",
+      "unit_type": "Percentage",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "ratio",
+        "operation_kind": "percentage",
+        "semantic_expression": "E1-5_05 / E1-5_01 * 100",
+        "runtime_expression": "e1_5_05 / e1_5_01 * 100",
+        "division_by_zero": "fail_closed",
+        "scale": {
+          "kind": "percentage",
+          "factor": "100"
+        },
+        "component_ids": [
+          "E1-5_05",
+          "E1-5_01"
+        ],
+        "component_refs": [
+          {
+            "component_id": "E1-5_05",
+            "local_variable": "e1_5_05",
+            "weight_hint": "",
+            "numerator_denominator_role": "numerator",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_05",
+            "datapoint_id": "E1-5_05",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_05",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "executable"
+          },
+          {
+            "component_id": "E1-5_01",
+            "local_variable": "e1_5_01",
+            "weight_hint": "",
+            "numerator_denominator_role": "denominator",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_01",
+            "datapoint_id": "E1-5_01",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_01",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "executable"
+          }
+        ],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_10",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_10",
+      "canonical_datapoint_id": "E1-5_10",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_10",
+      "label": "Fuel consumption from coal and coal products",
+      "description": "Disclose fuel consumption from coal and coal products in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [
+        {
+          "dimension_id": "fuel_type",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "Coal and coal products may require reported fuel-type detail without a closed member list in the supplied evidence."
+        },
+        {
+          "dimension_id": "combustion_use_case",
+          "mode": "required",
+          "member_values": [
+            "stationary_combustion",
+            "mobile_combustion"
+          ],
+          "fixed_value": "",
+          "rationale": "The ESRS E1-5 protocol requires stationary and mobile combustion use-case members for fuel-family rows."
+        },
+        {
+          "dimension_id": "country",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "The ESRS E1-5 protocol requires an open country axis for this fuel-family row."
+        },
+        {
+          "dimension_id": "business_unit",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "The ESRS E1-5 protocol requires an open business unit axis for this fuel-family row."
+        }
+      ],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_11",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_11",
+      "canonical_datapoint_id": "E1-5_11",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_11",
+      "label": "Fuel consumption from crude oil and petroleum products",
+      "description": "Disclose fuel consumption from crude oil and petroleum products in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [
+        {
+          "dimension_id": "fuel_type",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "Crude oil and petroleum products may require reported fuel-type detail without a closed member list in the supplied evidence."
+        },
+        {
+          "dimension_id": "combustion_use_case",
+          "mode": "required",
+          "member_values": [
+            "stationary_combustion",
+            "mobile_combustion"
+          ],
+          "fixed_value": "",
+          "rationale": "The ESRS E1-5 protocol requires stationary and mobile combustion use-case members for fuel-family rows."
+        },
+        {
+          "dimension_id": "country",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "The ESRS E1-5 protocol requires an open country axis for this fuel-family row."
+        },
+        {
+          "dimension_id": "business_unit",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "The ESRS E1-5 protocol requires an open business unit axis for this fuel-family row."
+        }
+      ],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_12",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_12",
+      "canonical_datapoint_id": "E1-5_12",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_12",
+      "label": "Fuel consumption from natural gas",
+      "description": "Disclose fuel consumption from natural gas in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [
+        {
+          "dimension_id": "fuel_type",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "Natural gas may require reported fuel-type detail without a closed member list in the supplied evidence."
+        },
+        {
+          "dimension_id": "combustion_use_case",
+          "mode": "required",
+          "member_values": [
+            "stationary_combustion",
+            "mobile_combustion"
+          ],
+          "fixed_value": "",
+          "rationale": "The ESRS E1-5 protocol requires stationary and mobile combustion use-case members for fuel-family rows."
+        },
+        {
+          "dimension_id": "country",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "The ESRS E1-5 protocol requires an open country axis for this fuel-family row."
+        },
+        {
+          "dimension_id": "business_unit",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "The ESRS E1-5 protocol requires an open business unit axis for this fuel-family row."
+        }
+      ],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_13",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_13",
+      "canonical_datapoint_id": "E1-5_13",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_13",
+      "label": "Fuel consumption from other fossil sources",
+      "description": "Disclose fuel consumption from other fossil sources in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [
+        {
+          "dimension_id": "fuel_type",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "Other fossil sources are open and require reported fuel-type detail when applicable."
+        }
+      ],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_14",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_14",
+      "canonical_datapoint_id": "E1-5_14",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_14",
+      "label": "Consumption of purchased or acquired electricity, heat, steam, or cooling from fossil sources",
+      "description": "Disclose consumption of purchased or acquired electricity, heat, steam or cooling from fossil sources in MWh.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_15",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_15",
+      "canonical_datapoint_id": "E1-5_15",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_15",
+      "label": "Percentage of fossil sources in total energy consumption",
+      "description": "Disclose the percentage of fossil sources in total energy consumption.",
+      "exposure": "public_register",
+      "runtime_status": "executable",
+      "role": "primary",
+      "value_kind": "ratio",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "percent",
+      "unit_type": "Percentage",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "ratio",
+        "operation_kind": "percentage",
+        "semantic_expression": "E1-5_02 / E1-5_01 * 100",
+        "runtime_expression": "e1_5_02 / e1_5_01 * 100",
+        "division_by_zero": "fail_closed",
+        "scale": {
+          "kind": "percentage",
+          "factor": "100"
+        },
+        "component_ids": [
+          "E1-5_02",
+          "E1-5_01"
+        ],
+        "component_refs": [
+          {
+            "component_id": "E1-5_02",
+            "local_variable": "e1_5_02",
+            "weight_hint": "",
+            "numerator_denominator_role": "numerator",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_02",
+            "datapoint_id": "E1-5_02",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_02",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "executable"
+          },
+          {
+            "component_id": "E1-5_01",
+            "local_variable": "e1_5_01",
+            "weight_hint": "",
+            "numerator_denominator_role": "denominator",
+            "resolved": true,
+            "node_id": "model_0001#E1-5_01",
+            "datapoint_id": "E1-5_01",
+            "indicator_identifier": "urn:sds:reg:esrs:e1_5_01",
+            "variable_uri": "",
+            "component_scope": "public_register",
+            "unit_name": "MWh",
+            "unit_type": "Energy",
+            "exposure": "public_register",
+            "runtime_status": "executable"
+          }
+        ],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_16",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_16",
+      "canonical_datapoint_id": "E1-5_16",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_16",
+      "label": "Non-renewable energy production",
+      "description": "Disclose non-renewable energy production in MWh where applicable.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_17",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_17",
+      "canonical_datapoint_id": "E1-5_17",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_17",
+      "label": "Renewable energy production",
+      "description": "Disclose renewable energy production in MWh where applicable.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh",
+      "unit_type": "Energy",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_18",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_18",
+      "canonical_datapoint_id": "E1-5_18",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_18",
+      "label": "Energy intensity from activities in high climate impact sectors",
+      "description": "Disclose energy intensity from activities in high climate impact sectors as total energy consumption per net revenue.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "ratio",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "MWh per currency",
+      "unit_type": "EnergyIntensity",
+      "dimensions": [
+        {
+          "dimension_id": "sector",
+          "mode": "typed",
+          "member_values": [],
+          "fixed_value": "",
+          "rationale": "Energy intensity is associated with activities in high climate impact sectors, and the sectors used must be specified."
+        }
+      ],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_20",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_20",
+      "canonical_datapoint_id": "E1-5_20",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_20",
+      "label": "High climate impact sectors used to determine energy intensity",
+      "description": "Specify the high climate impact sectors used to determine energy intensity.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "text",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "",
+      "unit_type": "",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_21",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_21",
+      "canonical_datapoint_id": "E1-5_21",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_21",
+      "label": "Reconciliation to financial statement line item or notes of net revenue from activities in high climate impact sectors",
+      "description": "Disclose the reconciliation to the relevant line item or notes in the financial statements of net revenue from activities in high climate impact sectors.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "text",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "",
+      "unit_type": "",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_22",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_22",
+      "canonical_datapoint_id": "E1-5_22",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_22",
+      "label": "Net revenue from activities in high climate impact sectors",
+      "description": "Disclose net revenue from activities in high climate impact sectors used to calculate energy intensity.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "currency",
+      "unit_type": "monetary",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    },
+    {
+      "node_id": "model_0001#E1-5_23",
+      "model_id": "model_0001",
+      "model_key": "model_0001",
+      "datapoint_id": "E1-5_23",
+      "canonical_datapoint_id": "E1-5_23",
+      "indicator_identifier": "urn:sds:reg:esrs:e1_5_23",
+      "label": "Net revenue from activities other than in high climate impact sectors",
+      "description": "Disclose net revenue from activities other than in high climate impact sectors when quantitative reconciliation is needed.",
+      "exposure": "public_register",
+      "runtime_status": "semantic_only",
+      "role": "primary",
+      "value_kind": "numeric",
+      "source_kind": "hybrid",
+      "parent_id": "",
+      "relation_to_parent": "",
+      "unit_name": "currency",
+      "unit_type": "monetary",
+      "dimensions": [],
+      "aggregation": {
+        "temporal": "SUM",
+        "perimeter": "SUM",
+        "missing_data": "BLOCK",
+        "zero_is_value": true
+      },
+      "formula": {
+        "kind": "input",
+        "operation_kind": "input",
+        "semantic_expression": "",
+        "runtime_expression": "",
+        "division_by_zero": "",
+        "scale": {
+          "kind": "",
+          "factor": ""
+        },
+        "component_ids": [],
+        "component_refs": [],
+        "note": ""
+      },
+      "provenance": {
+        "package_id": "sds-demo-a23-v1"
+      }
+    }
+  ]
+}

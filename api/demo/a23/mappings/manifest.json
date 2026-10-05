@@ -1,0 +1,162 @@
+{
+  "contract_version": "atomizer-sds-canonical-mapping-package-v1",
+  "package_schema_version": "1.0",
+  "contract_mode": "canonical_mapping",
+  "manifest_generated_at": "2026-10-05T00:00:00Z",
+  "generated_at": "2026-10-05T00:00:00Z",
+  "source_project": "sds",
+  "source_version": "sds-demo-a23-v1",
+  "canonical_dir": "api/demo/a23/mappings",
+  "row_counts": {
+    "sds_standard_releases.csv": 2,
+    "sds_standard_datapoints.csv": 6,
+    "sds_mapping_assertion_groups.csv": 6,
+    "sds_mapping_assertion_components.csv": 6
+  },
+  "generation": {
+    "tool": "sds demo A2.3 package",
+    "method": "sds_demo_operator_approval",
+    "seed_id": "sds-demo-a23-v1",
+    "notes": "Three ESRS E1-6 to GRI 305 demonstration assertions approved by the SDS operator for the A2.3 verification. SDS-authored labels; no standard text."
+  },
+  "files": [
+    {
+      "filename": "sds_standard_releases.csv",
+      "path": "sds_standard_releases.csv",
+      "description": "Versioned reporting standard releases.",
+      "size_bytes": 439,
+      "sha256": "398b0a5f4043db72c8d25efc948d5df43ce1d7c48f35099ad5a52d55ea212aea",
+      "row_count": 2,
+      "required_headers": [
+        "standard_id",
+        "name",
+        "version",
+        "release_date",
+        "source_url",
+        "lifecycle_status",
+        "provenance"
+      ],
+      "headers": [
+        "standard_id",
+        "name",
+        "version",
+        "release_date",
+        "source_url",
+        "lifecycle_status",
+        "provenance"
+      ]
+    },
+    {
+      "filename": "sds_standard_datapoints.csv",
+      "path": "sds_standard_datapoints.csv",
+      "description": "External standard datapoints inside each release.",
+      "size_bytes": 1248,
+      "sha256": "bc81850ea08ad48002f0c8108672a7e6b4b17ef96a4240eefe9ae7cf4c61e827",
+      "row_count": 6,
+      "required_headers": [
+        "standard_id",
+        "standard_version",
+        "code",
+        "label",
+        "disclosure_text",
+        "datapoint_type",
+        "unit",
+        "lifecycle_status",
+        "metadata_json"
+      ],
+      "headers": [
+        "standard_id",
+        "standard_version",
+        "code",
+        "label",
+        "disclosure_text",
+        "datapoint_type",
+        "unit",
+        "lifecycle_status",
+        "metadata_json"
+      ]
+    },
+    {
+      "filename": "sds_mapping_assertion_groups.csv",
+      "path": "sds_mapping_assertion_groups.csv",
+      "description": "Curated source-datapoint to Sygris footprint assertions.",
+      "size_bytes": 3012,
+      "sha256": "8dc7e5cab39b2560bc8a42858ef013bcf1b6eeeaf28fc99e043fbd36eacab714",
+      "row_count": 6,
+      "required_headers": [
+        "source_standard_id",
+        "source_standard_version",
+        "source_code",
+        "mapping_profile",
+        "relationship_type",
+        "coverage_status",
+        "confidence",
+        "rationale",
+        "coverage_summary",
+        "difference_summary",
+        "valid_from",
+        "valid_to",
+        "approval_status",
+        "publication_status",
+        "assertion_hash",
+        "provenance"
+      ],
+      "headers": [
+        "source_standard_id",
+        "source_standard_version",
+        "source_code",
+        "mapping_profile",
+        "relationship_type",
+        "coverage_status",
+        "confidence",
+        "rationale",
+        "coverage_summary",
+        "difference_summary",
+        "valid_from",
+        "valid_to",
+        "approval_status",
+        "publication_status",
+        "assertion_hash",
+        "provenance"
+      ]
+    },
+    {
+      "filename": "sds_mapping_assertion_components.csv",
+      "path": "sds_mapping_assertion_components.csv",
+      "description": "Ordered Sygris concept components per mapping assertion.",
+      "size_bytes": 1058,
+      "sha256": "b3bd358fa9f283853f93c2c7cf44a0069a2a5976d9862e231f5d51c60ef92cc9",
+      "row_count": 6,
+      "required_headers": [
+        "source_standard_id",
+        "source_standard_version",
+        "source_code",
+        "mapping_profile",
+        "component_order",
+        "sygris_canonical_uri",
+        "sygris_revision",
+        "component_role",
+        "coverage_fraction",
+        "match_scope",
+        "mismatch_scope",
+        "transformation_rule",
+        "rationale"
+      ],
+      "headers": [
+        "source_standard_id",
+        "source_standard_version",
+        "source_code",
+        "mapping_profile",
+        "component_order",
+        "sygris_canonical_uri",
+        "sygris_revision",
+        "component_role",
+        "coverage_fraction",
+        "match_scope",
+        "mismatch_scope",
+        "transformation_rule",
+        "rationale"
+      ]
+    }
+  ]
+}

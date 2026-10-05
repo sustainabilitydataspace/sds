@@ -178,8 +178,11 @@ class DatabaseHierarchyStore:
         *,
         config_id: str,
         created_by: Optional[str],
+        commit: bool = True,
     ) -> HierarchyConfiguration:
         payload = _config_to_json(config, config_id=config_id)
+        if config.active is False and not commit:
+            raise ValueError("inactive hierarchies cannot be created without commit")
         record = self._repo.create_hierarchy_configuration(
             config_id=config_id,
             company_id=config.company_id,
@@ -188,6 +191,7 @@ class DatabaseHierarchyStore:
             configuration=payload,
             description=config.description,
             created_by=created_by,
+            commit=commit,
         )
         if config.active is False:
             record = (

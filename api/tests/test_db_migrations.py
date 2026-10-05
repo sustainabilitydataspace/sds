@@ -423,7 +423,9 @@ def test_fresh_postgres_upgrade_to_head_when_disposable_url_is_provided():
 def test_alembic_migration_graph_keeps_demo_cleanup_evs_merge_linear():
     script = _script_directory()
 
-    assert script.get_heads() == ["050_add_admin_error_diagnostics"]
+    assert script.get_heads() == ["051_add_admin_demo_package_installs"]
+    demo = script.get_revision("051_add_admin_demo_package_installs")
+    assert demo.down_revision == "050_add_admin_error_diagnostics"
     diagnostics = script.get_revision("050_add_admin_error_diagnostics")
     assert diagnostics.down_revision == "049_add_admin_catalog_operations"
     admin_catalog = script.get_revision("049_add_admin_catalog_operations")

@@ -534,6 +534,38 @@ SHA-256);
 each API process reloads its unit catalog within one second of a committed
 repair or reversal.
 
+### Demo A2.3 package
+
+`api/demo/a23` (`sds-demo-a23-v1`) holds exactly what the public A2.3
+verification (V1-V5) needs: the ESRS E1-5 indicator register rows (EFRAG
+datapoint names and descriptions, attributed in `NOTICE.md`), the E1-5
+calculation contract model, the `nh_group` hierarchy of tenant
+`nordhaven_components_group`, the 9 synthetic NordHaven 2024 values and three
+operator-approved ESRS E1-6 to GRI 305 assertions (`approval.json`, mapping
+profile `demo_a23`). The manifest digest is pinned in
+`src/services/demo_package.py`; any file change requires updating it.
+
+Bearer `admin` tokens holding `manage_system` use:
+
+- `GET /api/v1/admin/demo-packages/a23` (20/min): package integrity, the
+  read-only state of each component (absent, present, conflict), the V1-V5
+  checks run through the same services as the public routes, and the last
+  install attempts.
+- `POST /api/v1/admin/demo-packages/a23/install?confirm=true` (2/min, no other
+  parameters or body): one transaction under an advisory lock. Indicators,
+  standard releases/datapoints and an identical active contract from another
+  package are reused unchanged; the demo hierarchy, values and demo-profile
+  assertions must equal the package. Any difference returns `409` and nothing
+  is written; a failed attempt is recorded with its step and error class in
+  `admin_demo_package_installs` (migration `051`). After commit the V1-V5
+  checks run and the attempt is marked `verified` or `installed_unverified`.
+  Re-running the install is a no-op.
+
+Pairwise materialization is profile-aware: a run only stales current rows of
+its own mapping profile, and for a pair already current from another profile
+the `default` profile takes precedence, so a later full mapping package
+supersedes overlapping demo pairs while keeping V4 answering.
+
 ### Admin error diagnostics
 
 Server errors (`500`) keep their generic response with a `request_id`. The API
