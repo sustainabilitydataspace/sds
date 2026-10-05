@@ -66,8 +66,10 @@ make down
 
 ### Public synthetic demo and regression benchmark
 
-The versioned [`demo/`](demo/) package is wholly synthetic public data; it is
-not a Nordhaven export or dump. With an empty disposable PostgreSQL runtime,
+The top-level files of the versioned [`demo/`](demo/) package (those listed in
+its `manifest.json`) are wholly synthetic public data; they are not a Nordhaven
+export or dump. `demo/a23/` is the separate A2.3 verification package, installed
+through the admin API (see [Despliegue](docs/deployment.md#demo-a23-package)). With an empty disposable PostgreSQL runtime,
 use the supported synchronous strict CSV importer and then verify/reset it:
 
 ```bash
@@ -390,6 +392,11 @@ make help           # Ver todos los comandos
 - 🧵 **Imports de valores en DB**: el carril soportado es CSV síncrono/CLI;
   los jobs asíncronos JSON/CSV DB devuelven `503` pendiente de H15
 - ✅ **Sin datos simulados**: `/api/v1/calculate` requiere valores reales (si faltan, devuelve `404`)
+- 🛠️ **Administración por API** (admin bearer con `manage_system`): gestión de
+  usuarios, validación e importación de contratos de cálculo, reparación y
+  corrección de factores del catálogo de unidades con informe de impacto,
+  diagnóstico saneado de errores `500` e instalación del paquete de
+  demostración A2.3 (véase [Despliegue](docs/deployment.md))
 
 ---
 

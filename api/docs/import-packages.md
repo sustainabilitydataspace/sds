@@ -9,8 +9,10 @@ previsto» en el `README.md` de la raíz.
 
 ## Demo público sintético
 
-El paquete [`../demo/`](../demo/) es una demostración pública, determinista y
-totalmente sintética. No es un dump ni una exportación Nordhaven. En una base
+Los ficheros de primer nivel de [`../demo/`](../demo/) (los que lista su
+`manifest.json`) forman una demostración pública, determinista y totalmente
+sintética. No son un dump ni una exportación Nordhaven. El subdirectorio
+`../demo/a23/` es el paquete A2.3, descrito más abajo. En una base
 PostgreSQL desechable vacía se instala, verifica y elimina mediante el CLI
 síncrono soportado:
 
@@ -390,6 +392,13 @@ igual que el resolvedor runtime. Las politicas de agregacion canonicas tambien
 son fail-closed: un token desconocido como `median` bloquea el contrato en vez
 de degradar silenciosamente a `sum`.
 
+En una instancia desplegada, un administrador puede ejecutar la misma
+validacion en seco y la importacion por API, sin acceso al servidor:
+`POST /api/v1/admin/calculation-contracts/validations` y
+`POST /api/v1/admin/calculation-contracts/imports?confirm=true`, con el JSON del
+paquete como cuerpo (vease [Despliegue](deployment.md)). La validacion exige que
+cada nodo `public_register` exista como indicador activo del catalogo.
+
 Las expresiones derivadas o intermedias declaradas dentro de la formula se
 validan antes de confirmar el paquete: cada nodo derivado debe declarar una
 variable local valida, una expresion aritmetica segura, y dependencias enlazadas
@@ -587,6 +596,12 @@ La carga shadow escribe solo en:
 - `mapping_assertion_groups`
 - `mapping_assertion_components`
 
+El servicio de importación admite `reference_data_mode="insert_only"` (crea las
+versiones y datapoints de estándar que falten sin modificar los existentes; lo
+usa el paquete de demostración A2.3) y, con `commit=False` en PostgreSQL,
+trabaja dentro de un `SAVEPOINT`: un paquete rechazado o bloqueado solo deshace
+sus propias filas y nunca la transacción de quien lo llama.
+
 No escribe en `standard_mappings`. La materialización pairwise se ejecuta como
 paso separado y, si no es `--dry-run`, actualiza el read-model público
 canónico servido por `/api/v1/mappings`. Las referencias legacy a
@@ -670,7 +685,7 @@ Materialización real en el read-model canónico público:
   --json
 ```
 
-El materializador lee `mapping_assertion_groups` y `mapping_assertion_components`, calcula solapamiento entre huellas Sygris y escribe filas actuales en `materialized_pairwise_mappings`. Genera direcciones `A -> B` y `B -> A` entre estándares distintos, marca como stale las filas current que ya no salen de la última huella dentro del alcance materializado y conserva `generated_from_hash` para reproducibilidad. Por defecto incluye assertions `draft` y `approved`; para un ensayo operativo más estricto usa `--approval-status approved`.
+El materializador lee `mapping_assertion_groups` y `mapping_assertion_components`, calcula solapamiento entre huellas Sygris y escribe filas actuales en `materialized_pairwise_mappings`. Genera direcciones `A -> B` y `B -> A` entre estándares distintos, marca como stale las filas current de su mismo `mapping_profile` que ya no salen de la última huella dentro del alcance materializado (las filas de otros perfiles no se tocan) y conserva `generated_from_hash` para reproducibilidad. Solo puede haber una fila current por par origen-destino: si el par ya está vigente desde otro perfil, el perfil `default` tiene prioridad (una ejecución de otro perfil no lo sustituye y lo cuenta como `pairwise_covered_by_precedence`; una ejecución `default` sustituye la fila del otro perfil con `stale_reason` `superseded_by_profile:default`). Cada fila conserva su perfil en `metadata_json.mapping_profile`. Por defecto incluye assertions `draft` y `approved`; para un ensayo operativo más estricto usa `--approval-status approved`.
 
 Cuando dos assertions tienen la misma huella Sygris, el materializador solo emite `equivalent` si ambas assertions son `equivalent` con cobertura `complete`. Si una assertion declara una relación direccional explícita (`broader` o `narrower`) frente al concepto Sygris y la otra es equivalente, SDS preserva esa dirección en `materialized_pairwise_mappings` y emite la relación inversa en la dirección contraria. Cualquier otro caso no completo se materializa como `partial` para evitar convertir componentes, agregados o scopes incompletos en equivalencias.
 

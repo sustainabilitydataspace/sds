@@ -74,6 +74,23 @@ automáticamente para pushes directos a `main` cuando el cambio toca `api/**`,
 `Makefile`, `README.md`, `scripts/api_ci_pre_push.py`,
 `scripts/install_api_ci_pre_push_hook.py` o `docs/quality/acceptance_gates.md`.
 
+### Carriles PostgreSQL desechables de administración
+
+Con `SDS_MIGRATION_TEST_DATABASE_URL` y `SDS_MIGRATION_TEST_ALLOW_RESET=true`
+(base desechable, nunca operativa) se ejecutan además:
+
+- `tests/test_admin_catalog_postgres.py` y
+  `tests/test_admin_catalog_followup_postgres.py`: reparaciones, correcciones de
+  factor, verificación dentro de la transacción e informe de impacto sobre las
+  tablas de unidades;
+- `tests/test_error_diagnostics_postgres.py`: retención concurrente, caducidad
+  y campos permitidos de errores reales de PostgreSQL;
+- `tests/test_demo_package_postgres.py`: migra una base plantilla hasta la
+  cabeza y crea una copia por test (requiere un servidor con `btree_gist` y
+  privilegio `CREATEDB`); comprueba la instalación del paquete A2.3 con V1-V5,
+  la reinstalación sin cambios, conflictos `409` sin escrituras, fallos en cada
+  paso, concurrencia y la coexistencia de perfiles de correspondencias.
+
 ### Cualificación runtime HTTP/FX con PostgreSQL desechable
 
 `tests/test_runtime_fx_http_postgres.py` conecta `TestClient`, autenticación real,

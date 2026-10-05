@@ -187,6 +187,9 @@ HierarchyRepository     → Jerarquías organizativas
 | `unit_service` | Conversión y gestión de unidades (DB-backed cuando `REQUIRE_DATABASE=true`) |
 | `hierarchy_service` | Gestión de jerarquías |
 | `concept_service` / `ontology_service` | Lectura de conceptos/equivalencias/taxonomías desde el modelo semántico canónico |
+| `admin_catalog` | Importación de contratos de cálculo y reparación, corrección de factores e informe de impacto del catálogo de unidades (rutas `/api/v1/admin`) |
+| `error_diagnostics` | Registro saneado y acotado de errores `500` por `request_id`, legible por administradores |
+| `demo_package` | Verificación e instalación transaccional del paquete de demostración A2.3 |
 
 ---
 

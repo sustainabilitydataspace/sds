@@ -50,6 +50,11 @@ esas entidades.
 Quien importe paquetes de estándares, mapeos o datos debe contar con derechos de
 uso suficientes para esos materiales.
 
+El paquete de demostración `api/demo/a23` reproduce literalmente los nombres y
+descripciones de los datapoints ESRS E1-5 y E1-6 publicados por EFRAG; la fuente
+se indica en `api/demo/a23/NOTICE.md`. Esos textos no quedan cubiertos por la
+licencia SDS. Las referencias a GRI de ese paquete usan solo códigos.
+
 ## Paquetes de operador y productos de datos
 
 La licencia SDS no licencia paquetes de operador, datos de producción, datos

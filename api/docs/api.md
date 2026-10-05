@@ -126,6 +126,8 @@ TOKEN=$(curl -sS -X POST "http://localhost:8090/auth/login" \
 | Método | Ruta | Uso |
 |--------|------|-----|
 | `POST` | `/auth/users` | Crear usuario (requiere permisos) |
+| `PUT` | `/auth/users/{username}` | Admin: cambiar `email`, `full_name`, `company_id`, `role` o `is_active` de otro usuario |
+| `POST` | `/auth/users/{username}/reset-password` | Admin: restablecer la contraseña de otro usuario |
 | `POST` | `/auth/api-keys` | Crear API key |
 | `GET` | `/auth/api-keys` | Listar API keys del usuario |
 | `DELETE` | `/auth/api-keys/{api_key_id}` | Revocar API key |
@@ -801,6 +803,29 @@ del dataset Nordhaven cargado:
 ```
 
 ---
+
+## Administración (`/api/v1/admin`)
+
+Todas estas rutas exigen token bearer de un usuario `admin` con
+`manage_system`; las API keys y el resto de roles reciben `403`. Los errores de
+validación no devuelven los valores enviados. El detalle operativo está en
+[Despliegue](deployment.md).
+
+| Método | Ruta | Uso |
+|--------|------|-----|
+| `POST` | `/api/v1/admin/calculation-contracts/validations` | Validar en seco un `sds_calculation_contract.json` |
+| `POST` | `/api/v1/admin/calculation-contracts/imports?confirm=true` | Importar el paquete de contratos en una transacción |
+| `GET` | `/api/v1/admin/unit-catalog/conflicts` | Conflictos del catálogo de unidades |
+| `POST` | `/api/v1/admin/unit-catalog/repairs/preview` | Previsualizar la desactivación de un duplicado |
+| `POST` | `/api/v1/admin/unit-catalog/repairs/commit?confirm=true` | Aplicar una reparación previsualizada |
+| `POST` | `/api/v1/admin/unit-catalog/repairs/{repair_id}/reverse?confirm=true` | Revertir una reparación o corrección |
+| `POST` | `/api/v1/admin/unit-catalog/factor-corrections/preview` | Previsualizar una corrección de factor (texto de reconocimiento exacto) |
+| `POST` | `/api/v1/admin/unit-catalog/factor-corrections/commit?confirm=true` | Aplicar una corrección de factor |
+| `GET` | `/api/v1/admin/unit-catalog/units/{unit_id}/impact` | Valores y revisiones posiblemente afectados por una unidad |
+| `GET` | `/api/v1/admin/diagnostics/errors/{request_id}` | Diagnóstico saneado de un error `500` |
+| `GET` | `/api/v1/admin/diagnostics/errors` | Diagnósticos recientes (14 días, máximo 50) |
+| `GET` | `/api/v1/admin/demo-packages/a23` | Estado del paquete de demostración A2.3 y comprobaciones V1-V5 |
+| `POST` | `/api/v1/admin/demo-packages/a23/install?confirm=true` | Instalar el paquete de demostración A2.3 |
 
 ## Códigos de respuesta más frecuentes
 
